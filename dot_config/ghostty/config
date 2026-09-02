@@ -1,0 +1,6 @@
+# Managed by chezmoi.
+#
+# The starship prompt and the per-host icons in `.chezmoidata.yaml` are Nerd
+# Font private-use codepoints, so the terminal must use a patched font. On mca
+# that is the `font-jetbrains-mono-nerd-font` cask (see `dot_Brewfile`).
+font-family = "JetBrainsMono Nerd Font"

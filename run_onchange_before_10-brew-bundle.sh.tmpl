@@ -4,6 +4,13 @@ set -euo pipefail
 
 # Re-runs only when the Brewfile changes, via this hash of its contents:
 #   {{ include "dot_Brewfile" | sha256sum }}
+#
+# This is a run_onchange_before_ script: it runs BEFORE chezmoi writes
+# dot_Brewfile -> ~/.Brewfile. On a clean Mac that file does not exist yet, and
+# `brew bundle --global` (which looks for ~/.Brewfile) dies with
+# "No Brewfile found", aborting the whole apply. Point brew bundle at the
+# source Brewfile instead -- that path always exists. The non-official casks
+# carry `trusted: true`, so they are trusted and installed exactly as before.
 
 if ! command -v brew >/dev/null 2>&1; then
   echo "Homebrew is not installed -- skipping brew bundle." >&2
@@ -12,7 +19,9 @@ if ! command -v brew >/dev/null 2>&1; then
   exit 0
 fi
 
-brew bundle install --global
+BREWFILE={{ joinPath .chezmoi.sourceDir "dot_Brewfile" | quote }}
 
-brew bundle cleanup --global --force
+brew bundle install --file "$BREWFILE"
+
+brew bundle cleanup --file "$BREWFILE" --force
 {{- end -}}

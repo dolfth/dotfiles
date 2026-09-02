@@ -11,8 +11,13 @@ by a script, not stored in the repo.
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 brew install chezmoi
 
-# 2. This repo. --apply does the first apply immediately.
-chezmoi init --apply git@github.com:dolfth/dotfiles.git
+# 2. This repo. Cloned over HTTPS, not SSH: a clean Mac has no GitHub SSH
+#    key yet, so the `git@github.com` remote is rejected and you cannot
+#    bootstrap the repo that would set one up. The repo is public, so HTTPS
+#    needs no prior auth. --apply does the first apply immediately.
+#    (If you'll commit and push changes, add a GitHub SSH key and later run
+#    `git remote set-url origin git@github.com:dolfth/dotfiles.git`.)
+chezmoi init --apply https://github.com/dolfth/dotfiles.git
 ```
 
 The first apply then prompts for sudo once: the system-settings script sets
@@ -39,6 +44,7 @@ docs recommend.
 - `dot_config/starship.toml.tmpl` → `~/.config/starship.toml` — per-host accent from `.chezmoidata.yaml`
 - `dot_config/nvim/init.lua` → `~/.config/nvim/init.lua` — lazy.nvim; ported from nixvim
 - `dot_pi/agent/modify_settings.json` → `~/.pi/agent/settings.json` — **merges** into what pi writes
+- `dot_config/ghostty/config` → `~/.config/ghostty/config` — Nerd Font family so starship's PUA glyphs render
 
 ### Scripts
 

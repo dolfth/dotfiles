@@ -1,8 +1,11 @@
 {{- /* Prompt theme. The gruvbox-rainbow preset deep-merged with our own
        overrides, exactly as the NixOS programs.starship module produced it
        (tomlq reduce), so the prompt is unchanged from nwa. Only the per-host
-       accent and icon are templated -- see .chezmoidata.yaml. */ -}}
-{{- $t := (index .hosts .chezmoi.hostname) | default .fallback -}}
+       accent and icon are templated -- see .chezmoidata.yaml. On macOS the
+       hostname arrives with a `.local` suffix (Bonjour name), so strip it
+       before the lookup -- same normalisation as the system-settings script.
+       */ -}}
+{{- $t := (index .hosts (trimSuffix ".local" .chezmoi.hostname)) | default .fallback -}}
 "$schema" = "https://starship.rs/config-schema.json"
 format = "[]({{ $t.accent }})$hostname[](fg:{{ $t.accent }} bg:color_orange)$os$username[](bg:color_yellow fg:color_orange)$directory[](fg:color_yellow bg:color_aqua)$git_branch$git_status[](fg:color_aqua bg:color_blue)$c$cpp$rust$golang$nodejs$php$java$kotlin$haskell$python[](fg:color_blue bg:color_bg3)$docker_context$conda$pixi[](fg:color_bg3 bg:color_bg1)$time[ ](fg:color_bg1)$line_break$character"
 palette = "gruvbox_dark"

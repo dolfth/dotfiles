@@ -33,7 +33,7 @@ brew "uv"
 # --- GUI ---------------------------------------------------------------------
 cask "balenaetcher"
 cask "brave-browser"
-cask "font-jetbrains-mono"
+cask "font-jetbrains-mono-nerd-font"
 tap "chamburr/tap"
 cask "chamburr/tap/glance", trusted: true
 cask "ghostty"
@@ -53,6 +53,14 @@ cask "utm"
 cask "vscodium"
 cask "whatcable"
 
+# --- VS Code extensions ------------------------------------------------------
+# Installed via the `vscode` directive, which looks for the `codium` CLI
+# (provided by the vscodium cask above). To capture what is ALREADY
+# installed, `brew bundle dump --global --force` lists them here too.
+vscode "ms-vscode-remote.remote-ssh"
+vscode "ms-python.python"
+vscode "charliermarsh.ruff"
+vscode "yzhang.markdown-all-in-one"
 # --- Background services -----------------------------------------------------
 cask "tailscale-app"
 brew "syncthing", restart_service: :changed
