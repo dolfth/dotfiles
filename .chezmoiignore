@@ -1,0 +1,7 @@
+{{- /* Plain files that only make sense on macOS. Scripts are NOT listed here:
+       they guard their own bodies with a template conditional and render empty
+       elsewhere, which chezmoi skips. */ -}}
+{{ if ne .chezmoi.os "darwin" -}}
+.Brewfile
+.zshrc
+{{ end -}}

@@ -1,0 +1,69 @@
+# The single source of truth for installed software on this Mac.
+# Applied by run_onchange_before_10-brew-bundle.sh, which re-runs whenever this
+# file changes.
+#
+# To capture what is ALREADY installed on the machine before trusting this list:
+#     brew bundle dump --global --force
+# That overwrites this file with reality; review the diff, then commit.
+
+# --- CLI ---------------------------------------------------------------------
+brew "bat"
+brew "chezmoi"
+brew "defaultbrowser"
+brew "duckdb"
+brew "dust"
+brew "exiftool"
+brew "ffmpeg"
+brew "fish"
+brew "git"
+brew "htop"
+brew "jq"
+brew "mas"
+brew "mole"
+brew "mosh"
+brew "neovim"
+tap: "jundot/omlx"
+brew "omlx", trusted: true   # `omlx start` to run it in the background
+brew "starship"
+
+# --- Python ------------------------------------------------------------------
+brew "python@3.14"
+brew "uv"
+
+# --- GUI ---------------------------------------------------------------------
+cask "balenaetcher"
+cask "brave-browser"
+cask "font-jetbrains-mono"
+tap "chamburr/tap"
+cask "chamburr/tap/glance", trusted: true
+cask "ghostty"
+cask "grandperspective"
+tap "nikitabobko/tap"
+cask "nikitabobko/tap/aerospace", trusted: true
+cask "iina"
+cask "imageoptim"
+cask "linearmouse"
+cask "lulu"
+cask "monitorcontrol"
+cask "notunes"
+cask "obsidian"
+cask "soulseek"
+cask "the-unarchiver"
+cask "utm"
+cask "vscodium"
+cask "whatcable"
+
+# --- Background services -----------------------------------------------------
+cask "tailscale-app"
+brew "syncthing", restart_service: :changed
+
+# --- App Store ---------------------------------------------------------------
+# IDs come from `mas list`, or the trailing digits of the App Store URL.
+# Requires being signed in, and the app must already be in your purchiase history.
+mas "KeePassium", id: 1435127111
+mas "Keynote", id: 409183694
+mas "Numbers", id: 361304891
+mas "Obsidian Web Clipper", id: 6720708363
+mas "Pages", id: 361309726
+mas "Pixelmator Pro", id: 1289583905
+mas "uBlock Origin Lite", id: 6745342698

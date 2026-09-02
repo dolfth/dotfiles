@@ -1,0 +1,16 @@
+# Per-host prompt accent -- the chezmoi equivalent of the `hostThemes` attrset
+# that used to live in the NixOS fish module.
+#
+# Icons are Nerd Font private-use codepoints written as YAML escapes rather than
+# literal glyphs, so no editor or terminal can mangle them.
+hosts:
+  nwa:
+    accent: color_green
+    icon: "\U000F048B"   # nf-md-server
+  mca:
+    accent: color_purple
+    icon: "\uF179"       # nf-fa-apple
+
+fallback:
+  accent: color_blue
+  icon: "\U000F033D"     # nf-md-linux

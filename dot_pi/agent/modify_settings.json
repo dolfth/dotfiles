@@ -1,0 +1,28 @@
+#!/bin/sh
+# chezmoi `modify_`: the target's current contents arrive on stdin, our stdout
+# becomes the new contents.
+#
+# This MERGES rather than overwrites, which is the whole reason this file moved
+# out of NixOS. `pi install <ext>` and `/settings` both write here, so it can
+# never be a whole-file the config manager owns -- which is why dev-agents.nix
+# had to seed it with a tmpfiles `C` rule and then never touch it again, so
+# edits to `piSettings` silently stopped propagating to any box that already
+# had the file.
+#
+# The keys below are re-asserted on every apply. Everything pi writes for
+# itself -- installed extensions, whatever /settings persists -- is preserved.
+set -eu
+
+current=$(cat)
+[ -n "$current" ] || current='{}'   # target does not exist yet
+
+if ! command -v jq >/dev/null 2>&1; then
+  printf '%s' "$current"
+  echo "modify_settings.json: jq not found, leaving ~/.pi/agent/settings.json alone" >&2
+  exit 0
+fi
+
+printf '%s' "$current" | jq --sort-keys '
+    .defaultProvider = "omlx"
+  | .defaultModel    = "Qwen3.8-27B-oQ4e-mtp:thinking"
+'

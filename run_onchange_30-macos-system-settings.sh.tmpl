@@ -1,0 +1,111 @@
+{{- if eq .chezmoi.os "darwin" -}}
+#!/bin/bash
+#
+# Sudo-requiring system settings, deliberately split from
+# run_after_20-macos-defaults.sh: this one prompts for a password, which would
+# hang an unattended `chezmoi apply` (editor, cron, ...). The TTY check below
+# skips it instead of hanging.
+#
+# `run_onchange_` with no `run_after_`: fires only on first apply and when
+# this file's rendered text changes, so the sudo prompt stays rare. Deleting a
+# line stops setting that thing; it does NOT restore the previous value.
+#
+# To make it never run automatically, rename it without the run_ prefix
+# (macos-system-settings.sh.tmpl) and run it by hand on new machines.
+
+set -uo pipefail   # no -e: one failing sudo command shouldn't abort the rest
+
+# Skip silently in non-interactive contexts rather than hanging on a prompt.
+if [ ! -t 0 ]; then
+  echo "==> Skipping system settings (no TTY; run 'chezmoi apply' in a terminal)"
+  exit 0
+fi
+
+echo "==> System settings (sudo required)"
+sudo -v || { echo "No sudo; skipping."; exit 0; }
+
+##### Touch ID for sudo ######################################################
+#
+# Unlock sudo with Touch ID. Prefers the template file when macOS ships one.
+
+if [ ! -f /etc/pam.d/sudo_local ]; then
+  if [ -f /etc/pam.d/sudo_local.template ]; then
+    sudo sed 's/^#auth/auth/' /etc/pam.d/sudo_local.template \
+      | sudo tee /etc/pam.d/sudo_local >/dev/null
+  else
+    printf 'auth       sufficient     pam_tid.so\n' \
+      | sudo tee /etc/pam.d/sudo_local >/dev/null
+  fi
+  echo "  Touch ID for sudo enabled"
+fi
+
+##### Firewall ###############################################################
+#
+# Block unsolicited inbound connections; stealth mode hides the machine from
+# port scans.
+
+sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setglobalstate on >/dev/null
+sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setstealthmode on >/dev/null
+
+# Optional: block ALL incoming connections (breaks file sharing, AirDrop, SSH).
+# sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setblockall on >/dev/null
+
+##### Guest account ##########################################################
+#
+# Disable and remove the Guest account.
+
+sudo defaults write /Library/Preferences/com.apple.loginwindow GuestEnabled -bool false
+sudo dscl . -delete /Users/Guest 2>/dev/null || true
+
+##### Login window #############################################################
+#
+# Show the username field instead of the account picker at the login screen.
+sudo defaults write /Library/Preferences/com.apple.loginwindow SHOWFULLNAME -bool true
+
+##### Power management #######################################################
+#
+# Laptop / normal use:
+sudo pmset -a displaysleep 5 disablescreenlock 0
+
+# Serving or storage host (never sleep anything):
+# sudo pmset -a sleep 0 displaysleep 0 disksleep 0 standby 0 autopoweroff 0 powernap 0
+
+# Wake on LAN for a storage host:
+# sudo pmset -a womp 1
+
+##### Hostname ################################################################
+#
+# Display name, official hostname and Bonjour name, all from the machine's own
+# hostname (mca.local -> mca) so each machine manages itself. Override with
+# computerName = "..." under [data] in ~/.config/chezmoi/chezmoi.toml.
+
+{{- $name := trimSuffix ".local" .chezmoi.hostname -}}
+{{- if hasKey . "computerName" -}}{{ $name = .computerName }}{{ end -}}
+sudo scutil --set ComputerName {{ $name | quote }}
+sudo scutil --set HostName {{ $name | quote }}
+sudo scutil --set LocalHostName {{ $name | quote }}
+sudo defaults write /Library/Preferences/SystemConfiguration/com.apple.smb.server \
+  NetBIOSName -string {{ $name | quote }}
+
+##### FileVault ################################################################
+#
+# Not automatable: `fdesetup enable` needs interactive handling of the
+# recovery key, and you should not write that key to a script's stdout.
+
+if ! fdesetup status | grep -q "FileVault is On"; then
+  echo "  FileVault is OFF. Enable it: System Settings > Privacy & Security"
+fi
+
+##### Manual checklist ########################################################
+#
+# Things no script can set, because the TCC database is SIP-protected:
+#   - Full Disk Access for your terminal (needed for anything touching
+#     ~/Library/Mail or /dev)
+#   - Accessibility permissions for window managers, hotkey tools, etc.
+#   - Screen Recording for capture tools
+#   - iCloud sign-in and per-service toggles
+#
+# Keep this list here so it's version-controlled alongside everything else.
+
+echo "==> System settings applied."
+{{- end }}

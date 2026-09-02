@@ -1,0 +1,18 @@
+{{- if eq .chezmoi.os "darwin" -}}
+#!/bin/bash
+set -euo pipefail
+
+# Re-runs only when the Brewfile changes, via this hash of its contents:
+#   {{ include "dot_Brewfile" | sha256sum }}
+
+if ! command -v brew >/dev/null 2>&1; then
+  echo "Homebrew is not installed -- skipping brew bundle." >&2
+  echo 'Install it first:' >&2
+  echo '  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"' >&2
+  exit 0
+fi
+
+brew bundle install --global
+
+brew bundle cleanup --global --force
+{{- end -}}
