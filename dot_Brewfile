@@ -63,7 +63,7 @@ vscode "charliermarsh.ruff"
 vscode "yzhang.markdown-all-in-one"
 # --- Background services -----------------------------------------------------
 cask "tailscale-app"
-brew "syncthing", restart_service: changed
+brew "syncthing", restart_service: :changed
 
 # --- App Store ---------------------------------------------------------------
 # IDs come from `mas list`, or the trailing digits of the App Store URL.
