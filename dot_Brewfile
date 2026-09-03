@@ -57,7 +57,7 @@ cask "whatcable"
 # Installed via the `vscode` directive, which looks for the `codium` CLI
 # (provided by the vscodium cask above). To capture what is ALREADY
 # installed, `brew bundle dump --global --force` lists them here too.
-vscode "ms-vscode-remote.remote-ssh"
+vscode "jeanp413.open-remote-ssh"
 vscode "ms-python.python"
 vscode "charliermarsh.ruff"
 vscode "yzhang.markdown-all-in-one"
@@ -69,7 +69,7 @@ brew "syncthing", restart_service: :changed
 # IDs come from `mas list`, or the trailing digits of the App Store URL.
 # Requires being signed in, and the app must already be in your purchiase history.
 mas "KeePassium", id: 1435127111
-mas "Keynote", id: 409183694
+mas "Keynote", id: 361285480
 mas "Numbers", id: 361304891
 mas "Obsidian Web Clipper", id: 6720708363
 mas "Pages", id: 361309726
