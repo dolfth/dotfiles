@@ -4,4 +4,5 @@
 {{ if ne .chezmoi.os "darwin" -}}
 .Brewfile
 .zshrc
+.omlx/stats.json
 {{ end -}}
