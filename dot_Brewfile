@@ -22,7 +22,7 @@ brew "mas"
 brew "mole"
 brew "mosh"
 brew "neovim"
-tap: "jundot/omlx"
+tap "jundot/omlx"
 brew "omlx", trusted: true   # `omlx start` to run it in the background
 brew "starship"
 
@@ -63,7 +63,7 @@ vscode "charliermarsh.ruff"
 vscode "yzhang.markdown-all-in-one"
 # --- Background services -----------------------------------------------------
 cask "tailscale-app"
-brew "syncthing", restart_service: :changed
+brew "syncthing", restart_service: changed
 
 # --- App Store ---------------------------------------------------------------
 # IDs come from `mas list`, or the trailing digits of the App Store URL.
