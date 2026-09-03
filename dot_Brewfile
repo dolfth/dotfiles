@@ -23,7 +23,7 @@ brew "mole"
 brew "mosh"
 brew "neovim"
 tap "jundot/omlx", "https://github.com/jundot/omlx"
-brew "omlx", trusted: true   # `omlx start` to run it in the background
+brew "jundot/omlx/omlx", trusted: true   # `omlx start` to run it in the background
 brew "starship"
 
 # --- Python ------------------------------------------------------------------
