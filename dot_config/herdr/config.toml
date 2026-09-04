@@ -1,5 +1,7 @@
 # Managed by chezmoi rather than in the NixOS flake because herdr writes this
-# file itself: `herdr config reset-keys`
+# file itself: `herdr config reset-keys` rewrites it and drops a backup beside
+# it, and the first-run wizard persists its answer here. A read-only store
+# symlink breaks both.
 
 # The first-run notification wizard would try to persist its answer back
 # into this read-only file, so opt out up front.
