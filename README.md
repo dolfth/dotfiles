@@ -11,13 +11,19 @@ by a script, not stored in the repo.
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 brew install chezmoi
 
-# 2. This repo. Cloned over HTTPS, not SSH: a clean Mac has no GitHub SSH
-#    key yet, so the `git@github.com` remote is rejected and you cannot
-#    bootstrap the repo that would set one up. The repo is public, so HTTPS
-#    needs no prior auth. --apply does the first apply immediately.
-#    (If you'll commit and push changes, add a GitHub SSH key and later run
-#    `git remote set-url origin git@github.com:dolfth/dotfiles.git`.)
-chezmoi init --apply https://github.com/dolfth/dotfiles.git
+# 2. A GitHub SSH key — pulls and pushes both go over SSH, so create one
+#    before the clone:
+#
+#      ssh-keygen -t ed25519 -a 100 -N "" -f ~/.ssh/id_ed25519
+#      pbcopy < ~/.ssh/id_ed25519.pub
+#
+#    Paste the public half into GitHub → Settings → SSH and GPG keys, then
+#    verify with `ssh -T git@github.com` ("Hi dolfth!"). Only the public key
+#    leaves the machine; the private half is what GitHub challenges.
+
+# 3. This repo. --apply does the first apply immediately; origin is set to
+#    the same SSH URL, so `git push` works from day one.
+chezmoi init --apply git@github.com:dolfth/dotfiles.git
 ```
 
 The first apply then prompts for sudo once: the system-settings script sets
