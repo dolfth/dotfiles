@@ -130,7 +130,12 @@ defaults write com.apple.NetworkBrowser BrowseAllInterfaces -bool true
 
 # Auto-set light or dark mode
 defaults write NSGlobalDomain AppleInterfaceStyleSwitchesAutomatically -bool true
-defaults delete NSGlobalDomain AppleInterfaceStyle
+# "delete" is not idempotent (it exits 1 when the key is already gone,
+# which would abort the script under "set -e" on every subsequent run),
+# so guard it:
+if defaults read NSGlobalDomain AppleInterfaceStyle >/dev/null 2>&1; then
+  defaults delete NSGlobalDomain AppleInterfaceStyle
+fi
 
 # Manually set light or dark mode
 # defaults write NSGlobalDomain AppleInterfaceStyle -string "Dark"
