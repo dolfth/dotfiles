@@ -1,0 +1,26 @@
+# Managed by chezmoi rather than in the NixOS flake because herdr writes this
+# file itself: `herdr config reset-keys`
+
+# The first-run notification wizard would try to persist its answer back
+# into this read-only file, so opt out up front.
+onboarding = false
+
+# prefix is ctrl+b. These commands run the sandboxed wrappers; `type =
+# "pane"` gives a real terminal pane that closes when the agent exits.
+[[keys.command]]
+key = "prefix+alt+c"
+type = "pane"
+command = "claude"
+description = "sandboxed claude-code"
+
+[[keys.command]]
+key = "prefix+alt+p"
+type = "pane"
+command = "pi"
+description = "sandboxed pi"
+
+[[keys.command]]
+key = "prefix+alt+o"
+type = "pane"
+command = "omp"
+description = "sandboxed oh-my-pi"
