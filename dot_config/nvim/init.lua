@@ -45,6 +45,15 @@ require("lazy").setup({
       -- noted so the omission reads as deliberate rather than lost.
     },
   },
+  {
+    "ChmaraX/herdr-nvim",
+    -- The nvim half of the Herdr sidebar plugin. The herdr half (sidebar +
+    -- file picker) is a herdr plugin installed by
+    -- run_onchange_35-herdr-plugins.sh; this half adds the annotation
+    -- workflow: <leader>ac comments the line or selection, <leader>al
+    -- lists, <leader>as sends them to the agent.
+    opts = {},
+  },
 })
 
 -- Parsers are compiled on demand, so treesitter needs a C compiler present:
