@@ -39,4 +39,10 @@ key = "prefix+o"
 type = "plugin_action"
 command = "chmarax.herdr-nvim.pick-file"
 description = "open file from agent output"
+# `agent_panel_sort` is herdr's default, but its UI persists it to disk on
+# first use; pin the default here so the persisted file matches source and
+# `chezmoi apply` does not flag it as changed. "spaces" groups the agent
+# panel by workspace; the alternative, "priority", is an attention queue.
+[ui]
+agent_panel_sort = "spaces"
 
