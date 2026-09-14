@@ -64,8 +64,19 @@ sudo defaults write /Library/Preferences/com.apple.loginwindow SHOWFULLNAME -boo
 
 ##### Power management #######################################################
 #
-# Laptop / normal use:
-sudo pmset -a displaysleep 5 disablescreenlock 0
+# Laptop: sleep the whole machine when idle (not just the display), drop to
+# deep standby, and conserve battery. The old line only set displaysleep, so
+# the Mac kept running and draining the battery. Split by power source so the
+# laptop sleeps promptly on battery but is a little more patient on AC.
+#
+# On battery -- prompt sleep to preserve charge:
+sudo pmset -b sleep 5 displaysleep 5 disksleep 10 standby 1 autopoweroff 1 powernap 0
+#
+# On AC -- more patient, but it still sleeps:
+sudo pmset -c sleep 10 displaysleep 10 disksleep 10 powernap 0
+#
+# Keep the screen lock on wake -- a laptop should not wake to an open GUI:
+sudo pmset -a disablescreenlock 0
 
 # Serving or storage host (never sleep anything):
 # sudo pmset -a sleep 0 displaysleep 0 disksleep 0 standby 0 autopoweroff 0 powernap 0
@@ -74,10 +85,10 @@ sudo pmset -a displaysleep 5 disablescreenlock 0
 # sudo pmset -a womp 1
 
 ##### Hostname ################################################################
-#
 # Display name, official hostname and Bonjour name, all from the machine's own
-# hostname (mca.local -> mca) so each machine manages itself. Override with
-# computerName = "..." under [data] in ~/.config/chezmoi/chezmoi.toml.
+# hostname (e.g. `somehost.local` -> `somehost`) so each machine manages
+# itself. Override with computerName = "..." under [data] in
+# ~/.config/chezmoi/chezmoi.toml.
 
 {{- $name := trimSuffix ".local" .chezmoi.hostname -}}
 {{- if hasKey . "computerName" -}}{{ $name = .computerName }}{{ end -}}

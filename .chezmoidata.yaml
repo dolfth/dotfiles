@@ -10,6 +10,9 @@ hosts:
   mca:
     accent: color_purple
     icon: "\uF179"       # nf-fa-apple
+  gza:
+    accent: color_orange
+    icon: "\uF179"       # nf-fa-apple
 
 fallback:
   accent: color_blue

@@ -30,9 +30,9 @@ The first apply then prompts for sudo once: the system-settings script sets
 the hostname, firewall, Touch ID for sudo, guest account, login window, and
 power, and checks FileVault. If you skipped the prompt, run `chezmoi apply`
 in a terminal — it skips itself in non-interactive contexts. The hostname is
-derived from the machine's own name (`mca.local` → `mca`) so the starship
-accent matches `.chezmoidata.yaml`; override it with `computerName = "..."`
-under `[data]` in `~/.config/chezmoi/chezmoi.toml`.
+derived from the machine's own name (`somehost.local` -> `somehost`) so the
+starship accent matches `.chezmoidata.yaml`; override it with
+`computerName = "..."` under `[data]` in `~/.config/chezmoi/chezmoi.toml`.
 
 Do **not** `chsh` to fish. `~/.zshrc` hands off to it for interactive
 sessions, which keeps `$SHELL` POSIX — lots of software runs
