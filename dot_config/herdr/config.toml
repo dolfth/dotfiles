@@ -28,14 +28,16 @@ command = "omp"
 description = "sandboxed oh-my-pi"
 # herdr plugin install ChmaraX/herdr-nvim (see run_onchange_35-herdr-plugins.sh):
 # nvim sidebar + file picker.
+# alt+e/alt+f, not e/o: herdr 0.8.2 already binds prefix+e (edit_scrollback)
+# and prefix+o (open_notification_target); the alt+ chords are free.
 [[keys.command]]
-key = "prefix+e"
+key = "prefix+alt+e"
 type = "plugin_action"
 command = "chmarax.herdr-nvim.toggle"
 description = "nvim sidebar"
 
 [[keys.command]]
-key = "prefix+o"
+key = "prefix+alt+f"
 type = "plugin_action"
 command = "chmarax.herdr-nvim.pick-file"
 description = "open file from agent output"
