@@ -76,7 +76,7 @@ sudo defaults write /Library/Preferences/com.apple.loginwindow SHOWFULLNAME -boo
 # not affect running processes. No deep standby/hibernation, no Power Nap
 # (it only matters for a sleeping Mac), no Low Power Mode throttling. Restart
 # by itself after a power cut; wake on LAN and keep TCP alive as backups.
-sudo pmset -a sleep 0 disksleep 0 standby 0 autopoweroff 0 hibernatemode 0 \
+sudo pmset -a sleep 0 disksleep 0 standby 0 hibernatemode 0 \
   powernap 0 lowpowermode 0 displaysleep 15 autorestart 1 womp 1 tcpkeepalive 1
 {{- else }}
 # Laptop: sleep the whole machine when idle (not just the display), drop to
@@ -84,7 +84,7 @@ sudo pmset -a sleep 0 disksleep 0 standby 0 autopoweroff 0 hibernatemode 0 \
 # sleeps promptly on battery but is a little more patient on AC.
 #
 # On battery -- prompt sleep to preserve charge:
-sudo pmset -b sleep 5 displaysleep 5 disksleep 10 standby 1 autopoweroff 1 powernap 0
+sudo pmset -b sleep 5 displaysleep 5 disksleep 10 standby 1 powernap 0
 #
 # On AC -- more patient, but it still sleeps:
 sudo pmset -c sleep 10 displaysleep 10 disksleep 10 powernap 0
