@@ -24,3 +24,13 @@ hosts:
 fallback:
   accent: color_blue
   icon: "\U000F033D"     # nf-md-linux
+
+# Public SSH keys, one per host, as listed on https://github.com/dolfth.keys.
+# Each host signs its commits with its own ~/.ssh/id_ed25519; these fill
+# ~/.config/git/allowed_signers so every host can verify all three. Add a new
+# machine's key here as well as on GitHub (as an authentication AND a signing
+# key).
+sshKeys:
+  - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBA2RcuVWjT5vlSHUdcNi8hWcG5xiRI1BJcHjlWq1dqY
+  - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINzF3Gb0SGSSL6C4xYZ/rNfVrhEcWTgRbHnXUecY62s2
+  - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEburPU7lpE3tnJac9R5jAbMTDqb0FA02Jqt0qVsVeUh

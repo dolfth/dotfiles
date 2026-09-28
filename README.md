@@ -56,7 +56,8 @@ recommend this.
 | `dot_config/fish/config.fish` | `~/.config/fish/config.fish` | |
 | `dot_config/fish/exact_functions/up.fish` | `~/.config/fish/functions/up.fish` | macOS only; exact: other files in that directory are deleted; `up` updates CLT, brew and App Store apps, restarts omlx if upgraded |
 | `dot_config/starship.toml.tmpl` | `~/.config/starship.toml` | per-host accent |
-| `dot_config/git/config` | `~/.config/git/config` | |
+| `dot_config/git/config` | `~/.config/git/config` | signs commits and tags with `~/.ssh/id_ed25519` |
+| `dot_config/git/allowed_signers.tmpl` | `~/.config/git/allowed_signers` | every host's public key (`sshKeys` in `.chezmoidata.yaml`), for verifying signatures |
 | `dot_config/nvim/init.lua` | `~/.config/nvim/init.lua` | lazy.nvim |
 | `dot_config/ghostty/config` | `~/.config/ghostty/config` | Nerd Font, so starship glyphs render |
 | `dot_config/herdr/config.toml` | `~/.config/herdr/config.toml` | |

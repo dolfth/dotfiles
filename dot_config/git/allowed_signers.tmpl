@@ -1,0 +1,5 @@
+{{- /* Keys trusted for `git log --show-signature` / `git verify-commit`;
+       from sshKeys in .chezmoidata.yaml. */ -}}
+{{- range .sshKeys }}
+12677636+dolfth@users.noreply.github.com namespaces="git" {{ . }}
+{{- end }}

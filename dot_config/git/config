@@ -1,7 +1,20 @@
 [user]
 	name = Dolf ter Hofste
 	email = 12677636+dolfth@users.noreply.github.com
+	signingkey = ~/.ssh/id_ed25519.pub
 [init]
 	defaultBranch = main
 [pull]
 	rebase = true
+# Sign commits and tags with this host's SSH key (user.signingkey above; on
+# the Macs ~/.ssh/config keeps it in the Keychain). Verification uses
+# allowed_signers, which lists all hosts' keys; see sshKeys in
+# .chezmoidata.yaml.
+[gpg]
+	format = ssh
+[gpg "ssh"]
+	allowedSignersFile = ~/.config/git/allowed_signers
+[commit]
+	gpgsign = true
+[tag]
+	gpgsign = true
