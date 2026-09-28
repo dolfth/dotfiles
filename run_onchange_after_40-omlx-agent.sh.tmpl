@@ -19,6 +19,9 @@ fi
 brew services stop omlx >/dev/null 2>&1 || true
 
 launchctl bootout "$DOMAIN/com.dolfth.omlx" 2>/dev/null || true
+# bootout returns before launchd has removed the job; bootstrapping before
+# then fails with "5: Input/output error".
+for _ in {1..20}; do launchctl print "$DOMAIN/com.dolfth.omlx" >/dev/null 2>&1 || break; sleep 0.5; done
 launchctl bootstrap "$DOMAIN" "$PLIST"
 echo "==> omlx LaunchAgent loaded (log: ~/Library/Logs/omlx.log)"
 {{- end -}}
