@@ -1,10 +1,16 @@
 # The single source of truth for installed software on this Mac.
-# Applied by run_onchange_before_10-brew-bundle.sh, which re-runs whenever this
-# file changes.
+# Applied by run_onchange_before_10-brew-bundle.sh, which re-runs whenever the
+# rendered file changes.
+#
+# A `kind: desktop` host (see .chezmoidata.yaml) is an omlx server: it gets the
+# CLI tools, tailscale and ghostty, not the rest of the GUI apps. Anything not
+# rendered here gets UNINSTALLED by `brew bundle cleanup`.
+{{- $host := get . "computerName" | default .chezmoi.hostname }}
+{{- $desktop := eq (dig $host "kind" "laptop" .hosts) "desktop" }}
 #
 # To capture what is ALREADY installed on the machine before trusting this list:
-#     brew bundle dump --global --force
-# That overwrites this file with reality; review the diff, then commit.
+#     brew bundle dump --file=- > /tmp/Brewfile
+# then diff it against this file by hand (a dump would flatten the template).
 
 # --- CLI ---------------------------------------------------------------------
 brew "bat"
@@ -23,7 +29,7 @@ brew "mole"
 brew "mosh"
 brew "neovim"
 tap "jundot/omlx", "https://github.com/jundot/omlx"
-brew "jundot/omlx/omlx", trusted: true   # `omlx start` to run it in the background
+brew "jundot/omlx/omlx", trusted: true   # laptop: `omlx start`; desktop: LaunchAgent (com.dolfth.omlx.plist)
 brew "starship"
 
 # --- Python ------------------------------------------------------------------
@@ -31,12 +37,13 @@ brew "python@3.14"
 brew "uv"
 
 # --- GUI ---------------------------------------------------------------------
+cask "font-jetbrains-mono-nerd-font"
+cask "ghostty"
+{{- if not $desktop }}
 cask "balenaetcher"
 cask "brave-browser"
-cask "font-jetbrains-mono-nerd-font"
 tap "chamburr/tap"
 cask "chamburr/tap/glance", trusted: true
-cask "ghostty"
 cask "grandperspective"
 tap "nikitabobko/tap"
 cask "nikitabobko/tap/aerospace", trusted: true
@@ -55,15 +62,20 @@ cask "whatcable"
 
 # --- VS Code extensions ------------------------------------------------------
 # Installed via the `vscode` directive, which looks for the `codium` CLI
-# (provided by the vscodium cask above). To capture what is ALREADY
-# installed, `brew bundle dump --global --force` lists them here too.
+# (provided by the vscodium cask above).
 vscode "jeanp413.open-remote-ssh"
 vscode "ms-python.python"
 vscode "charliermarsh.ruff"
 vscode "yzhang.markdown-all-in-one"
+{{- end }}
+
 # --- Background services -----------------------------------------------------
 cask "tailscale-app"
+{{- if not $desktop }}
 brew "syncthing", restart_service: :changed
+{{- end }}
+
+{{- if not $desktop }}
 
 # --- App Store ---------------------------------------------------------------
 # IDs come from `mas list`, or the trailing digits of the App Store URL.
@@ -75,3 +87,4 @@ mas "Obsidian Web Clipper", id: 6720708363
 mas "Pages", id: 361309726
 mas "Pixelmator Pro", id: 1289583905
 mas "uBlock Origin Lite", id: 6745342698
+{{- end }}

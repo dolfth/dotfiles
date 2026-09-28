@@ -64,40 +64,76 @@ sudo defaults write /Library/Preferences/com.apple.loginwindow SHOWFULLNAME -boo
 
 ##### Power management #######################################################
 #
+# Profile comes from `kind` for this host in .chezmoidata.yaml; unknown hosts
+# get the laptop profile, which is harmless on a desktop (it just sleeps).
+{{- $host := trimSuffix ".local" .chezmoi.hostname -}}
+{{- if hasKey . "computerName" -}}{{ $host = .computerName }}{{ end -}}
+{{- $kind := dig $host "kind" "laptop" .hosts }}
+{{ if eq $kind "desktop" }}
+# Desktop (omlx server): nothing ever sleeps except the display, which does
+# not affect running processes. No deep standby/hibernation, no Power Nap
+# (it only matters for a sleeping Mac), no Low Power Mode throttling. Restart
+# by itself after a power cut; wake on LAN and keep TCP alive as backups.
+sudo pmset -a sleep 0 disksleep 0 standby 0 autopoweroff 0 hibernatemode 0 \
+  powernap 0 lowpowermode 0 displaysleep 15 autorestart 1 womp 1 tcpkeepalive 1
+{{- else }}
 # Laptop: sleep the whole machine when idle (not just the display), drop to
-# deep standby, and conserve battery. The old line only set displaysleep, so
-# the Mac kept running and draining the battery. Split by power source so the
-# laptop sleeps promptly on battery but is a little more patient on AC.
+# deep standby, and conserve battery. Split by power source so the laptop
+# sleeps promptly on battery but is a little more patient on AC.
 #
 # On battery -- prompt sleep to preserve charge:
 sudo pmset -b sleep 5 displaysleep 5 disksleep 10 standby 1 autopoweroff 1 powernap 0
 #
 # On AC -- more patient, but it still sleeps:
 sudo pmset -c sleep 10 displaysleep 10 disksleep 10 powernap 0
+{{- end }}
 #
-# Keep the screen lock on wake -- a laptop should not wake to an open GUI:
+# Keep the screen lock on wake -- the machine should not wake to an open GUI:
 sudo pmset -a disablescreenlock 0
-
-# Serving or storage host (never sleep anything):
-# sudo pmset -a sleep 0 displaysleep 0 disksleep 0 standby 0 autopoweroff 0 powernap 0
-
-# Wake on LAN for a storage host:
-# sudo pmset -a womp 1
 
 ##### Hostname ################################################################
 # Display name, official hostname and Bonjour name, all from the machine's own
 # hostname (e.g. `somehost.local` -> `somehost`) so each machine manages
 # itself. Override with computerName = "..." under [data] in
-# ~/.config/chezmoi/chezmoi.toml.
-
-{{- $name := trimSuffix ".local" .chezmoi.hostname -}}
-{{- if hasKey . "computerName" -}}{{ $name = .computerName }}{{ end -}}
-sudo scutil --set ComputerName {{ $name | quote }}
-sudo scutil --set HostName {{ $name | quote }}
-sudo scutil --set LocalHostName {{ $name | quote }}
+# ~/.config/chezmoi/chezmoi.toml (`chezmoi init` asks for it on macOS).
+sudo scutil --set ComputerName {{ $host | quote }}
+sudo scutil --set HostName {{ $host | quote }}
+sudo scutil --set LocalHostName {{ $host | quote }}
 sudo defaults write /Library/Preferences/SystemConfiguration/com.apple.smb.server \
-  NetBIOSName -string {{ $name | quote }}
+  NetBIOSName -string {{ $host | quote }}
 
+##### Software Update #########################################################
+#
+# Never install macOS updates by themselves (that is how Tahoe arrived), and
+# don't pre-download them either. Still check, so System Settings shows what
+# is available; install by hand with `softwareupdate -l` / `-i <label>`.
+#
+# Security is split out:
+#   - ConfigDataInstall: XProtect, Gatekeeper and malware-removal data. Pure
+#     data files, never restart -- on everywhere.
+#   - CriticalUpdateInstall: "Security Responses and system files" (Rapid
+#     Security Responses / Background Security Improvements). Small patches
+#     to the current version, but they can need a restart -- on for the
+#     laptop, off for the desktop so omlx is never taken down unasked.
+# Point releases (26.x.y) are full macOS updates, even when they are "only"
+# security fixes, and fall under AutomaticallyInstallMacOSUpdates.
+sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticCheckEnabled -bool true
+sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticDownload -bool false
+sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticallyInstallMacOSUpdates -bool false
+sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate ConfigDataInstall -bool true
+sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate CriticalUpdateInstall -bool {{ if eq $kind "desktop" }}false{{ else }}true{{ end }}
+
+{{ if eq $kind "desktop" -}}
+##### Screen Sharing ##########################################################
+#
+# VNC-based Screen Sharing (vnc://gza.local, or the tailnet name) for the
+# occasional GUI visit. Access follows System Settings > General > Sharing >
+# Screen Sharing (default: administrators). If it does not show as on there,
+# toggle it once by hand -- newer macOS versions sometimes insist.
+sudo launchctl enable system/com.apple.screensharing
+sudo launchctl bootstrap system /System/Library/LaunchDaemons/com.apple.screensharing.plist 2>/dev/null || true
+
+{{ end -}}
 ##### FileVault ################################################################
 #
 # Not automatable: `fdesetup enable` needs interactive handling of the

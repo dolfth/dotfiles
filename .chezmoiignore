@@ -6,3 +6,9 @@
 .zshrc
 .omlx/stats.json
 {{ end -}}
+{{- /* The omlx LaunchAgent only belongs on the desktop (omlx server). */ -}}
+{{- $host := get . "computerName" | default .chezmoi.hostname -}}
+{{ if ne (dig $host "kind" "laptop" .hosts) "desktop" -}}
+Library/LaunchAgents/com.dolfth.omlx.plist
+{{ end -}}
+README.md

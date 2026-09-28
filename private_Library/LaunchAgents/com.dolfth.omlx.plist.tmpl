@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  omlx server on the desktop (kind: desktop in .chezmoidata.yaml; ignored
+  elsewhere via .chezmoiignore). Used instead of `brew services start omlx`
+  because the formula's service sets no ProcessType, and launchd throttles CPU
+  and I/O for jobs without one. Interactive = never throttled, like a
+  foreground app. Loaded by run_onchange_40-omlx-agent.sh.tmpl.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.dolfth.omlx</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/opt/homebrew/opt/omlx/bin/omlx</string>
+    <string>serve</string>
+  </array>
+  <key>ProcessType</key>
+  <string>Interactive</string>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>WorkingDirectory</key>
+  <string>{{ .chezmoi.homeDir }}/.omlx</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/opt/homebrew/sbin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>{{ .chezmoi.homeDir }}/Library/Logs/omlx.log</string>
+  <key>StandardErrorPath</key>
+  <string>{{ .chezmoi.homeDir }}/Library/Logs/omlx.log</string>
+</dict>
+</plist>

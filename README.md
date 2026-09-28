@@ -26,13 +26,17 @@ brew install chezmoi
 chezmoi init --apply git@github.com:dolfth/dotfiles.git
 ```
 
+On macOS, `init` first asks for the machine name (e.g. `mca`, `gza`); it is
+saved as `computerName` under `[data]` in `~/.config/chezmoi/chezmoi.toml` and
+selects the host's entry in `.chezmoidata.yaml` (prompt accent, and `kind:
+laptop | desktop`: the power profile, the Brewfile, and whether the Mac runs
+omlx as an always-on server). A new Mac needs an entry there first;
+unknown hosts get the fallback accent and the laptop power profile.
+
 The first apply then prompts for sudo once: the system-settings script sets
 the hostname, firewall, Touch ID for sudo, guest account, login window, and
 power, and checks FileVault. If you skipped the prompt, run `chezmoi apply`
-in a terminal — it skips itself in non-interactive contexts. The hostname is
-derived from the machine's own name (`somehost.local` -> `somehost`) so the
-starship accent matches `.chezmoidata.yaml`; override it with
-`computerName = "..."` under `[data]` in `~/.config/chezmoi/chezmoi.toml`.
+in a terminal — it skips itself in non-interactive contexts.
 
 Do **not** `chsh` to fish. `~/.zshrc` hands off to it for interactive
 sessions, which keeps `$SHELL` POSIX — lots of software runs
@@ -43,8 +47,11 @@ docs recommend.
 
 ### Dotfiles
 
-- `dot_Brewfile` → `~/.Brewfile` — the single source of truth for installed software
+- `.chezmoi.toml.tmpl` → `~/.config/chezmoi/chezmoi.toml` — asks for the machine name on `chezmoi init` (macOS)
+- `.chezmoidata.yaml` — per-host data: prompt accent/icon, Mac `kind` (laptop/desktop)
+- `dot_Brewfile.tmpl` → `~/.Brewfile` — the single source of truth for installed software; the desktop gets CLI tools, tailscale and Ghostty only
 - `dot_gitconfig` → `~/.gitconfig`
+- `private_Library/LaunchAgents/com.dolfth.omlx.plist.tmpl` → `~/Library/LaunchAgents/` — desktop only; runs `omlx serve` unthrottled (ProcessType Interactive) and restarts it if it dies
 - `dot_zshrc` → `~/.zshrc` — macOS only; hands off to fish
 - `dot_config/fish/config.fish` → `~/.config/fish/config.fish`
 - `dot_config/starship.toml.tmpl` → `~/.config/starship.toml` — per-host accent from `.chezmoidata.yaml`
@@ -56,7 +63,8 @@ docs recommend.
 
 - `run_onchange_before_10-brew-bundle.sh.tmpl` — runs `brew bundle` when `.Brewfile` changes, before the apply
 - `run_after_20-macos-defaults.sh.tmpl` — user defaults (Dock, Finder, typing, trackpad, per-app settings); runs on **every** apply so hand-flipped settings get put back
-- `run_onchange_30-macos-system-settings.sh.tmpl` — sudo settings (hostname, firewall, Touch ID, guest account, login window, power, FileVault check); runs on first apply and when the script changes, needs a terminal
+- `run_onchange_30-macos-system-settings.sh.tmpl` — sudo settings (hostname, firewall, Touch ID, guest account, login window, power by `kind`, no automatic macOS updates, Screen Sharing on the desktop, FileVault check); runs on first apply and when the script changes, needs a terminal
+- `run_onchange_40-omlx-agent.sh.tmpl` — desktop only; (re)loads the omlx LaunchAgent when its plist changes
 - `run_onchange_35-herdr-plugins.sh.tmpl` — installs the herdr plugins the `dot_config/herdr` keybindings point at (nvim sidebar, tab auto-rename); runs when the script changes, skips where herdr is absent
 
 ## Day to day

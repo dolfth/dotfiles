@@ -1,5 +1,7 @@
-# Per-host prompt accent -- the chezmoi equivalent of the `hostThemes` attrset
-# that used to live in the NixOS fish module.
+# Per-host settings. accent/icon: prompt colour -- the chezmoi equivalent of
+# the `hostThemes` attrset that used to live in the NixOS fish module.
+# kind (Macs only): laptop | desktop, picks the power profile in
+# run_onchange_30-macos-system-settings.sh.tmpl.
 #
 # Icons are Nerd Font private-use codepoints written as YAML escapes rather than
 # literal glyphs, so no editor or terminal can mangle them.
@@ -8,9 +10,11 @@ hosts:
     accent: color_green
     icon: "\U000F048B"   # nf-md-server
   mca:
+    kind: laptop
     accent: color_purple
     icon: "\uF179"       # nf-fa-apple
   gza:
+    kind: desktop
     accent: color_orange
     icon: "\uF179"       # nf-fa-apple
 

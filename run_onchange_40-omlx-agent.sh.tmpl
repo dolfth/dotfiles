@@ -1,0 +1,24 @@
+{{- $host := get . "computerName" | default .chezmoi.hostname -}}
+{{- if and (eq .chezmoi.os "darwin") (eq (dig $host "kind" "laptop" .hosts) "desktop") -}}
+#!/bin/bash
+set -euo pipefail
+
+# (Re)loads the omlx LaunchAgent on the desktop whenever its plist changes:
+#   {{ includeTemplate "private_Library/LaunchAgents/com.dolfth.omlx.plist.tmpl" . | sha256sum }}
+# Runs after the plist is written (scripts without before_ run after files).
+
+PLIST="$HOME/Library/LaunchAgents/com.dolfth.omlx.plist"
+DOMAIN="gui/$(id -u)"
+
+if [ ! -x /opt/homebrew/opt/omlx/bin/omlx ]; then
+  echo "omlx not installed yet -- skipping LaunchAgent" >&2
+  exit 0
+fi
+
+# The brew-provided service would be a second, throttled copy on the same port.
+brew services stop omlx >/dev/null 2>&1 || true
+
+launchctl bootout "$DOMAIN/com.dolfth.omlx" 2>/dev/null || true
+launchctl bootstrap "$DOMAIN" "$PLIST"
+echo "==> omlx LaunchAgent loaded (log: ~/Library/Logs/omlx.log)"
+{{- end -}}
