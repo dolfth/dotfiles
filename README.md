@@ -1,78 +1,94 @@
 # dotfiles
 
-chezmoi source for `mca` (macOS) and `nwa` (NixOS). Everything here manages
-`~`; privileged, machine-specific state (hostname, firewall, power) is applied
-by a script, not stored in the repo.
+chezmoi source for three machines:
 
-## Bootstrap on a Mac
+| Host | OS | Role |
+|---|---|---|
+| `mca` | macOS | laptop |
+| `gza` | macOS | desktop, always-on omlx server |
+| `nwa` | NixOS | server |
+
+Per-host data lives in `.chezmoidata.yaml`: the prompt accent and icon, and
+for Macs a `kind` (`laptop` | `desktop`) that selects the power profile, the
+Brewfile and the omlx server setup. Unknown hosts get the fallback accent and
+the laptop profile, so add a new Mac there before its first apply.
+
+## Bootstrap a Mac
 
 ```bash
-# 1. Homebrew — chezmoi does not install it, and neither did nix-darwin.
+# 1. Homebrew (chezmoi does not install it).
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 brew install chezmoi
 
-# 2. A GitHub SSH key — pulls and pushes both go over SSH, so create one
-#    before the clone:
-#
-#      ssh-keygen -t ed25519 -a 100 -N "" -f ~/.ssh/id_ed25519
-#      pbcopy < ~/.ssh/id_ed25519.pub
-#
-#    Paste the public half into GitHub → Settings → SSH and GPG keys, then
-#    verify with `ssh -T git@github.com` ("Hi dolfth!"). Only the public key
-#    leaves the machine; the private half is what GitHub challenges.
+# 2. A GitHub SSH key; the clone and all pushes use SSH.
+ssh-keygen -t ed25519 -a 100 -N "" -f ~/.ssh/id_ed25519
+pbcopy < ~/.ssh/id_ed25519.pub
+#    Add it under GitHub → Settings → SSH and GPG keys, then check:
+ssh -T git@github.com
 
-# 3. This repo. --apply does the first apply immediately; origin is set to
-#    the same SSH URL, so `git push` works from day one.
+# 3. Clone and apply. Asks for the machine name (mca, gza, ...).
 chezmoi init --apply git@github.com:dolfth/dotfiles.git
 ```
 
-On macOS, `init` first asks for the machine name (e.g. `mca`, `gza`); it is
-saved as `computerName` under `[data]` in `~/.config/chezmoi/chezmoi.toml` and
-selects the host's entry in `.chezmoidata.yaml` (prompt accent, and `kind:
-laptop | desktop`: the power profile, the Brewfile, and whether the Mac runs
-omlx as an always-on server). A new Mac needs an entry there first;
-unknown hosts get the fallback accent and the laptop power profile.
+The machine name is stored as `computerName` in
+`~/.config/chezmoi/chezmoi.toml`. The first apply asks for sudo once, for the
+system-settings script. That script skips itself without a terminal; if it
+was skipped, run `chezmoi apply` in one.
 
-The first apply then prompts for sudo once: the system-settings script sets
-the hostname, firewall, Touch ID for sudo, guest account, login window, and
-power, and checks FileVault. If you skipped the prompt, run `chezmoi apply`
-in a terminal — it skips itself in non-interactive contexts.
-
-Do **not** `chsh` to fish. `~/.zshrc` hands off to it for interactive
-sessions, which keeps `$SHELL` POSIX — lots of software runs
-`$SHELL -c '<posix syntax>'` and fish is not POSIX. This is what fish's own
-docs recommend.
+Do **not** `chsh` to fish. `~/.zshrc` starts fish for interactive sessions,
+so `$SHELL` stays POSIX for software that runs `$SHELL -c '...'`. fish's docs
+recommend this.
 
 ## Layout
 
-### Dotfiles
+### Files
 
-- `.chezmoi.toml.tmpl` → `~/.config/chezmoi/chezmoi.toml` — asks for the machine name on `chezmoi init` (macOS)
-- `.chezmoidata.yaml` — per-host data: prompt accent/icon, Mac `kind` (laptop/desktop)
-- `dot_Brewfile.tmpl` → `~/.Brewfile` — the single source of truth for installed software; the desktop gets CLI tools, tailscale and Ghostty only
-- `dot_config/git/config` → `~/.config/git/config`
-- `private_Library/LaunchAgents/com.dolfth.omlx.plist.tmpl` → `~/Library/LaunchAgents/` — desktop only; runs `omlx serve` unthrottled (ProcessType Interactive) and restarts it if it dies
-- `dot_zshrc` → `~/.zshrc` — macOS only; hands off to fish
-- `dot_config/fish/config.fish` → `~/.config/fish/config.fish`
-- `dot_config/starship.toml.tmpl` → `~/.config/starship.toml` — per-host accent from `.chezmoidata.yaml`
-- `dot_config/nvim/init.lua` → `~/.config/nvim/init.lua` — lazy.nvim; ported from nixvim
-- `dot_pi/agent/modify_settings.json` → `~/.pi/agent/settings.json` — **merges** into what pi writes
-- `dot_config/ghostty/config` → `~/.config/ghostty/config` — Nerd Font family so starship's PUA glyphs render
+| Source | Target | Notes |
+|---|---|---|
+| `.chezmoi.toml.tmpl` | `~/.config/chezmoi/chezmoi.toml` | asks for the machine name (macOS) |
+| `dot_Brewfile.tmpl` | `~/.Brewfile` | all installed software; the desktop gets CLI tools, omlx, Tailscale and Ghostty only |
+| `dot_zshrc` | `~/.zshrc` | macOS only; starts fish |
+| `dot_config/fish/config.fish` | `~/.config/fish/config.fish` | |
+| `dot_config/starship.toml.tmpl` | `~/.config/starship.toml` | per-host accent |
+| `dot_config/git/config` | `~/.config/git/config` | |
+| `dot_config/nvim/init.lua` | `~/.config/nvim/init.lua` | lazy.nvim |
+| `dot_config/ghostty/config` | `~/.config/ghostty/config` | Nerd Font, so starship glyphs render |
+| `dot_config/herdr/config.toml` | `~/.config/herdr/config.toml` | |
+| `dot_omlx/` | `~/.omlx/` | omlx settings and model profiles |
+| `dot_pi/agent/modify_settings.json` | `~/.pi/agent/settings.json` | merges into the file pi writes |
+| `private_Library/LaunchAgents/com.dolfth.omlx.plist.tmpl` | `~/Library/LaunchAgents/` | desktop only; keeps `omlx serve` running, unthrottled |
 
 ### Scripts
 
-- `run_onchange_before_10-brew-bundle.sh.tmpl` — runs `brew bundle` when `.Brewfile` changes, before the apply
-- `run_after_20-macos-defaults.sh.tmpl` — user defaults (Dock, Finder, typing, trackpad, per-app settings); runs on **every** apply so hand-flipped settings get put back
-- `run_onchange_30-macos-system-settings.sh.tmpl` — sudo settings (hostname, firewall, Touch ID, guest account, login window, power by `kind`, no automatic macOS updates, Screen Sharing and Remote Login (SSH FileVault unlock) on the desktop, FileVault check); runs on first apply and when the script changes, needs a terminal
-- `run_onchange_40-omlx-agent.sh.tmpl` — desktop only; (re)loads the omlx LaunchAgent when its plist changes
-- `run_onchange_35-herdr-plugins.sh.tmpl` — installs the herdr plugins the `dot_config/herdr` keybindings point at (nvim sidebar, tab auto-rename); runs when the script changes, skips where herdr is absent
+| Script | Runs | Does |
+|---|---|---|
+| `run_onchange_before_10-brew-bundle.sh.tmpl` | macOS, when the rendered Brewfile changes, before files | `brew bundle` install and cleanup |
+| `run_after_20-macos-defaults.sh.tmpl` | macOS, every apply, so manual changes are reverted | user defaults: Dock, Finder, keyboard, trackpad, apps |
+| `run_onchange_30-macos-system-settings.sh.tmpl` | macOS, when the script changes; needs a terminal | sudo: hostname, firewall, Touch ID for sudo, guest account, login window, power, software updates, FileVault check; desktop: Screen Sharing, Remote Login |
+| `run_onchange_35-herdr-plugins.sh.tmpl` | where herdr is installed, when the script changes | installs the herdr plugins the keybindings use |
+| `run_onchange_40-omlx-agent.sh.tmpl` | desktop, when the plist changes | (re)loads the omlx LaunchAgent |
+
+Removing a line from a settings script stops setting that value; it does not
+restore the old one.
+
+## Desktop after a power cut
+
+With FileVault on, the desktop stops at the unlock screen and nothing runs.
+Unlock it over SSH (Apple silicon, macOS 26+):
+
+```bash
+ssh dolf@gza.local   # account password; SSH keys don't work at this stage
+```
+
+The connection drops while macOS finishes booting; then omlx, SSH and Screen
+Sharing are available.
 
 ## Day to day
 
 ```bash
-chezmoi edit ~/.zshrc     # edit the source, not the target
-chezmoi diff              # what would change
-chezmoi apply             # apply, re-running the defaults script
-chezmoi update            # git pull + apply
-chezmoi cd                # shell in this repo
+chezmoi edit ~/.zshrc   # edit the source, not the target
+chezmoi diff            # preview changes
+chezmoi apply           # apply; also re-runs the defaults script
+chezmoi update          # git pull, then apply
+chezmoi cd              # shell in this repo
 ```
