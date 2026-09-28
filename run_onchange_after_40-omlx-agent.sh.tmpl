@@ -4,7 +4,8 @@ set -euo pipefail
 
 # (Re)loads the omlx LaunchAgent on the desktop whenever its plist changes:
 #   {{ includeTemplate "private_Library/LaunchAgents/com.dolfth.omlx.plist.tmpl" . | sha256sum }}
-# Runs after the plist is written (scripts without before_ run after files).
+# after_: runs once all files are written. Without it, it would run in name
+# order, before Library/ and so before the plist exists.
 
 PLIST="$HOME/Library/LaunchAgents/com.dolfth.omlx.plist"
 DOMAIN="gui/$(id -u)"

@@ -68,7 +68,7 @@ recommend this.
 | `run_after_20-macos-defaults.sh.tmpl` | macOS, every apply, so manual changes are reverted | user defaults: Dock, Finder, keyboard, trackpad, apps |
 | `run_onchange_30-macos-system-settings.sh.tmpl` | macOS, when the script changes; needs a terminal | sudo: hostname, firewall, Touch ID for sudo, guest account, login window, power, software updates, FileVault check; desktop: Screen Sharing, Remote Login |
 | `run_onchange_35-herdr-plugins.sh.tmpl` | where herdr is installed, when the script changes | installs the herdr plugins the keybindings use |
-| `run_onchange_40-omlx-agent.sh.tmpl` | desktop, when the plist changes | (re)loads the omlx LaunchAgent |
+| `run_onchange_after_40-omlx-agent.sh.tmpl` | desktop, when the plist changes, after files | (re)loads the omlx LaunchAgent |
 
 Removing a line from a settings script stops setting that value; it does not
 restore the old one. Files that moved are deleted via `.chezmoiremove`.
