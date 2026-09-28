@@ -63,7 +63,7 @@ docs recommend.
 
 - `run_onchange_before_10-brew-bundle.sh.tmpl` — runs `brew bundle` when `.Brewfile` changes, before the apply
 - `run_after_20-macos-defaults.sh.tmpl` — user defaults (Dock, Finder, typing, trackpad, per-app settings); runs on **every** apply so hand-flipped settings get put back
-- `run_onchange_30-macos-system-settings.sh.tmpl` — sudo settings (hostname, firewall, Touch ID, guest account, login window, power by `kind`, no automatic macOS updates, Screen Sharing on the desktop, FileVault check); runs on first apply and when the script changes, needs a terminal
+- `run_onchange_30-macos-system-settings.sh.tmpl` — sudo settings (hostname, firewall, Touch ID, guest account, login window, power by `kind`, no automatic macOS updates, Screen Sharing and Remote Login (SSH FileVault unlock) on the desktop, FileVault check); runs on first apply and when the script changes, needs a terminal
 - `run_onchange_40-omlx-agent.sh.tmpl` — desktop only; (re)loads the omlx LaunchAgent when its plist changes
 - `run_onchange_35-herdr-plugins.sh.tmpl` — installs the herdr plugins the `dot_config/herdr` keybindings point at (nvim sidebar, tab auto-rename); runs when the script changes, skips where herdr is absent
 

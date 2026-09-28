@@ -113,15 +113,15 @@ sudo defaults write /Library/Preferences/SystemConfiguration/com.apple.smb.serve
 #     data files, never restart -- on everywhere.
 #   - CriticalUpdateInstall: "Security Responses and system files" (Rapid
 #     Security Responses / Background Security Improvements). Small patches
-#     to the current version, but they can need a restart -- on for the
-#     laptop, off for the desktop so omlx is never taken down unasked.
+#     to the current version; they can need a restart, but it is short --
+#     on everywhere.
 # Point releases (26.x.y) are full macOS updates, even when they are "only"
 # security fixes, and fall under AutomaticallyInstallMacOSUpdates.
 sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticCheckEnabled -bool true
 sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticDownload -bool false
 sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticallyInstallMacOSUpdates -bool false
 sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate ConfigDataInstall -bool true
-sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate CriticalUpdateInstall -bool {{ if eq $kind "desktop" }}false{{ else }}true{{ end }}
+sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate CriticalUpdateInstall -bool true
 
 {{ if eq $kind "desktop" -}}
 ##### Screen Sharing ##########################################################
@@ -132,6 +132,19 @@ sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate CriticalUpdate
 # toggle it once by hand -- newer macOS versions sometimes insist.
 sudo launchctl enable system/com.apple.screensharing
 sudo launchctl bootstrap system /System/Library/LaunchDaemons/com.apple.screensharing.plist 2>/dev/null || true
+
+##### Remote Login (SSH) #####################################################
+#
+# Besides normal SSH, this is how the desktop comes back after a power cut:
+# on Apple silicon with macOS 26+, a minimal sshd runs before FileVault is
+# unlocked. `ssh dolf@gza.local`, give the account PASSWORD (keys don't work
+# at that stage), the data volume unlocks, SSH drops briefly, then the Mac
+# boots normally -- LaunchAgents (omlx) start and Screen Sharing works.
+# See `man apple_ssh_and_filevault`. So password auth must stay enabled.
+# launchctl rather than `systemsetup -setremotelogin on`, which needs Full
+# Disk Access for the terminal.
+sudo launchctl enable system/com.openssh.sshd
+sudo launchctl bootstrap system /System/Library/LaunchDaemons/ssh.plist 2>/dev/null || true
 
 {{ end -}}
 ##### FileVault ################################################################
