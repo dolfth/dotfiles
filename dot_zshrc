@@ -20,12 +20,14 @@ for p in /opt/homebrew /usr/local; do
 done
 
 # Three guards, all load-bearing:
-#   parent != fish        -- fish spawning zsh must not exec fish again (loop)
+#   parent != fish        -- `zsh` typed in fish must stay zsh. macOS ps prints
+#                            comm as a path (/opt/homebrew/bin/fish) or -fish,
+#                            so compare the basename (:t) against *fish
 #   no ZSH_EXECUTION_STRING -- set by `zsh -c "..."`; hijacking that would break
 #                              every tool that shells out with POSIX syntax
 #   login flag propagated -- so fish sources its login config too
 if [[ -n "$(command -v fish)" \
-   && "$(/bin/ps -o comm= -p $PPID)" != "fish" \
+   && "${$(/bin/ps -o comm= -p $PPID):t}" != *fish \
    && -z "$ZSH_EXECUTION_STRING" ]]; then
   if [[ -o login ]]; then
     exec fish --login
