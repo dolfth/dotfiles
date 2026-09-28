@@ -4,6 +4,7 @@
 {{ if ne .chezmoi.os "darwin" -}}
 .Brewfile
 .zshrc
+.ssh/config
 {{ end -}}
 {{- /* omlx runs only on the desktop (omlx server). */ -}}
 {{ if ne (includeTemplate "kind" .) "desktop" -}}

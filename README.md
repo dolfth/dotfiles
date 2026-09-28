@@ -49,6 +49,7 @@ recommend this.
 | `.chezmoi.toml.tmpl` | `~/.config/chezmoi/chezmoi.toml` | asks for the machine name (macOS) |
 | `dot_Brewfile.tmpl` | `~/.Brewfile` | all installed software; omlx on the desktop only, which otherwise gets just CLI tools, Tailscale and Ghostty |
 | `dot_zshrc` | `~/.zshrc` | macOS only; starts fish |
+| `private_dot_ssh/private_config` | `~/.ssh/config` | macOS only; SSH key passphrases in the Keychain |
 | `dot_config/fish/config.fish` | `~/.config/fish/config.fish` | |
 | `dot_config/starship.toml.tmpl` | `~/.config/starship.toml` | per-host accent |
 | `dot_config/git/config` | `~/.config/git/config` | |
