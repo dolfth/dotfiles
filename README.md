@@ -47,7 +47,7 @@ recommend this.
 | Source | Target | Notes |
 |---|---|---|
 | `.chezmoi.toml.tmpl` | `~/.config/chezmoi/chezmoi.toml` | asks for the machine name (macOS) |
-| `dot_Brewfile.tmpl` | `~/.Brewfile` | all installed software; the desktop gets CLI tools, omlx, Tailscale and Ghostty only |
+| `dot_Brewfile.tmpl` | `~/.Brewfile` | all installed software; omlx on the desktop only, which otherwise gets just CLI tools, Tailscale and Ghostty |
 | `dot_zshrc` | `~/.zshrc` | macOS only; starts fish |
 | `dot_config/fish/config.fish` | `~/.config/fish/config.fish` | |
 | `dot_config/starship.toml.tmpl` | `~/.config/starship.toml` | per-host accent |
@@ -55,7 +55,7 @@ recommend this.
 | `dot_config/nvim/init.lua` | `~/.config/nvim/init.lua` | lazy.nvim |
 | `dot_config/ghostty/config` | `~/.config/ghostty/config` | Nerd Font, so starship glyphs render |
 | `dot_config/herdr/config.toml` | `~/.config/herdr/config.toml` | |
-| `dot_omlx/` | `~/.omlx/` | macOS only; omlx settings and model profiles, server aliases for the host's `.local` and Tailscale names |
+| `dot_omlx/` | `~/.omlx/` | desktop only; omlx settings and model profiles, server aliases for the host's `.local` and Tailscale names |
 | `dot_pi/agent/modify_settings.json` | `~/.pi/agent/settings.json` | merges into the file pi writes |
 | `private_Library/LaunchAgents/com.dolfth.omlx.plist.tmpl` | `~/Library/LaunchAgents/` | desktop only; keeps `omlx serve` running, unthrottled |
 

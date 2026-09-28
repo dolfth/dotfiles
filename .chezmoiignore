@@ -4,10 +4,10 @@
 {{ if ne .chezmoi.os "darwin" -}}
 .Brewfile
 .zshrc
-.omlx
 {{ end -}}
-{{- /* The omlx LaunchAgent only belongs on the desktop (omlx server). */ -}}
+{{- /* omlx runs only on the desktop (omlx server). */ -}}
 {{ if ne (includeTemplate "kind" .) "desktop" -}}
+.omlx
 Library/LaunchAgents/com.dolfth.omlx.plist
 {{ end -}}
 README.md

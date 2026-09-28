@@ -3,7 +3,7 @@
 # rendered file changes.
 #
 # A `kind: desktop` host (see .chezmoidata.yaml) is an omlx server: it gets the
-# CLI tools, tailscale and ghostty, not the rest of the GUI apps. Anything not
+# CLI tools, omlx, tailscale and ghostty, not the rest of the GUI apps. Anything not
 # rendered here gets UNINSTALLED by `brew bundle cleanup`.
 {{- $desktop := eq (includeTemplate "kind" .) "desktop" }}
 #
@@ -27,9 +27,15 @@ brew "mas"
 brew "mole"
 brew "mosh"
 brew "neovim"
-tap "jundot/omlx", "https://github.com/jundot/omlx"
-brew "jundot/omlx/omlx", trusted: true   # laptop: `omlx start`; desktop: LaunchAgent (com.dolfth.omlx.plist)
 brew "starship"
+
+{{- if $desktop }}
+
+# --- omlx (desktop only) -----------------------------------------------------
+# Run by the com.dolfth.omlx LaunchAgent, not `brew services`.
+tap "jundot/omlx", "https://github.com/jundot/omlx"
+brew "jundot/omlx/omlx", trusted: true
+{{- end }}
 
 # --- Python ------------------------------------------------------------------
 brew "python@3.14"
