@@ -1,0 +1,71 @@
+{{- $host := includeTemplate "host" . -}}
+{{ includeTemplate "modify-json-merge" . }}
+# omlx writes this file itself (UI, first run). We pin only the sections below;
+# `auth` (API and secret keys) and the rest stay whatever omlx has, so no
+# secret lives in this repo.
+merge <<'EOF'
+{
+  "server": {
+    "host": "::",
+    "port": 8080,
+    "log_level": "info",
+    "cors_origins": ["*"],
+    "server_aliases": [
+      "localhost",
+      "127.0.0.1",
+      "{{ $host }}.local",
+      "{{ $host }}",
+      "{{ $host }}.{{ .tailnet }}"
+    ],
+    "sse_keepalive_mode": "chunk",
+    "auto_start_on_launch": true,
+    "burst_decode_mode": "balanced",
+    "preserve_mid_system_cache": true,
+    "distributed_inference_enabled": false
+  },
+  "model": {
+    "model_dirs": ["{{ .chezmoi.homeDir }}/.omlx/models"],
+    "model_dir": "{{ .chezmoi.homeDir }}/.omlx/models",
+    "model_fallback": false,
+    "hide_helper_models": false
+  },
+  "memory": {
+    "prefill_memory_guard": true,
+    "memory_guard_tier": "aggressive",
+    "memory_guard_custom_ceiling_gb": 0.0,
+    "soft_threshold": 0.85,
+    "hard_threshold": 0.95,
+    "prefill_safe_zone_ratio": 0.8,
+    "prefill_min_chunk_tokens": 32
+  },
+  "scheduler": {
+    "max_concurrent_requests": 1,
+    "embedding_batch_size": 32,
+    "chunked_prefill": false,
+    "prefill_priority": "context",
+    "decode_fairness": true
+  },
+  "cache": {
+    "enabled": true,
+    "hot_cache_only": false,
+    "gdn_ssd_split_enabled": true,
+    "gdn_snapshot_storage": "auto",
+    "gdn_ssd_pending_max_size": "512MB",
+    "gdn_sidecar_precision": "fp32",
+    "ssd_cache_dir": "{{ .chezmoi.homeDir }}/.omlx/cache",
+    "ssd_cache_max_size": "92GB",
+    "hot_cache_max_size": "0",
+    "hot_cache_write_through": false,
+    "ane_compile_cache": false,
+    "initial_cache_blocks": 256
+  },
+  "sampling": {
+    "max_context_window": 32768,
+    "max_tokens": 32768,
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "repetition_penalty": 1.0
+  }
+}
+EOF

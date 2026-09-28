@@ -57,7 +57,7 @@ recommend this.
 | `dot_config/nvim/init.lua` | `~/.config/nvim/init.lua` | lazy.nvim |
 | `dot_config/ghostty/config` | `~/.config/ghostty/config` | Nerd Font, so starship glyphs render |
 | `dot_config/herdr/config.toml` | `~/.config/herdr/config.toml` | |
-| `dot_omlx/` | `~/.omlx/` | desktop only; omlx settings and model profiles, server aliases for the host's `.local` and Tailscale names |
+| `dot_omlx/modify_*.json.tmpl` | `~/.omlx/` | desktop only; merge the pinned omlx settings, model settings and profiles into the files omlx writes (auth keys stay omlx's, not in this repo); server aliases for the host's `.local` and Tailscale names |
 | `dot_pi/agent/modify_settings.json` | `~/.pi/agent/settings.json` | merges into the file pi writes |
 | `private_Library/LaunchAgents/com.dolfth.omlx.plist.tmpl` | `~/Library/LaunchAgents/` | desktop only; keeps `omlx serve` running, unthrottled |
 

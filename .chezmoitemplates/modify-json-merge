@@ -1,0 +1,20 @@
+{{- /* Preamble for `modify_` scripts that own some keys of a JSON file an app
+       also writes. The target's current contents arrive on stdin; `merge`
+       reads the keys we own from its own stdin and deep-merges them over it
+       (objects merge, arrays and scalars replace). Everything else the app
+       wrote -- secrets, timestamps, settings we don't pin -- is kept.
+       Use: {{ includeTemplate "modify-json-merge" . }} then merge <<'EOF' */ -}}
+#!/bin/sh
+set -eu
+
+current=$(cat)
+[ -n "$current" ] || current='{}'   # target does not exist yet
+
+merge() {
+  if ! command -v jq >/dev/null 2>&1; then
+    printf '%s' "$current"
+    echo "$0: jq not found, leaving the file alone" >&2
+    return
+  fi
+  printf '%s\n%s' "$current" "$(cat)" | jq --slurp '.[0] * .[1]'
+}
