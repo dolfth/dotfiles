@@ -51,6 +51,7 @@ recommend this.
 | `dot_zshrc` | `~/.zshrc` | macOS only; starts fish |
 | `private_dot_ssh/private_config` | `~/.ssh/config` | macOS only; SSH key passphrases in the Keychain |
 | `dot_config/fish/config.fish` | `~/.config/fish/config.fish` | |
+| `dot_config/fish/functions/up.fish` | `~/.config/fish/functions/up.fish` | macOS only; `up` updates CLT, brew and App Store apps, restarts omlx if upgraded |
 | `dot_config/starship.toml.tmpl` | `~/.config/starship.toml` | per-host accent |
 | `dot_config/git/config` | `~/.config/git/config` | |
 | `dot_config/nvim/init.lua` | `~/.config/nvim/init.lua` | lazy.nvim |

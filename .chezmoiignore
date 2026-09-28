@@ -5,6 +5,7 @@
 .Brewfile
 .zshrc
 .ssh/config
+.config/fish/functions/up.fish
 {{ end -}}
 {{- /* omlx runs only on the desktop (omlx server). */ -}}
 {{ if ne (includeTemplate "kind" .) "desktop" -}}
