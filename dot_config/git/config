@@ -1,15 +1,16 @@
 [user]
 	name = Dolf ter Hofste
 	email = 12677636+dolfth@users.noreply.github.com
-	signingkey = ~/.ssh/id_ed25519.pub
+	signingkey = ~/.ssh/id_ed25519
 [init]
 	defaultBranch = main
 [pull]
 	rebase = true
-# Sign commits and tags with this host's SSH key (user.signingkey above; on
-# the Macs ~/.ssh/config keeps it in the Keychain). Verification uses
-# allowed_signers, which lists all hosts' keys; see sshKeys in
-# .chezmoidata.yaml.
+# Sign commits and tags with this host's SSH key (user.signingkey above). It
+# names the private key, not the .pub: a .pub only works while the key is
+# loaded in an ssh-agent, which nwa may not run and a Mac only does after the
+# first ssh since boot. Verification uses allowed_signers, which lists all
+# hosts' keys; see sshKeys in .chezmoidata.yaml.
 [gpg]
 	format = ssh
 [gpg "ssh"]
