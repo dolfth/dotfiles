@@ -8,6 +8,16 @@ set -euo pipefail
 #
 # Deleting a line does NOT restore the previous value, it stops setting it.
 
+# Sandboxed apps (Mail, TextEdit, ...) keep their domain in a container that
+# only a process with Full Disk Access can write -- a terminal on the Mac has
+# it, an SSH session does not. The system TCC database is readable only with
+# Full Disk Access, so it doubles as the check. Without it, skip everything;
+# the next apply from a local terminal catches up.
+if ! head -c1 "/Library/Application Support/com.apple.TCC/TCC.db" >/dev/null 2>&1; then
+  echo "==> Skipping macOS defaults (no Full Disk Access, e.g. over SSH)"
+  exit 0
+fi
+
 ##### Dock & Mission Control ##################################################
 
 # Hide the Dock
@@ -336,15 +346,9 @@ defaults write NSGlobalDomain WebKitDeveloperExtras -bool true
 
 ##### Mail ####################################################################
 
-# Mail's domain lives in its sandbox container, which needs Full Disk Access
-# to write -- a terminal on the Mac has it, an SSH session does not. Skip the
-# section then instead of aborting the script.
-#
 # Attachments shown as icons rather than inline previews; kill reply/send
 # animations.
-if ! defaults write com.apple.mail DisableInlineAttachmentViewing -bool true 2>/dev/null; then
-  echo "  Mail: no Full Disk Access (SSH?); skipped" >&2
-else
+defaults write com.apple.mail DisableInlineAttachmentViewing -bool true
 defaults write com.apple.mail DisableReplyAnimations -bool true
 defaults write com.apple.mail DisableSendAnimations -bool true
 
@@ -358,7 +362,6 @@ defaults write com.apple.mail NSUserKeyEquivalents -dict-add "Send" "@\U21a9"
 defaults write com.apple.mail DraftsViewerAttributes -dict-add "DisplayInThreadedMode" -string "yes"
 defaults write com.apple.mail DraftsViewerAttributes -dict-add "SortedDescending" -string "yes"
 defaults write com.apple.mail DraftsViewerAttributes -dict-add "SortOrder" -string "received-date"
-fi
 
 ##### TextEdit ################################################################
 
