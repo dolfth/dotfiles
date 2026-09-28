@@ -79,9 +79,9 @@ defaults write com.apple.dock wvous-br-corner -int 0
 
 ##### Finder ##################################################################
 
-# Keep all files visible (Cmd+Shift+. toggles this live in Finder). File
-# extensions: NSGlobalDomain AppleShowAllExtensions below.
-defaults write com.apple.finder AppleShowAllFiles -bool true
+# Hide dotfiles and other hidden files (Cmd+Shift+. toggles this live in
+# Finder). File extensions: NSGlobalDomain AppleShowAllExtensions below.
+defaults write com.apple.finder AppleShowAllFiles -bool false
 
 # New windows open in this view.
 # "Nlsv" = list, "icnv" = icon, "clmv" = column, "Flwv" = gallery
