@@ -1,0 +1,5 @@
+{{- /* This machine's name: computerName from `chezmoi init` (macOS), else the
+       hostname. chezmoi's .chezmoi.hostname already stops at the first dot,
+       so a Bonjour `.local` suffix never reaches it.
+       Use: {{ $host := includeTemplate "host" . }} */ -}}
+{{- get . "computerName" | default .chezmoi.hostname -}}

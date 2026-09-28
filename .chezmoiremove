@@ -1,0 +1,4 @@
+# Targets chezmoi deletes on apply.
+
+# Moved to ~/.config/git/config; ~/.gitconfig would override it.
+.gitconfig

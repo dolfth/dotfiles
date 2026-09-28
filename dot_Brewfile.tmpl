@@ -5,8 +5,7 @@
 # A `kind: desktop` host (see .chezmoidata.yaml) is an omlx server: it gets the
 # CLI tools, tailscale and ghostty, not the rest of the GUI apps. Anything not
 # rendered here gets UNINSTALLED by `brew bundle cleanup`.
-{{- $host := get . "computerName" | default .chezmoi.hostname }}
-{{- $desktop := eq (dig $host "kind" "laptop" .hosts) "desktop" }}
+{{- $desktop := eq (includeTemplate "kind" .) "desktop" }}
 #
 # To capture what is ALREADY installed on the machine before trusting this list:
 #     brew bundle dump --file=- > /tmp/Brewfile

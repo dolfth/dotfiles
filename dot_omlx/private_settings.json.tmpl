@@ -1,3 +1,4 @@
+{{- $host := includeTemplate "host" . -}}
 {
   "version": "1.0",
   "server": {
@@ -10,8 +11,9 @@
     "server_aliases": [
       "localhost",
       "127.0.0.1",
-      "Dolfs-MacBook-Pro.local",
-      "192.168.0.38"
+      "{{ $host }}.local",
+      "{{ $host }}",
+      "{{ $host }}.{{ .tailnet }}"
     ],
     "sse_keepalive_mode": "chunk",
     "auto_start_on_launch": true,
@@ -21,9 +23,9 @@
   },
   "model": {
     "model_dirs": [
-      "/Users/dolf/.omlx/models"
+      "{{ .chezmoi.homeDir }}/.omlx/models"
     ],
-    "model_dir": "/Users/dolf/.omlx/models",
+    "model_dir": "{{ .chezmoi.homeDir }}/.omlx/models",
     "model_fallback": false,
     "hide_helper_models": false
   },
@@ -50,7 +52,7 @@
     "gdn_snapshot_storage": "auto",
     "gdn_ssd_pending_max_size": "512MB",
     "gdn_sidecar_precision": "fp32",
-    "ssd_cache_dir": "/Users/dolf/.omlx/cache",
+    "ssd_cache_dir": "{{ .chezmoi.homeDir }}/.omlx/cache",
     "ssd_cache_max_size": "92GB",
     "hot_cache_max_size": "0",
     "hot_cache_write_through": false,

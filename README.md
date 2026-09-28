@@ -11,7 +11,8 @@ chezmoi source for three machines:
 Per-host data lives in `.chezmoidata.yaml`: the prompt accent and icon, and
 for Macs a `kind` (`laptop` | `desktop`) that selects the power profile, the
 Brewfile and the omlx server setup. Unknown hosts get the fallback accent and
-the laptop profile, so add a new Mac there before its first apply.
+the laptop profile, so add a new Mac there before its first apply. Templates
+look up the current host through `.chezmoitemplates/host` and `kind`.
 
 ## Bootstrap a Mac
 
@@ -54,7 +55,7 @@ recommend this.
 | `dot_config/nvim/init.lua` | `~/.config/nvim/init.lua` | lazy.nvim |
 | `dot_config/ghostty/config` | `~/.config/ghostty/config` | Nerd Font, so starship glyphs render |
 | `dot_config/herdr/config.toml` | `~/.config/herdr/config.toml` | |
-| `dot_omlx/` | `~/.omlx/` | omlx settings and model profiles |
+| `dot_omlx/` | `~/.omlx/` | macOS only; omlx settings and model profiles, server aliases for the host's `.local` and Tailscale names |
 | `dot_pi/agent/modify_settings.json` | `~/.pi/agent/settings.json` | merges into the file pi writes |
 | `private_Library/LaunchAgents/com.dolfth.omlx.plist.tmpl` | `~/Library/LaunchAgents/` | desktop only; keeps `omlx serve` running, unthrottled |
 
@@ -69,7 +70,7 @@ recommend this.
 | `run_onchange_40-omlx-agent.sh.tmpl` | desktop, when the plist changes | (re)loads the omlx LaunchAgent |
 
 Removing a line from a settings script stops setting that value; it does not
-restore the old one.
+restore the old one. Files that moved are deleted via `.chezmoiremove`.
 
 ## Desktop after a power cut
 

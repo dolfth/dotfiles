@@ -4,11 +4,10 @@
 {{ if ne .chezmoi.os "darwin" -}}
 .Brewfile
 .zshrc
-.omlx/stats.json
+.omlx
 {{ end -}}
 {{- /* The omlx LaunchAgent only belongs on the desktop (omlx server). */ -}}
-{{- $host := get . "computerName" | default .chezmoi.hostname -}}
-{{ if ne (dig $host "kind" "laptop" .hosts) "desktop" -}}
+{{ if ne (includeTemplate "kind" .) "desktop" -}}
 Library/LaunchAgents/com.dolfth.omlx.plist
 {{ end -}}
 README.md

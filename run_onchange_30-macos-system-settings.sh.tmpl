@@ -1,4 +1,6 @@
 {{- if eq .chezmoi.os "darwin" -}}
+{{- $host := includeTemplate "host" . -}}
+{{- $kind := includeTemplate "kind" . -}}
 #!/bin/bash
 #
 # Sudo-requiring system settings, deliberately split from
@@ -66,9 +68,6 @@ sudo defaults write /Library/Preferences/com.apple.loginwindow SHOWFULLNAME -boo
 #
 # Profile comes from `kind` for this host in .chezmoidata.yaml; unknown hosts
 # get the laptop profile, which is harmless on a desktop (it just sleeps).
-{{- $host := trimSuffix ".local" .chezmoi.hostname -}}
-{{- if hasKey . "computerName" -}}{{ $host = .computerName }}{{ end -}}
-{{- $kind := dig $host "kind" "laptop" .hosts }}
 {{ if eq $kind "desktop" }}
 # Desktop (omlx server): nothing ever sleeps except the display, which does
 # not affect running processes. No deep standby/hibernation, no Power Nap
@@ -92,10 +91,9 @@ sudo pmset -c sleep 10 displaysleep 10 disksleep 10 powernap 0
 sudo pmset -a disablescreenlock 0
 
 ##### Hostname ################################################################
-# Display name, official hostname and Bonjour name, all from the machine's own
-# hostname (e.g. `somehost.local` -> `somehost`) so each machine manages
-# itself. Override with computerName = "..." under [data] in
-# ~/.config/chezmoi/chezmoi.toml (`chezmoi init` asks for it on macOS).
+# Display name, official hostname and Bonjour name, all set to computerName
+# (asked by `chezmoi init`, stored in ~/.config/chezmoi/chezmoi.toml), or to
+# the current hostname if that is unset.
 sudo scutil --set ComputerName {{ $host | quote }}
 sudo scutil --set HostName {{ $host | quote }}
 sudo scutil --set LocalHostName {{ $host | quote }}

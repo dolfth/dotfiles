@@ -1,5 +1,4 @@
-{{- $host := get . "computerName" | default .chezmoi.hostname -}}
-{{- if and (eq .chezmoi.os "darwin") (eq (dig $host "kind" "laptop" .hosts) "desktop") -}}
+{{- if and (eq .chezmoi.os "darwin") (eq (includeTemplate "kind" .) "desktop") -}}
 #!/bin/bash
 set -euo pipefail
 

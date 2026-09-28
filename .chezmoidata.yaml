@@ -5,6 +5,9 @@
 #
 # Icons are Nerd Font private-use codepoints written as YAML escapes rather than
 # literal glyphs, so no editor or terminal can mangle them.
+# Tailscale MagicDNS domain: hosts are reachable as <host>.<tailnet>.
+tailnet: foxhound-insen.ts.net
+
 hosts:
   nwa:
     accent: color_green

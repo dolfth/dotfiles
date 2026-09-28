@@ -1,0 +1,4 @@
+{{- /* This machine's `kind` from .chezmoidata.yaml (laptop | desktop);
+       unknown hosts count as laptops.
+       Use: {{ $kind := includeTemplate "kind" . }} */ -}}
+{{- dig (includeTemplate "host" .) "kind" "laptop" .hosts -}}
