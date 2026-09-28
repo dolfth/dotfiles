@@ -2,6 +2,8 @@
 # the `hostThemes` attrset that used to live in the NixOS fish module.
 # kind (Macs only): laptop | desktop, picks the power profile in
 # run_onchange_30-macos-system-settings.sh.tmpl.
+# wiredLimitMb (desktops only): iogpu.wired_limit_mb, the GPU wired-memory
+# ceiling omlx reports for this machine's RAM; set by the same script.
 #
 # Icons are Nerd Font private-use codepoints written as YAML escapes rather than
 # literal glyphs, so no editor or terminal can mangle them.
@@ -18,6 +20,7 @@ hosts:
     icon: "\uF179"       # nf-fa-apple
   gza:
     kind: desktop
+    wiredLimitMb: 45056
     accent: color_red
     icon: "\uF179"       # nf-fa-apple
 

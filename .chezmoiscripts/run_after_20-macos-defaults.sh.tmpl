@@ -248,14 +248,6 @@ defaults write NSGlobalDomain AppleKeyboardUIMode -int 2
 # 3 = Dictation
 defaults write com.apple.HIToolbox AppleFnUsageType -int 2
 
-##### Caps Lock -> Control ####################################################
-
-# hidutil, not `defaults` -- and it does NOT survive a reboot on its own. For a
-# durable remap, install this same command as a LaunchAgent in
-# ~/Library/LaunchAgents (chezmoi can manage that plist too).
-# hidutil property --set '{"UserKeyMapping":[{"HIDKeyboardModifierMappingSrc":
-# 0x700000039,"HIDKeyboardModifierMappingDst":0x7000000E0}]}' >/dev/null
-
 ##### Trackpad & Mouse ########################################################
 
 # Tap to click: both device domains plus the -currentHost flag the login

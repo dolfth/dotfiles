@@ -127,13 +127,16 @@ sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate CriticalUpdate
 ##### GPU wired memory ########################################################
 #
 # By default macOS lets the GPU wire only part of RAM, which caps the model
-# size omlx can load. Raise it to 95% of RAM: omlx's own recommended
-# maximum (omlx/process_memory_enforcer.py), as wiring closer to all of RAM
-# can get omlx killed mid-load and strand the memory until a reboot. The
-# sysctl is reset at every boot, so a LaunchDaemon reapplies it (computed
-# from the RAM size, so it follows a new machine); set it now too, as the
-# daemon only runs at the next boot.
-WIRED='m=$(( $(sysctl -n hw.memsize) / 1048576 )); sysctl -w iogpu.wired_limit_mb=$(( m - m / 20 ))'
+# size omlx can load. Raise it to the ceiling omlx gives for this machine
+# (wiredLimitMb in .chezmoidata.yaml); going beyond it can get omlx killed
+# mid-load and strand the memory until a reboot. The sysctl is reset at every
+# boot, so a LaunchDaemon reapplies it; set it now too, as the daemon only
+# runs at the next boot.
+{{- $wired := dig $host "wiredLimitMb" "" .hosts }}
+{{- if not $wired }}
+{{-   fail (printf "hosts.%s.wiredLimitMb is not set in .chezmoidata.yaml" $host) }}
+{{- end }}
+WIRED='sysctl -w iogpu.wired_limit_mb={{ $wired }}'
 sudo tee /Library/LaunchDaemons/com.dolfth.wired-limit.plist >/dev/null <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
