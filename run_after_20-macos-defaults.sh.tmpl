@@ -8,14 +8,17 @@ set -euo pipefail
 #
 # Deleting a line does NOT restore the previous value, it stops setting it.
 
-# Sandboxed apps (Mail, TextEdit, ...) keep their domain in a container that
-# only a process with Full Disk Access can write -- a terminal on the Mac has
-# it, an SSH session does not. The system TCC database is readable only with
-# Full Disk Access, so it doubles as the check. Without it, skip everything;
-# the next apply from a local terminal catches up.
+# Sandboxed apps keep their domain in a container that only a process with
+# Full Disk Access can write -- a terminal on the Mac may have it, an SSH
+# session does not. Here that is Mail, TextEdit, Siri, the Displays settings
+# pane and Safari (a domain is containerised when ~/Library/Containers/<domain>
+# exists). The system TCC database is readable only with Full Disk Access, so
+# it doubles as the check. Without it, only those lines are skipped (each is
+# wrapped in `if [ -n "$fda" ]`); the next apply with access catches up.
+fda=1
 if ! head -c1 "/Library/Application Support/com.apple.TCC/TCC.db" >/dev/null 2>&1; then
-  echo "==> Skipping macOS defaults (no Full Disk Access, e.g. over SSH)"
-  exit 0
+  fda=
+  echo "==> No Full Disk Access (e.g. over SSH): skipping Mail, TextEdit, Siri and Displays defaults"
 fi
 
 ##### Dock & Mission Control ##################################################
@@ -324,7 +327,7 @@ defaults write NSGlobalDomain AppleICUForce24HourTime -bool true
 # Safari's preference domain has been sandboxed since Mojave. For ANY of this
 # to apply, Terminal (or whatever runs chezmoi) needs Full Disk Access:
 #   System Settings > Privacy & Security > Full Disk Access
-# Uncomment if you've granted Full Disk Access and want to try.
+# To use, uncomment inside an `if [ -n "$fda" ]; then ... fi` like Mail's.
 
 # defaults write com.apple.Safari IncludeDevelopMenu -bool true
 # defaults write com.apple.Safari IncludeInternalDebugMenu -bool true
@@ -346,29 +349,33 @@ defaults write NSGlobalDomain WebKitDeveloperExtras -bool true
 
 ##### Mail ####################################################################
 
-# Attachments shown as icons rather than inline previews; kill reply/send
-# animations.
-defaults write com.apple.mail DisableInlineAttachmentViewing -bool true
-defaults write com.apple.mail DisableReplyAnimations -bool true
-defaults write com.apple.mail DisableSendAnimations -bool true
+if [ -n "$fda" ]; then
+  # Attachments shown as icons rather than inline previews; kill reply/send
+  # animations.
+  defaults write com.apple.mail DisableInlineAttachmentViewing -bool true
+  defaults write com.apple.mail DisableReplyAnimations -bool true
+  defaults write com.apple.mail DisableSendAnimations -bool true
 
-# Copying an address gives you just the address, not "Name <addr>".
-defaults write com.apple.mail AddressesIncludeNameOnPasteboard -bool false
+  # Copying an address gives you just the address, not "Name <addr>".
+  defaults write com.apple.mail AddressesIncludeNameOnPasteboard -bool false
 
-# Cmd+Enter to send. \U21a9 is the return-arrow glyph; @ = Cmd.
-defaults write com.apple.mail NSUserKeyEquivalents -dict-add "Send" "@\U21a9"
+  # Cmd+Enter to send. \U21a9 is the return-arrow glyph; @ = Cmd.
+  defaults write com.apple.mail NSUserKeyEquivalents -dict-add "Send" "@\U21a9"
 
-# Threading and sort order in message lists.
-defaults write com.apple.mail DraftsViewerAttributes -dict-add "DisplayInThreadedMode" -string "yes"
-defaults write com.apple.mail DraftsViewerAttributes -dict-add "SortedDescending" -string "yes"
-defaults write com.apple.mail DraftsViewerAttributes -dict-add "SortOrder" -string "received-date"
+  # Threading and sort order in message lists.
+  defaults write com.apple.mail DraftsViewerAttributes -dict-add "DisplayInThreadedMode" -string "yes"
+  defaults write com.apple.mail DraftsViewerAttributes -dict-add "SortedDescending" -string "yes"
+  defaults write com.apple.mail DraftsViewerAttributes -dict-add "SortOrder" -string "received-date"
+fi
 
 ##### TextEdit ################################################################
 
-# Plain text by default, UTF-8 in and out. 4 = UTF-8.
-defaults write com.apple.TextEdit RichText -int 0
-defaults write com.apple.TextEdit PlainTextEncoding -int 4
-defaults write com.apple.TextEdit PlainTextEncodingForWrite -int 4
+if [ -n "$fda" ]; then
+  # Plain text by default, UTF-8 in and out. 4 = UTF-8.
+  defaults write com.apple.TextEdit RichText -int 0
+  defaults write com.apple.TextEdit PlainTextEncoding -int 4
+  defaults write com.apple.TextEdit PlainTextEncodingForWrite -int 4
+fi
 
 ##### Activity Monitor ########################################################
 
@@ -398,7 +405,9 @@ defaults write com.apple.TimeMachine DoNotOfferNewDisksForBackup -bool true
 ##### Displays ################################################################
 
 # 2 = show the display list by default in Displays settings.
-defaults write com.apple.Displays-Settings.extension showListByDefault -int 2
+if [ -n "$fda" ]; then
+  defaults write com.apple.Displays-Settings.extension showListByDefault -int 2
+fi
 
 ##### App Store ###############################################################
 
@@ -420,7 +429,9 @@ defaults write com.apple.CloudSubscriptionFeatures.optIn "545129924" -bool false
 # Siri is folded into Spotlight -- check System Settings > Siri that these
 # still take.
 defaults write com.apple.assistant.support "Assistant Enabled" -bool false
-defaults write com.apple.Siri StatusMenuVisible -bool false
+if [ -n "$fda" ]; then
+  defaults write com.apple.Siri StatusMenuVisible -bool false
+fi
 defaults write com.apple.AdLib allowApplePersonalizedAdvertising -bool false
 
 ##### Show ~/Library ##########################################################
