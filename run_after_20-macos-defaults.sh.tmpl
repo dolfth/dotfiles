@@ -20,16 +20,12 @@ defaults write com.apple.dock tilesize -int 64
 
 # Translucent icons for hidden apps in Dock
 defaults write com.apple.dock showhidden -bool true
-defaults write com.apple.dock show-process-indicators -bool true
 
 # Enables the hover actions menu on non-folder Dock items
 defaults write com.apple.dock enable-spring-load-actions-on-all-items -bool true
 
 # Stops the icon bounce on launch
 defaults write com.apple.dock launchanim -bool false
-
-# No hover-zoom
-defaults write com.apple.dock magnification -bool false
 
 # Minimise into the app's own Dock icon; effect: "genie" | "scale" | "suck"
 defaults write com.apple.dock minimize-to-application -bool true
@@ -50,40 +46,39 @@ defaults write com.apple.dock expose-group-apps -bool true
 # Click wallpaper to reveal Desktop
 # 0 = Only in Stage Manager on Click, 1 = Always.
 defaults write com.apple.WindowManager EnableStandardClickToShowDesktop -int 0
-defaults write NSGlobalDomain AppleSpacesSwitchOnActivate -bool true
 
-# Hot corners: bottom-left shows the Desktop, all others disabled.
+# No built-in window tiling (drag to edge/top, Option while dragging, gaps
+# between tiles) -- AeroSpace manages windows.
+defaults write com.apple.WindowManager EnableTilingByEdgeDrag -bool false
+defaults write com.apple.WindowManager EnableTopTilingByEdgeDrag -bool false
+defaults write com.apple.WindowManager EnableTilingOptionAccelerator -bool false
+defaults write com.apple.WindowManager EnableTiledWindowMargins -bool false
+
+# Hot corners: bottom-left shows the Desktop, bottom-right (Quick Note by
+# default) disabled; top corners and modifiers are off by default.
 # Actions: 0 = none, 2 = Mission Control, 3 = Application Windows, 4 = Desktop,
 #          5 = Start Screen Saver, 10 = Put Display to Sleep, 11 = Launchpad,
 #          12 = Notification Centre, 13 = Lock Screen, 14 = Quick Note
 # Modifiers: 0 = none, 131072 = Shift, 262144 = Ctrl, 524288 = Option,
 #            1048576 = Cmd
-defaults write com.apple.dock wvous-tl-corner -int 0
-defaults write com.apple.dock wvous-tl-modifier -int 0
-defaults write com.apple.dock wvous-tr-corner -int 0
-defaults write com.apple.dock wvous-tr-modifier -int 0
 defaults write com.apple.dock wvous-bl-corner -int 4
-defaults write com.apple.dock wvous-bl-modifier -int 0
 defaults write com.apple.dock wvous-br-corner -int 0
-defaults write com.apple.dock wvous-br-modifier -int 0
 
 ##### Finder ##################################################################
 
-# Show every file's extension, and keep all files visible (Cmd+Shift+. toggles
-# this live in Finder).
-defaults write com.apple.finder AppleShowAllExtensions -bool true
+# Keep all files visible (Cmd+Shift+. toggles this live in Finder). File
+# extensions: NSGlobalDomain AppleShowAllExtensions below.
 defaults write com.apple.finder AppleShowAllFiles -bool true
 
 # New windows open in this view.
 # "Nlsv" = list, "icnv" = icon, "clmv" = column, "Flwv" = gallery
 defaults write com.apple.finder FXPreferredViewStyle -string "clmv"
 
-# Never auto-flip folders back to icon view; show the path bar, status bar and
-# sidebar; show the POSIX path in the title; sort folders first.
+# Never auto-flip folders back to icon view; show the path bar and status bar;
+# show the POSIX path in the title; sort folders first.
 defaults write com.apple.finder FXItemTimeout -int 0
 defaults write com.apple.finder ShowPathbar -bool true
 defaults write com.apple.finder ShowStatusBar -bool true
-defaults write com.apple.finder ShowSidebar -bool true
 defaults write com.apple.finder _FXShowPosixPathInTitle -bool true
 defaults write com.apple.finder _FXSortFoldersFirst -bool true
 defaults write com.apple.finder _FXSortFoldersFirstOnDesktop -bool true
@@ -92,9 +87,8 @@ defaults write com.apple.finder _FXSortFoldersFirstOnDesktop -bool true
 defaults write com.apple.finder FXSortBy -string "name"
 defaults write com.apple.finder FXEnableExtensionChangeWarning -bool false
 
-# Spring-loaded folders, with no delay.
-defaults write com.apple.springing.enabled -bool true
-defaults write com.apple.springing.delay -float 0
+# Spring-loaded folders (on by default) open with no delay.
+defaults write NSGlobalDomain com.apple.springing.delay -float 0
 
 # Search the current folder by default.
 # "SCcf" = current folder, "SCsp" = previous, "SCev" = this Mac
@@ -108,11 +102,10 @@ defaults write com.apple.finder NewWindowTargetPath -string "file://${HOME}/"
 defaults write com.apple.finder QuitMenuItem -bool true
 defaults write com.apple.finder FXRemoveOldTrashItems -bool true
 
-# Show drives and media on the Desktop; open a window for new removable disks.
+# Show internal drives and servers on the Desktop too (external drives and
+# removable media already are); open a window for new removable disks.
 defaults write com.apple.finder ShowHardDrivesOnDesktop -bool true
-defaults write com.apple.finder ShowExternalHardDrivesOnDesktop -bool true
 defaults write com.apple.finder ShowMountedServersOnDesktop -bool true
-defaults write com.apple.finder ShowRemovableMediaOnDesktop -bool true
 defaults write com.apple.finder OpenWindowForNewRemovableDisk -bool true
 
 # Get Info window opens with these panes expanded.
@@ -140,8 +133,7 @@ fi
 # Manually set light or dark mode
 # defaults write NSGlobalDomain AppleInterfaceStyle -string "Dark"
 
-# Show every file's extension everywhere (mirrors the Finder key above in the
-# global domain, which other apps read).
+# Show every file's extension, in Finder and every other app.
 defaults write NSGlobalDomain AppleShowAllExtensions -bool true
 
 # Faster key repeat, and faster initial repeat.
@@ -156,7 +148,7 @@ defaults write NSGlobalDomain NSContinuousSpellCheckingEnabled -bool false
 defaults write NSGlobalDomain NSAutomaticQuoteSubstitutionEnabled -bool false
 defaults write NSGlobalDomain NSAutomaticDashSubstitutionEnabled -bool false
 
-# Window chrome follows the wallpaper, natural scrolling off, and App Nap
+# Windows are not tinted by the wallpaper, natural scrolling off, and App Nap
 # (background throttling) disabled.
 defaults write NSGlobalDomain AppleEnableWindowTinting -bool false
 defaults write NSGlobalDomain com.apple.swipescrolldirection -bool false
@@ -180,9 +172,6 @@ defaults write NSGlobalDomain NSCloseAlwaysConfirmsChanges -bool true
 
 # Restore an app's windows when it relaunches.
 defaults write NSGlobalDomain NSQuitAlwaysKeepsWindows -bool true
-
-# Finder sidebar icon size: 1 = small, 2 = medium, 3 = large.
-defaults write NSGlobalDomain NSTableViewDefaultSizeMode -int 2
 
 # Save new documents to disk, not iCloud, and prefer full names over
 # nicknames in system UI that pulls from Contacts.
@@ -228,9 +217,8 @@ defaults write com.apple.universalaccess showWindowTitlebarIcons -bool true
 # Scroll-wheel zoom, held with a modifier, and keep the zoomed viewport
 # following keyboard focus.
 defaults write com.apple.universalaccess closeViewScrollWheelToggle -bool true
-# Which modifier: 262144 = Ctrl. (131072 = Shift, 524288 = Option,
-#                  1048576 = Cmd)
-defaults write com.apple.universalaccess HIDScrollZoomModifierMask -int 262144
+# Modifier is Ctrl by default; to change it:
+# HIDScrollZoomModifierMask 131072 = Shift, 524288 = Option, 1048576 = Cmd
 defaults write com.apple.universalaccess closeViewZoomFollowsFocus -bool true
 
 ##### Keyboard ################################################################
@@ -263,14 +251,10 @@ defaults write com.apple.AppleMultitouchTrackpad Clicking -bool true
 defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad Clicking -bool true
 defaults -currentHost write NSGlobalDomain com.apple.mouse.tapBehavior -int 1
 
-# Two-finger right click on the built-in and external trackpads (both needed
-# if you use both), plus the per-host mirror macOS reads for the login window.
-defaults write com.apple.AppleMultitouchTrackpad TrackpadRightClick -bool true
-defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad TrackpadRightClick -bool true
+# Secondary click in the bottom-right corner (two-finger click is on by
+# default). The -currentHost key is the mirror the login window reads.
+# Corner: 0 = off, 1 = bottom-left, 2 = bottom-right
 defaults -currentHost write NSGlobalDomain com.apple.trackpad.trackpadCornerClickBehavior -int 1
-defaults -currentHost write NSGlobalDomain com.apple.trackpad.enableSecondaryClick -bool true
-
-# Corner secondary click: 0 = off, 1 = bottom-left, 2 = bottom-right
 defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad TrackpadCornerSecondaryClick -int 2
 
 # Tracking speed. Trackpad 0-3, mouse 0-3.
@@ -288,13 +272,8 @@ defaults write com.apple.desktopservices DSDontWriteUSBStores -bool true
 
 ##### Screenshots ############################################################
 
-mkdir -p "$HOME/Screenshots"
-# Where screenshots land, and what format.
-# "png" | "jpg" | "pdf" | "tiff" | "heic"
-defaults write com.apple.screencapture location -string "$HOME/Desktop"
-defaults write com.apple.screencapture type -string "png"
-
-# No drop shadow on window captures; no timestamp in the filename.
+# Screenshots: Desktop, png (defaults). No drop shadow on window captures; no
+# timestamp in the filename.
 defaults write com.apple.screencapture disable-shadow -bool true
 defaults write com.apple.screencapture include-date -bool false
 
@@ -319,19 +298,14 @@ defaults write com.apple.screensaver askForPasswordDelay -int 0
 
 # Menu bar item visibility: 1 = show in menu bar, 2 = show in Control Centre,
 # 3 = show in both, 8 = hidden. Key names contain literal spaces.
-defaults -currentHost write com.apple.controlcenter "NSStatusItem Visible Battery" -int 1
 defaults -currentHost write com.apple.controlcenter "NSStatusItem Visible UserSwitcher" -int 1
 # 6 = round user picture, 10 = full name.
 defaults -currentHost write com.apple.controlcenter UserSwitcher -int 6
 
 # Menu bar clock format
-defaults write com.apple.menuextra.clock FlashDateSeparators -bool false
-defaults write com.apple.menuextra.clock IsAnalog -bool false
 defaults write com.apple.menuextra.clock Show24Hour -bool true
 defaults write com.apple.menuextra.clock ShowAMPM -bool false
-defaults write com.apple.menuextra.clock ShowSeconds -bool false
 defaults write com.apple.menuextra.clock ShowDate -int 1
-defaults write com.apple.menuextra.clock ShowDayOfWeek -bool true
 # 24-hour time system-wide (separate from the menu bar clock).
 defaults write NSGlobalDomain AppleICUForce24HourTime -bool true
 
@@ -393,8 +367,7 @@ defaults write com.apple.TextEdit PlainTextEncodingForWrite -int 4
 # 103 = System Processes, 104 = Other User Processes, 105 = Active,
 # 106 = Inactive, 107 = Windowed Processes
 defaults write com.apple.ActivityMonitor ShowCategory -int 100
-# Open the main window on launch, sorted by CPU usage.
-defaults write com.apple.ActivityMonitor OpenMainWindow -bool true
+# Sorted by CPU usage.
 defaults write com.apple.ActivityMonitor SortColumn -string "CPUUsage"
 defaults write com.apple.ActivityMonitor SortDirection -int 0
 
@@ -431,6 +404,15 @@ defaults write com.apple.commerce AutoUpdate -bool false
 # Intelligence.
 defaults write com.apple.CloudSubscriptionFeatures.optIn "545129924" -bool false
 
+##### Siri & ads ##############################################################
+
+# Siri off and out of the menu bar; no personalised Apple ads. On macOS 27
+# Siri is folded into Spotlight -- check System Settings > Siri that these
+# still take.
+defaults write com.apple.assistant.support "Assistant Enabled" -bool false
+defaults write com.apple.Siri StatusMenuVisible -bool false
+defaults write com.apple.AdLib allowApplePersonalizedAdvertising -bool false
+
 ##### Show ~/Library ##########################################################
 
 chflags nohidden "${HOME}/Library" 2>/dev/null || true
@@ -442,7 +424,7 @@ chflags nohidden "${HOME}/Library" 2>/dev/null || true
 killall cfprefsd 2>/dev/null || true
 /System/Library/PrivateFrameworks/SystemAdministration.framework/Resources/activateSettings -u 2>/dev/null || true
 # Most of the above are only read at process start.
-for app in Dock Finder SystemUIServer ControlCenter; do
+for app in Dock Finder SystemUIServer ControlCenter WindowManager; do
   killall "$app" >/dev/null 2>&1 || true
 done
 {{- end -}}
