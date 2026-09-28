@@ -50,7 +50,7 @@ docs recommend.
 - `.chezmoi.toml.tmpl` → `~/.config/chezmoi/chezmoi.toml` — asks for the machine name on `chezmoi init` (macOS)
 - `.chezmoidata.yaml` — per-host data: prompt accent/icon, Mac `kind` (laptop/desktop)
 - `dot_Brewfile.tmpl` → `~/.Brewfile` — the single source of truth for installed software; the desktop gets CLI tools, tailscale and Ghostty only
-- `dot_gitconfig` → `~/.gitconfig`
+- `dot_config/git/config` → `~/.config/git/config`
 - `private_Library/LaunchAgents/com.dolfth.omlx.plist.tmpl` → `~/Library/LaunchAgents/` — desktop only; runs `omlx serve` unthrottled (ProcessType Interactive) and restarts it if it dies
 - `dot_zshrc` → `~/.zshrc` — macOS only; hands off to fish
 - `dot_config/fish/config.fish` → `~/.config/fish/config.fish`
