@@ -26,7 +26,16 @@ cat > "$BREWFILE" <<'BREWFILE_EOF'
 {{ includeTemplate "dot_Brewfile.tmpl" . -}}
 BREWFILE_EOF
 
-brew bundle install --file "$BREWFILE"
-
-brew bundle cleanup --file "$BREWFILE" --force
+# A failed install (network, firewall, macOS too old for a cask) must not
+# block the dotfiles: warn and exit 0 instead. chezmoi then counts this script
+# as done and won't retry it until the Brewfile changes, so retry by hand.
+# Cleanup is skipped after a failure, so nothing is uninstalled on a
+# half-finished run.
+if brew bundle install --file "$BREWFILE"; then
+  brew bundle cleanup --file "$BREWFILE" --force
+else
+  echo >&2
+  echo "WARNING: brew bundle had failures (see 'has failed!' above); cleanup skipped." >&2
+  echo "         Fix the cause, then retry with: brew bundle --global && brew bundle cleanup --global --force" >&2
+fi
 {{- end -}}
