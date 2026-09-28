@@ -13,10 +13,15 @@ set -euo pipefail
 # The non-official casks carry `trusted: true`, so they are trusted and
 # installed exactly as before.
 
+# On the bootstrap run, run_once_before_00-homebrew.sh has just installed
+# Homebrew, but chezmoi's PATH predates it.
+if ! command -v brew >/dev/null 2>&1 && [ -x /opt/homebrew/bin/brew ]; then
+  eval "$(/opt/homebrew/bin/brew shellenv)"
+fi
+
 if ! command -v brew >/dev/null 2>&1; then
   echo "Homebrew is not installed -- skipping brew bundle." >&2
-  echo 'Install it first:' >&2
-  echo '  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"' >&2
+  echo "run_once_before_00-homebrew.sh should have installed it; see its output." >&2
   exit 0
 fi
 

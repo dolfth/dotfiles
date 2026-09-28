@@ -1,11 +1,14 @@
 {{- /* Plain files that only make sense on macOS. Scripts are NOT listed here:
        they guard their own bodies with a template conditional and render empty
-       elsewhere, which chezmoi skips. */ -}}
+       elsewhere, which chezmoi skips.
+       fish/functions is exact_ (chezmoi deletes whatever in it is not in this
+       repo), so off macOS the whole directory is ignored, not just up.fish:
+       on NixOS, home-manager writes its fish functions there too. */ -}}
 {{ if ne .chezmoi.os "darwin" -}}
 .Brewfile
 .zshrc
 .ssh/config
-.config/fish/functions/up.fish
+.config/fish/functions
 {{ end -}}
 {{- /* omlx runs only on the desktop (omlx server). */ -}}
 {{ if ne (includeTemplate "kind" .) "desktop" -}}

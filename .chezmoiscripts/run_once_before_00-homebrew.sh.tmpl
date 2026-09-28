@@ -1,0 +1,26 @@
+{{- if eq .chezmoi.os "darwin" -}}
+#!/bin/bash
+set -euo pipefail
+
+# Installs Homebrew on a fresh Mac, before the brew bundle script (10) needs
+# it. The README's bootstrap installs the Command Line Tools first (git for
+# the SSH clone), so the Homebrew installer finds them and skips that part.
+#
+# run_once_: runs once per machine. On a Mac that already has Homebrew it
+# only records itself as done.
+
+if command -v brew >/dev/null 2>&1 || [ -x /opt/homebrew/bin/brew ]; then
+  exit 0
+fi
+
+# The installer asks for sudo and a keypress; without a terminal it would
+# hang or fail.
+if [ ! -t 0 ]; then
+  echo "Homebrew is not installed and there is no terminal to install it." >&2
+  echo "Run 'chezmoi apply' in a terminal." >&2
+  exit 1
+fi
+
+echo "==> Installing Homebrew"
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+{{- end -}}

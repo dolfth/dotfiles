@@ -7,3 +7,20 @@
 [data]
 computerName = {{ $computerName | quote }}
 {{- end }}
+
+{{- /* chezmoi's own settings. delta comes from the Brewfile, so only the
+       Macs page diffs through it. */}}
+{{- if eq .chezmoi.os "darwin" }}
+
+[diff]
+pager = "delta"
+{{- end }}
+
+[edit]
+# `chezmoi edit` applies the file once the editor closes.
+apply = true
+
+[merge]
+# `chezmoi merge`: nvim's diff mode instead of vimdiff.
+command = "nvim"
+args = ["-d", {{ `"{{ .Destination }}"` }}, {{ `"{{ .Source }}"` }}, {{ `"{{ .Target }}"` }}]

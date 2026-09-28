@@ -17,9 +17,9 @@ look up the current host through `.chezmoitemplates/host` and `kind`.
 ## Bootstrap a Mac
 
 ```bash
-# 1. Homebrew (chezmoi does not install it).
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-brew install chezmoi
+# 1. Command Line Tools, for git. /usr/bin/git on a clean Mac is a stub that
+#    only offers this install; Homebrew reuses them later.
+xcode-select --install
 
 # 2. A GitHub SSH key; the clone and all pushes use SSH.
 ssh-keygen -t ed25519 -a 100 -N "" -f ~/.ssh/id_ed25519
@@ -27,13 +27,16 @@ pbcopy < ~/.ssh/id_ed25519.pub
 #    Add it under GitHub → Settings → SSH and GPG keys, then check:
 ssh -T git@github.com
 
-# 3. Clone and apply. Asks for the machine name (mca, gza, ...).
-chezmoi init --apply git@github.com:dolfth/dotfiles.git
+# 3. Everything else. Downloads a throwaway chezmoi into $TMPDIR, clones
+#    git@github.com:dolfth/dotfiles.git (--ssh) and applies. The first script
+#    installs Homebrew, whose Brewfile then installs the real chezmoi. Asks
+#    for the machine name (mca, gza, ...).
+sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$TMPDIR" init --apply --ssh dolfth
 ```
 
 The machine name is stored as `computerName` in
-`~/.config/chezmoi/chezmoi.toml`. The first apply asks for sudo once, for the
-system-settings script. That script skips itself without a terminal; if it
+`~/.config/chezmoi/chezmoi.toml`. The first apply asks for sudo for the Homebrew
+install and once more for the system-settings script. That script skips itself without a terminal; if it
 was skipped, run `chezmoi apply` in one.
 
 Do **not** `chsh` to fish. `~/.zshrc` starts fish for interactive sessions,
@@ -51,20 +54,24 @@ recommend this.
 | `dot_zshrc` | `~/.zshrc` | macOS only; starts fish |
 | `private_dot_ssh/private_config` | `~/.ssh/config` | macOS only; SSH key passphrases in the Keychain |
 | `dot_config/fish/config.fish` | `~/.config/fish/config.fish` | |
-| `dot_config/fish/functions/up.fish` | `~/.config/fish/functions/up.fish` | macOS only; `up` updates CLT, brew and App Store apps, restarts omlx if upgraded |
+| `dot_config/fish/exact_functions/up.fish` | `~/.config/fish/functions/up.fish` | macOS only; exact: other files in that directory are deleted; `up` updates CLT, brew and App Store apps, restarts omlx if upgraded |
 | `dot_config/starship.toml.tmpl` | `~/.config/starship.toml` | per-host accent |
 | `dot_config/git/config` | `~/.config/git/config` | |
 | `dot_config/nvim/init.lua` | `~/.config/nvim/init.lua` | lazy.nvim |
 | `dot_config/ghostty/config` | `~/.config/ghostty/config` | Nerd Font, so starship glyphs render |
 | `dot_config/herdr/config.toml` | `~/.config/herdr/config.toml` | |
+| `dot_config/linearmouse/create_linearmouse.json` | `~/.config/linearmouse/linearmouse.json` | written only if missing; after that LinearMouse owns it |
 | `dot_omlx/modify_*.json.tmpl` | `~/.omlx/` | desktop only; merge the pinned omlx settings, model settings and profiles into the files omlx writes (auth keys stay omlx's, not in this repo); server aliases for the host's `.local` and Tailscale names |
 | `dot_pi/agent/modify_settings.json` | `~/.pi/agent/settings.json` | merges into the file pi writes |
 | `private_Library/LaunchAgents/com.dolfth.omlx.plist.tmpl` | `~/Library/LaunchAgents/` | desktop only; keeps `omlx serve` running, unthrottled |
 
 ### Scripts
 
+In `.chezmoiscripts/`, which creates no directory in `~`.
+
 | Script | Runs | Does |
 |---|---|---|
+| `run_once_before_00-homebrew.sh.tmpl` | macOS, once per machine, before files; needs a terminal | installs Homebrew if missing |
 | `run_onchange_before_10-brew-bundle.sh.tmpl` | macOS, when the rendered Brewfile changes, before files | `brew bundle` install and cleanup |
 | `run_after_20-macos-defaults.sh.tmpl` | macOS, every apply, so manual changes are reverted | user defaults: Dock, Finder, keyboard, trackpad, apps |
 | `run_onchange_30-macos-system-settings.sh.tmpl` | macOS, when the script changes; needs a terminal | sudo: hostname, firewall, Touch ID for sudo, guest account, login window, power, software updates, FileVault check; desktop: GPU wired memory limit (LaunchDaemon), Screen Sharing, Remote Login |
