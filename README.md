@@ -22,7 +22,9 @@ look up the current host through `.chezmoitemplates/host` and `kind`.
 xcode-select --install
 
 # 2. A GitHub SSH key; the clone and all pushes use SSH.
-ssh-keygen -t ed25519 -a 100 -N "" -f ~/.ssh/id_ed25519
+#    -C sets the key comment to the machine name. Without it ssh-keygen uses
+#    user@host, or whatever email it picks up, and GitHub stores it.
+ssh-keygen -t ed25519 -a 100 -N "" -C mca -f ~/.ssh/id_ed25519   # mca, gza, ...
 pbcopy < ~/.ssh/id_ed25519.pub
 #    Add it under GitHub → Settings → SSH and GPG keys, then check:
 ssh -T git@github.com
