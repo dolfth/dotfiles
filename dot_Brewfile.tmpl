@@ -53,6 +53,9 @@ cask "citrix-workspace"
 cask "grandperspective"
 tap "nikitabobko/tap"
 cask "nikitabobko/tap/aerospace", trusted: true
+# Window borders; aerospace.toml starts it (after-startup-command).
+tap "FelixKratz/formulae"
+brew "FelixKratz/formulae/borders", trusted: true
 cask "iina"
 cask "imageoptim"
 cask "linearmouse"
@@ -85,7 +88,7 @@ brew "syncthing", restart_service: :changed
 
 # --- App Store ---------------------------------------------------------------
 # IDs come from `mas list`, or the trailing digits of the App Store URL.
-# Requires being signed in, and the app must already be in your purchiase history.
+# Requires being signed in, and the app must already be in your purchase history.
 mas "KeePassium", id: 1435127111
 mas "Keynote", id: 361285480
 mas "Numbers", id: 361304891
