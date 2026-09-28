@@ -18,7 +18,7 @@ hosts:
     icon: "\uF179"       # nf-fa-apple
   gza:
     kind: desktop
-    accent: color_orange
+    accent: color_red
     icon: "\uF179"       # nf-fa-apple
 
 fallback:
