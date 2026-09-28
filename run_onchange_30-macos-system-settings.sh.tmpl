@@ -57,7 +57,10 @@ sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setstealthmode on >/dev/n
 # Disable and remove the Guest account.
 
 sudo defaults write /Library/Preferences/com.apple.loginwindow GuestEnabled -bool false
-sudo dscl . -delete /Users/Guest 2>/dev/null || true
+# dscl prints its errors on stdout, so check first rather than silence it.
+if dscl . -read /Users/Guest >/dev/null 2>&1; then
+  sudo dscl . -delete /Users/Guest
+fi
 
 ##### Login window #############################################################
 #
@@ -86,9 +89,8 @@ sudo pmset -b sleep 5 displaysleep 5 disksleep 10 standby 1 autopoweroff 1 power
 # On AC -- more patient, but it still sleeps:
 sudo pmset -c sleep 10 displaysleep 10 disksleep 10 powernap 0
 {{- end }}
-#
-# Keep the screen lock on wake -- the machine should not wake to an open GUI:
-sudo pmset -a disablescreenlock 0
+# Locking on wake is com.apple.screensaver askForPassword in the defaults
+# script; pmset has no setting for it.
 
 ##### Hostname ################################################################
 # Display name, official hostname and Bonjour name, all set to computerName
