@@ -1,16 +1,12 @@
 #!/usr/bin/env bash
-set -uo pipefail   # no -e: matches the other run scripts; one plugin failing shouldn't abort the apply
+set -uo pipefail   # no -e: one failed plugin shouldn't abort the apply
 
-# Installs the two Herdr plugins the dot_config/herdr keybindings and the
-# nvim config depend on.
-#   - ChmaraX/herdr-nvim: nvim sidebar + fuzzy file picker of the agent's
-#     touched files (prefix+e, prefix+o)
-#   - lmilojevicc/herdr-tab-rename: auto-renames each tab to the basename of
-#     its focused pane's working directory (manually renamed tabs stay alone;
-#     it autostarts with Herdr)
-# Both are idempotent: `herdr plugin install --yes` re-runs only when this
-# script changes (chezmoi re-hashes the rendered output), and re-running it
-# replaces the managed checkout in place.
+# Herdr plugins the herdr keybindings and nvim config rely on:
+#   - ChmaraX/herdr-nvim: nvim sidebar and picker for files the agent touched
+#     (prefix+e, prefix+o)
+#   - lmilojevicc/herdr-tab-rename: names each tab after its focused pane's
+#     directory, leaving manual names alone; autostarts with Herdr
+# Re-runs when this script changes; reinstalling replaces the checkout.
 
 if ! command -v herdr >/dev/null 2>&1; then
   echo "herdr not installed -- skipping herdr plugin install."

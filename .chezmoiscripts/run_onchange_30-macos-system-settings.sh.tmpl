@@ -3,21 +3,15 @@
 {{- $kind := includeTemplate "kind" . -}}
 #!/bin/bash
 #
-# Sudo-requiring system settings, deliberately split from
-# run_after_20-macos-defaults.sh: this one prompts for a password, which would
-# hang an unattended `chezmoi apply` (editor, cron, ...). The TTY check below
-# skips it instead of hanging.
+# Settings that need sudo, split from the defaults script (20) so an
+# unattended apply skips them instead of hanging on a password prompt.
 #
-# `run_onchange_` with no `run_after_`: fires only on first apply and when
-# this file's rendered text changes, so the sudo prompt stays rare. Deleting a
-# line stops setting that thing; it does NOT restore the previous value.
-#
-# To make it never run automatically, rename it without the run_ prefix
-# (macos-system-settings.sh.tmpl) and run it by hand on new machines.
+# run_onchange_: runs on first apply and when the rendered text changes, so
+# the prompt stays rare. Deleting a line stops setting it; it doesn't restore
+# the old value. To run it only by hand, drop the run_ prefix.
 
-set -uo pipefail   # no -e: one failing sudo command shouldn't abort the rest
+set -uo pipefail   # no -e: one failure shouldn't abort the rest
 
-# Skip silently in non-interactive contexts rather than hanging on a prompt.
 if [ ! -t 0 ]; then
   echo "==> Skipping system settings (no TTY; run 'chezmoi apply' in a terminal)"
   exit 0
@@ -28,7 +22,7 @@ sudo -v || { echo "No sudo; skipping."; exit 0; }
 
 ##### Touch ID for sudo ######################################################
 #
-# Unlock sudo with Touch ID. Prefers the template file when macOS ships one.
+# From Apple's template when macOS ships one.
 
 if [ ! -f /etc/pam.d/sudo_local ]; then
   if [ -f /etc/pam.d/sudo_local.template ]; then
@@ -43,59 +37,49 @@ fi
 
 ##### Firewall ###############################################################
 #
-# Block unsolicited inbound connections; stealth mode hides the machine from
-# port scans.
+# Block unsolicited inbound connections; stealth mode ignores probes.
 
 sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setglobalstate on >/dev/null
 sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setstealthmode on >/dev/null
 
-# Optional: block ALL incoming connections (breaks file sharing, AirDrop, SSH).
+# Block ALL inbound (breaks file sharing, AirDrop, SSH):
 # sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setblockall on >/dev/null
 
 ##### Guest account ##########################################################
 #
-# Disable and remove the Guest account.
+# Disable and remove.
 
 sudo defaults write /Library/Preferences/com.apple.loginwindow GuestEnabled -bool false
-# dscl prints its errors on stdout, so check first rather than silence it.
+# dscl reports errors on stdout, so check first.
 if dscl . -read /Users/Guest >/dev/null 2>&1; then
   sudo dscl . -delete /Users/Guest
 fi
 
 ##### Login window #############################################################
 #
-# Show the username field instead of the account picker at the login screen.
+# Username field instead of the account picker.
 sudo defaults write /Library/Preferences/com.apple.loginwindow SHOWFULLNAME -bool true
 
 ##### Power management #######################################################
 #
-# Profile comes from `kind` for this host in .chezmoidata.yaml; unknown hosts
-# get the laptop profile, which is harmless on a desktop (it just sleeps).
+# By the host's `kind` in .chezmoidata.yaml; unknown hosts get the laptop
+# profile.
 {{ if eq $kind "desktop" }}
-# Desktop (omlx server): nothing ever sleeps except the display, which does
-# not affect running processes. No deep standby/hibernation, no Power Nap
-# (it only matters for a sleeping Mac), no Low Power Mode throttling. Restart
-# by itself after a power cut; wake on LAN and keep TCP alive as backups.
+# Desktop (omlx server): only the display sleeps. No standby, hibernation,
+# Power Nap or Low Power Mode. Restart after a power cut; wake on LAN and TCP
+# keepalive as backups.
 sudo pmset -a sleep 0 disksleep 0 standby 0 hibernatemode 0 \
   powernap 0 lowpowermode 0 displaysleep 15 autorestart 1 womp 1 tcpkeepalive 1
 {{- else }}
-# Laptop: sleep the whole machine when idle (not just the display), drop to
-# deep standby, and conserve battery. Split by power source so the laptop
-# sleeps promptly on battery but is a little more patient on AC.
-#
-# On battery -- prompt sleep to preserve charge:
+# Laptop: sleep when idle, sooner on battery than on AC.
 sudo pmset -b sleep 5 displaysleep 5 disksleep 10 standby 1 powernap 0
-#
-# On AC -- more patient, but it still sleeps:
 sudo pmset -c sleep 10 displaysleep 10 disksleep 10 powernap 0
 {{- end }}
-# Locking on wake is com.apple.screensaver askForPassword in the defaults
-# script; pmset has no setting for it.
+# Lock on wake is askForPassword in the defaults script; pmset can't.
 
 ##### Hostname ################################################################
-# Display name, official hostname and Bonjour name, all set to computerName
-# (asked by `chezmoi init`, stored in ~/.config/chezmoi/chezmoi.toml), or to
-# the current hostname if that is unset.
+# All names set to computerName (from `chezmoi init`), else the current
+# hostname.
 sudo scutil --set ComputerName {{ $host | quote }}
 sudo scutil --set HostName {{ $host | quote }}
 sudo scutil --set LocalHostName {{ $host | quote }}
@@ -104,19 +88,12 @@ sudo defaults write /Library/Preferences/SystemConfiguration/com.apple.smb.serve
 
 ##### Software Update #########################################################
 #
-# Never install macOS updates by themselves (that is how Tahoe arrived), and
-# don't pre-download them either. Still check, so System Settings shows what
-# is available; install by hand with `softwareupdate -l` / `-i <label>`.
-#
-# Security is split out:
-#   - ConfigDataInstall: XProtect, Gatekeeper and malware-removal data. Pure
-#     data files, never restart -- on everywhere.
-#   - CriticalUpdateInstall: "Security Responses and system files" (Rapid
-#     Security Responses / Background Security Improvements). Small patches
-#     to the current version; they can need a restart, but it is short --
-#     on everywhere.
-# Point releases (26.x.y) are full macOS updates, even when they are "only"
-# security fixes, and fall under AutomaticallyInstallMacOSUpdates.
+# Check for macOS updates, but never download or install them unasked (that
+# is how Tahoe arrived). Install by hand: `softwareupdate -l` / `-i <label>`.
+# Security stays automatic:
+#   - ConfigDataInstall: XProtect, Gatekeeper and malware data; no restart.
+#   - CriticalUpdateInstall: Rapid Security Responses; at most a short restart.
+# Point releases (26.x.y) are macOS updates, even security-only ones.
 sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticCheckEnabled -bool true
 sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticDownload -bool false
 sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticallyInstallMacOSUpdates -bool false
@@ -126,12 +103,10 @@ sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate CriticalUpdate
 {{ if eq $kind "desktop" -}}
 ##### GPU wired memory ########################################################
 #
-# By default macOS lets the GPU wire only part of RAM, which caps the model
-# size omlx can load. Raise it to the ceiling omlx gives for this machine
-# (wiredLimitMb in .chezmoidata.yaml); going beyond it can get omlx killed
-# mid-load and strand the memory until a reboot. The sysctl is reset at every
-# boot, so a LaunchDaemon reapplies it; set it now too, as the daemon only
-# runs at the next boot.
+# macOS caps GPU-wired memory, and so the model size omlx can load. Raise it
+# to omlx's ceiling for this host (wiredLimitMb in .chezmoidata.yaml); more
+# can get omlx killed mid-load, stranding memory until a reboot. The sysctl
+# resets at boot, so a LaunchDaemon reapplies it; it is also set now.
 {{- $wired := dig $host "wiredLimitMb" "" .hosts }}
 {{- if not $wired }}
 {{-   fail (printf "hosts.%s.wiredLimitMb is not set in .chezmoidata.yaml" $host) }}
@@ -159,31 +134,28 @@ sudo sh -c "$WIRED" >/dev/null
 
 ##### Screen Sharing ##########################################################
 #
-# VNC-based Screen Sharing (vnc://gza.local, or the tailnet name) for the
-# occasional GUI visit. Access follows System Settings > General > Sharing >
-# Screen Sharing (default: administrators). If it does not show as on there,
-# toggle it once by hand -- newer macOS versions sometimes insist.
+# vnc://gza.local or the tailnet name. Access: System Settings > General >
+# Sharing > Screen Sharing (admins by default). If it doesn't show as on
+# there, toggle it once by hand.
 sudo launchctl enable system/com.apple.screensharing
 sudo launchctl bootstrap system /System/Library/LaunchDaemons/com.apple.screensharing.plist 2>/dev/null || true
 
 ##### Remote Login (SSH) #####################################################
 #
-# Besides normal SSH, this is how the desktop comes back after a power cut:
-# on Apple silicon with macOS 26+, a minimal sshd runs before FileVault is
-# unlocked. `ssh dolf@gza.local`, give the account PASSWORD (keys don't work
-# at that stage), the data volume unlocks, SSH drops briefly, then the Mac
-# boots normally -- LaunchAgents (omlx) start and Screen Sharing works.
-# See `man apple_ssh_and_filevault`. So password auth must stay enabled.
-# launchctl rather than `systemsetup -setremotelogin on`, which needs Full
-# Disk Access for the terminal.
+# Also the way back after a power cut: on Apple silicon with macOS 26+, a
+# minimal sshd runs before FileVault unlocks. `ssh dolf@gza.local` with the
+# account password (keys don't work there) unlocks the disk; SSH drops and
+# the Mac boots normally. See `man apple_ssh_and_filevault`. So password auth
+# must stay on. launchctl, as `systemsetup -setremotelogin on` needs Full
+# Disk Access.
 sudo launchctl enable system/com.openssh.sshd
 sudo launchctl bootstrap system /System/Library/LaunchDaemons/ssh.plist 2>/dev/null || true
 
 {{ end -}}
 ##### FileVault ################################################################
 #
-# Not automatable: `fdesetup enable` needs interactive handling of the
-# recovery key, and you should not write that key to a script's stdout.
+# Not automatable: `fdesetup enable` handles the recovery key interactively,
+# and the key must not go to stdout.
 
 if ! fdesetup status | grep -q "FileVault is On"; then
   echo "  FileVault is OFF. Enable it: System Settings > Privacy & Security"
@@ -191,14 +163,11 @@ fi
 
 ##### Manual checklist ########################################################
 #
-# Things no script can set, because the TCC database is SIP-protected:
-#   - Full Disk Access for your terminal (needed for anything touching
-#     ~/Library/Mail or /dev)
-#   - Accessibility permissions for window managers, hotkey tools, etc.
+# Not scriptable (the TCC database is SIP-protected):
+#   - Full Disk Access for the terminal (~/Library/Mail, /dev)
+#   - Accessibility for window managers and hotkey tools
 #   - Screen Recording for capture tools
-#   - iCloud sign-in and per-service toggles
-#
-# Keep this list here so it's version-controlled alongside everything else.
+#   - iCloud sign-in and services
 
 echo "==> System settings applied."
 {{- end }}

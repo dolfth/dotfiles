@@ -2,30 +2,22 @@
 #!/bin/bash
 set -euo pipefail
 
-# This `run_after_` script runs on EVERY `chezmoi apply`. `run_onchange_` would
-# only fire when this file's text changes, so a setting flipped by hand in
-# System Settings would never be put back.
-#
-# Deleting a line does NOT restore the previous value, it stops setting it.
+# run_after_: runs on every apply, so settings flipped by hand get put back.
+# Deleting a line stops setting it; it doesn't restore the old value.
 
-# Sandboxed apps keep their domain in a container that only a process with
-# Full Disk Access can write -- a terminal on the Mac may have it, an SSH
-# session does not. Here that is Mail, TextEdit, Siri, the Displays settings
-# pane and Safari (a domain is containerised when ~/Library/Containers/<domain>
-# exists). The system TCC database is readable only with Full Disk Access, so
-# it doubles as the check. Without it, only those lines are skipped (each is
-# wrapped in `if [ -n "$fda" ]`); the next apply with access catches up.
+# Sandboxed apps (Mail, TextEdit, Siri, Displays, Safari) keep their domain in
+# a container only Full Disk Access can write, which SSH sessions lack. Reading
+# the TCC database needs the same access, so it doubles as the check. Without
+# it, those lines (under `if [ -n "$fda" ]`) wait for an apply that has it.
 fda=1
 if ! head -c1 "/Library/Application Support/com.apple.TCC/TCC.db" >/dev/null 2>&1; then
   fda=
   echo "==> No Full Disk Access (e.g. over SSH): skipping Mail, TextEdit, Siri and Displays defaults"
 fi
 
-# Killing Dock and WindowManager rebuilds Spaces and makes AeroSpace re-tile
-# every window, so the restarts under "Apply" run only when one of the domains
-# those processes read actually changed. Re-writing an existing value leaves
-# the export byte-identical. A setting in a new domain read by Dock, Finder,
-# SystemUIServer, ControlCenter or WindowManager needs adding here.
+# Killing Dock and WindowManager rebuilds Spaces and makes AeroSpace re-tile,
+# so "Apply" restarts them only if a domain they read changed. Re-writing a
+# value leaves the export unchanged. Add new such domains here.
 snapshot() {
   for d in com.apple.dock com.apple.spaces com.apple.WindowManager \
            com.apple.finder com.apple.menuextra.clock NSGlobalDomain; do
@@ -43,47 +35,44 @@ defaults write com.apple.dock autohide -bool true
 defaults write com.apple.dock autohide-delay -float 0
 defaults write com.apple.dock autohide-time-modifier -float 0.4
 
-# Set Dock icon size
+# Icon size
 defaults write com.apple.dock tilesize -int 64
 
-# Translucent icons for hidden apps in Dock
+# Translucent icons for hidden apps
 defaults write com.apple.dock showhidden -bool true
 
-# Enables the hover actions menu on non-folder Dock items
+# Hover actions on non-folder Dock items
 defaults write com.apple.dock enable-spring-load-actions-on-all-items -bool true
 
-# Stops the icon bounce on launch
+# No bounce on launch
 defaults write com.apple.dock launchanim -bool false
 
-# Minimise into the app's own Dock icon; effect: "genie" | "scale" | "suck"
+# Minimise into the app's icon; effect: genie | scale | suck
 defaults write com.apple.dock minimize-to-application -bool true
 defaults write com.apple.dock mineffect -string "scale"
 defaults write com.apple.dock expose-animation-duration -float 0.1
 
-# Stop Spaces reordering
+# Don't reorder Spaces; no recent apps in the Dock
 defaults write com.apple.dock mru-spaces -bool false
 defaults write com.apple.dock show-recents -bool false
 
-# Displays have separate Spaces false = one Space spans all displays
-# Set to true works better with Aerospace
+# true = one Space spans all displays ("Displays have separate Spaces" off);
+# works better with AeroSpace
 defaults write com.apple.spaces spans-displays -bool true
 
-# Group windows by application in Exposé
+# Group windows by app in Exposé
 defaults write com.apple.dock expose-group-apps -bool true
 
-# Click wallpaper to reveal Desktop
-# 0 = Only in Stage Manager on Click, 1 = Always.
+# Click wallpaper to show Desktop: 0 = only in Stage Manager, 1 = always
 defaults write com.apple.WindowManager EnableStandardClickToShowDesktop -int 0
 
-# No built-in window tiling (drag to edge/top, Option while dragging, gaps
-# between tiles) -- AeroSpace manages windows.
+# No built-in tiling; AeroSpace manages windows.
 defaults write com.apple.WindowManager EnableTilingByEdgeDrag -bool false
 defaults write com.apple.WindowManager EnableTopTilingByEdgeDrag -bool false
 defaults write com.apple.WindowManager EnableTilingOptionAccelerator -bool false
 defaults write com.apple.WindowManager EnableTiledWindowMargins -bool false
 
-# Hot corners: bottom-left shows the Desktop, bottom-right (Quick Note by
-# default) disabled; top corners and modifiers are off by default.
+# Hot corners: bottom-left shows Desktop, bottom-right (Quick Note) off.
 # Actions: 0 = none, 2 = Mission Control, 3 = Application Windows, 4 = Desktop,
 #          5 = Start Screen Saver, 10 = Put Display to Sleep, 11 = Launchpad,
 #          12 = Notification Centre, 13 = Lock Screen, 14 = Quick Note
@@ -94,16 +83,13 @@ defaults write com.apple.dock wvous-br-corner -int 0
 
 ##### Finder ##################################################################
 
-# Hide dotfiles and other hidden files (Cmd+Shift+. toggles this live in
-# Finder). File extensions: NSGlobalDomain AppleShowAllExtensions below.
+# Hide dotfiles (Cmd+Shift+. toggles)
 defaults write com.apple.finder AppleShowAllFiles -bool false
 
-# New windows open in this view.
-# "Nlsv" = list, "icnv" = icon, "clmv" = column, "Flwv" = gallery
+# New window view: Nlsv = list, icnv = icon, clmv = column, Flwv = gallery
 defaults write com.apple.finder FXPreferredViewStyle -string "clmv"
 
-# Never auto-flip folders back to icon view; show the path bar and status bar;
-# show the POSIX path in the title; sort folders first.
+# Keep folder views; path bar, status bar, POSIX path in title; folders first
 defaults write com.apple.finder FXItemTimeout -int 0
 defaults write com.apple.finder ShowPathbar -bool true
 defaults write com.apple.finder ShowStatusBar -bool true
@@ -111,230 +97,210 @@ defaults write com.apple.finder _FXShowPosixPathInTitle -bool true
 defaults write com.apple.finder _FXSortFoldersFirst -bool true
 defaults write com.apple.finder _FXSortFoldersFirstOnDesktop -bool true
 
-# Sort by name, and skip the warning dialog when renaming a file's extension.
+# Sort by name; no warning when changing an extension
 defaults write com.apple.finder FXSortBy -string "name"
 defaults write com.apple.finder FXEnableExtensionChangeWarning -bool false
 
-# Spring-loaded folders (on by default) open with no delay.
+# Spring-loaded folders open instantly
 defaults write NSGlobalDomain com.apple.springing.delay -float 0
 
-# Search the current folder by default.
-# "SCcf" = current folder, "SCsp" = previous, "SCev" = this Mac
+# Search: SCcf = current folder, SCsp = previous, SCev = this Mac
 defaults write com.apple.finder FXDefaultSearchScope -string "SCcf"
 
-# New windows open at Home. "PfHm" = Home, "PfDe" = Desktop, "PfDo" = Documents
+# New windows: PfHm = Home, PfDe = Desktop, PfDo = Documents
 defaults write com.apple.finder NewWindowTarget -string "PfHm"
 defaults write com.apple.finder NewWindowTargetPath -string "file://${HOME}/"
 
-# Allow Cmd+Q to quit Finder, and auto-empty the trash after 30 days.
+# Cmd+Q quits Finder; empty the trash after 30 days
 defaults write com.apple.finder QuitMenuItem -bool true
 defaults write com.apple.finder FXRemoveOldTrashItems -bool true
 
-# No internal drive on the Desktop; do show servers (external drives and
-# removable media already are); open a window for new removable disks.
+# Desktop: no internal drive, show servers; open a window for new removable
+# disks
 defaults write com.apple.finder ShowHardDrivesOnDesktop -bool false
 defaults write com.apple.finder ShowMountedServersOnDesktop -bool true
 defaults write com.apple.finder OpenWindowForNewRemovableDisk -bool true
 
-# Get Info window opens with these panes expanded.
+# Expanded Get Info panes
 defaults write com.apple.finder FXInfoPanesExpanded -dict \
   General -bool true \
   OpenWith -bool true \
   Privileges -bool true
 
-# Allow AirDrop over Ethernet and other non-WiFi interfaces.
+# AirDrop over Ethernet and other non-WiFi interfaces
 defaults write com.apple.NetworkBrowser BrowseAllInterfaces -bool true
-# Kill Finder window animations via the accessibility route.
+# Reduce motion (also kills Finder window animations)
 # defaults write com.apple.universalaccess reduceMotion -bool true
 
 ##### Global ##################################################################
 
-# Auto-set light or dark mode
+# Auto light/dark mode. `defaults delete` exits 1 when the key is already gone,
+# which set -e would abort on, so guard it.
 defaults write NSGlobalDomain AppleInterfaceStyleSwitchesAutomatically -bool true
-# "delete" is not idempotent (it exits 1 when the key is already gone,
-# which would abort the script under "set -e" on every subsequent run),
-# so guard it:
 if defaults read NSGlobalDomain AppleInterfaceStyle >/dev/null 2>&1; then
   defaults delete NSGlobalDomain AppleInterfaceStyle
 fi
 
-# Manually set light or dark mode
+# Manual light or dark mode
 # defaults write NSGlobalDomain AppleInterfaceStyle -string "Dark"
 
-# Show every file's extension, in Finder and every other app.
+# Show all file extensions
 defaults write NSGlobalDomain AppleShowAllExtensions -bool true
 
-# Faster key repeat, and faster initial repeat.
+# Faster key repeat and initial delay
 defaults write NSGlobalDomain InitialKeyRepeat -int 15
 defaults write NSGlobalDomain KeyRepeat -int 2
 
-# Off: automatic capitalization, spelling correction, and the text "smart"
-# features (spell-check underline, smart quotes, smart dashes).
+# No auto-capitalisation, autocorrect, spell-check underline, smart quotes or
+# smart dashes
 defaults write NSGlobalDomain NSAutomaticCapitalizationEnabled -bool false
 defaults write NSGlobalDomain NSAutomaticSpellingCorrectionEnabled -bool false
 defaults write NSGlobalDomain NSContinuousSpellCheckingEnabled -bool false
 defaults write NSGlobalDomain NSAutomaticQuoteSubstitutionEnabled -bool false
 defaults write NSGlobalDomain NSAutomaticDashSubstitutionEnabled -bool false
 
-# Windows are not tinted by the wallpaper, natural scrolling off, and App Nap
-# (background throttling) disabled.
+# No wallpaper tinting, natural scrolling or App Nap
 defaults write NSGlobalDomain AppleEnableWindowTinting -bool false
 defaults write NSGlobalDomain com.apple.swipescrolldirection -bool false
 defaults write NSGlobalDomain NSAppSleepDisabled -bool true
 
-# Expand the print and save dialogs by default. Both keys are needed; apps use
-# either one.
+# Expanded print and save dialogs (apps read either key)
 defaults write NSGlobalDomain PMPrintingExpandedStateForPrint -bool true
 defaults write NSGlobalDomain PMPrintingExpandedStateForPrint2 -bool true
 defaults write NSGlobalDomain NSNavPanelExpandedStateForSaveMode -bool true
 defaults write NSGlobalDomain NSNavPanelExpandedStateForSaveMode2 -bool true
 
-# Double-click on a window's title bar minimizes it.
-# "None" | "Minimize" | "Maximize" | "Fill"
+# Double-clicking a title bar: None | Minimize | Maximize | Fill
 defaults write NSGlobalDomain AppleActionOnDoubleClick -string "Minimize"
 
-# Always show scrollbars; ask to save before closing, even in apps that
-# autosave.
+# Always show scrollbars; ask to save on close, even with autosave
 defaults write NSGlobalDomain AppleShowScrollBars -string "Always"
 defaults write NSGlobalDomain NSCloseAlwaysConfirmsChanges -bool true
 
-# Restore an app's windows when it relaunches.
+# Reopen an app's windows on relaunch
 defaults write NSGlobalDomain NSQuitAlwaysKeepsWindows -bool true
 
-# Save new documents to disk, not iCloud, and prefer full names over
-# nicknames in system UI that pulls from Contacts.
+# Save new documents locally, not to iCloud; full names over nicknames
 defaults write NSGlobalDomain NSDocumentSaveNewDocumentsToCloud -bool false
 defaults write NSGlobalDomain NSPersonNameDefaultShouldPreferNicknamesPreference -bool false
 
-# Detailed fast-user-switching menu in the menu bar.
+# Detailed fast-user-switching menu
 defaults write NSGlobalDomain userMenuExtraStyle -int 2
 
-# Text selection highlight colour (RGB floats 0-1, space separated).
+# Selection highlight colour (RGB, 0-1)
 defaults write NSGlobalDomain AppleHighlightColor -string "0.764700 0.976500 0.568600"
 
-# Fast window chrome: no focus-ring animation, near-instant resizes.
+# No focus-ring animation; near-instant resizes
 defaults write NSGlobalDomain NSUseAnimatedFocusRing -bool false
 defaults write NSGlobalDomain NSWindowResizeTime -float 0.001
 
-# Show ASCII control characters in caret notation (^C etc.), and don't let
-# macOS silently terminate idle apps.
+# Control characters as ^C; don't auto-terminate idle apps
 defaults write NSGlobalDomain NSTextShowsControlCharacters -bool true
 defaults write NSGlobalDomain NSDisableAutomaticTermination -bool true
 
-# Move any window by holding Ctrl+Cmd and dragging anywhere on it.
+# Ctrl+Cmd+drag moves a window from anywhere
 defaults write NSGlobalDomain NSWindowShouldDragOnGesture -bool true
 
-# Menu bar status item spacing. These REQUIRE -currentHost.
+# Menu bar item spacing (needs -currentHost)
 defaults -currentHost write -globalDomain NSStatusItemSelectionPadding -int 4
 defaults -currentHost write -globalDomain NSStatusItemSpacing -int 4
 
-# Suppress the "downloaded from the internet, are you sure?" dialog.
-# Does NOT weaken Gatekeeper: unsigned apps are still blocked.
+# No "downloaded from the internet" dialog; Gatekeeper still blocks unsigned
+# apps
 defaults write com.apple.LaunchServices LSQuarantine -bool false
 
-# Quit the printer queue app once all jobs finish.
+# Quit the printer queue when jobs finish
 defaults write com.apple.print.PrintingPrefs "Quit When Finished" -bool true
 
 ##### Accessibility / Zoom ####################################################
 
-# Reduce transparency, and always show the proxy icons in title bars
-# (Sonoma+ hides them until hover).
+# Reduce transparency; always show title bar proxy icons (Sonoma+ hides them
+# until hover)
 defaults write com.apple.universalaccess reduceTransparency -bool true
 defaults write com.apple.universalaccess showWindowTitlebarIcons -bool true
 
-# Scroll-wheel zoom, held with a modifier, and keep the zoomed viewport
-# following keyboard focus.
+# Modifier+scroll zooms; the zoomed view follows keyboard focus.
 defaults write com.apple.universalaccess closeViewScrollWheelToggle -bool true
-# Modifier is Ctrl by default; to change it:
-# HIDScrollZoomModifierMask 131072 = Shift, 524288 = Option, 1048576 = Cmd
+# Modifier defaults to Ctrl; HIDScrollZoomModifierMask 131072 = Shift,
+# 524288 = Option, 1048576 = Cmd
 defaults write com.apple.universalaccess closeViewZoomFollowsFocus -bool true
 
 ##### Keyboard ################################################################
 
-# Disable the accent-character popover so holding a key repeats it instead.
+# Holding a key repeats it instead of showing the accent popover
 # defaults write NSGlobalDomain ApplePressAndHoldEnabled -bool false
 
-# Full keyboard access. Tab moves between ALL controls, not just text fields.
-# On Sonoma and later the correct value is 2; 3 is the legacy value.
+# Tab reaches all controls. Sonoma+ uses 2; 3 is legacy.
 defaults write NSGlobalDomain AppleKeyboardUIMode -int 2
 
-# What the physical Fn/Globe key does when pressed alone.
-# 0 = Do Nothing, 1 = Change Input Source, 2 = Show Emoji & Symbols,
-# 3 = Dictation
+# Fn/Globe alone: 0 = nothing, 1 = input source, 2 = emoji, 3 = dictation
 defaults write com.apple.HIToolbox AppleFnUsageType -int 2
 
 ##### Trackpad & Mouse ########################################################
 
-# Tap to click: both device domains plus the -currentHost flag the login
-# session reads.
+# Tap to click: both device domains, plus -currentHost for the login window
 defaults write com.apple.AppleMultitouchTrackpad Clicking -bool true
 defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad Clicking -bool true
 defaults -currentHost write NSGlobalDomain com.apple.mouse.tapBehavior -int 1
 
-# Secondary click in the bottom-right corner (two-finger click is on by
-# default). The -currentHost key is the mirror the login window reads.
-# Corner: 0 = off, 1 = bottom-left, 2 = bottom-right
+# Corner secondary click (two-finger click is on by default); -currentHost
+# mirrors it for the login window. Corner: 0 = off, 1 = bottom-left,
+# 2 = bottom-right
 defaults -currentHost write NSGlobalDomain com.apple.trackpad.trackpadCornerClickBehavior -int 1
 defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad TrackpadCornerSecondaryClick -int 2
 
-# Tracking speed. Trackpad 0-3, mouse 0-3.
+# Tracking speed, 0-3
 defaults write NSGlobalDomain com.apple.trackpad.scaling -float 2.0
 defaults write NSGlobalDomain com.apple.mouse.scaling -float 1.5
 
-# Linear (unaccelerated) mouse tracking.
+# No mouse acceleration
 defaults write NSGlobalDomain com.apple.mouse.linear -bool true
 
 ##### .DS_Store hygiene #######################################################
 
-# Don't litter network shares and USB sticks with .DS_Store files.
+# None on network shares or USB drives
 defaults write com.apple.desktopservices DSDontWriteNetworkStores -bool true
 defaults write com.apple.desktopservices DSDontWriteUSBStores -bool true
 
 ##### Screenshots ############################################################
 
-# Screenshots: Desktop, png (defaults). No drop shadow on window captures; no
-# timestamp in the filename.
+# Desktop, png (defaults); no window shadow, no timestamp in the name
 defaults write com.apple.screencapture disable-shadow -bool true
 defaults write com.apple.screencapture include-date -bool false
 
-# Skip the floating thumbnail so the file is written immediately.
+# No floating thumbnail, so the file is written at once
 defaults write com.apple.screencapture show-thumbnail -bool false
 
 ##### Screen lock #############################################################
 
-# Require the password immediately when the screen saver or sleep kicks in.
-# NOTE: on Ventura and later these keys are deprecated in favour of the
-# "Require password after screen saver begins" control in System Settings >
-# Lock Screen, which is backed by a managed preference. They still apply on
-# Tahoe but may quietly stop working; verify in Settings after applying.
+# Password immediately after screen saver or sleep. Deprecated since Ventura
+# (System Settings > Lock Screen) but still works on Tahoe; verify there.
 defaults write com.apple.screensaver askForPassword -int 1
 defaults write com.apple.screensaver askForPasswordDelay -int 0
 
 ##### Menu bar & clock ########################################################
 
-# Battery percentage: set in System Settings, no defaults key.
+# Battery percentage has no defaults key; set it in System Settings.
 # defaults -currentHost write
 #   com.apple.controlcenter BatteryShowPercentage -bool true
 
-# Menu bar item visibility: 1 = show in menu bar, 2 = show in Control Centre,
-# 3 = show in both, 8 = hidden. Key names contain literal spaces.
+# Items: 1 = menu bar, 2 = Control Centre, 3 = both, 8 = hidden. Key names
+# contain spaces.
 defaults -currentHost write com.apple.controlcenter "NSStatusItem Visible UserSwitcher" -int 1
-# 6 = round user picture, 10 = full name.
+# 6 = round picture, 10 = full name
 defaults -currentHost write com.apple.controlcenter UserSwitcher -int 6
 
-# Menu bar clock format
+# Clock
 defaults write com.apple.menuextra.clock Show24Hour -bool true
 defaults write com.apple.menuextra.clock ShowAMPM -bool false
 defaults write com.apple.menuextra.clock ShowDate -int 1
-# 24-hour time system-wide (separate from the menu bar clock).
+# 24-hour time everywhere
 defaults write NSGlobalDomain AppleICUForce24HourTime -bool true
 
 ##### Safari ##################################################################
 
-# Safari's preference domain has been sandboxed since Mojave. For ANY of this
-# to apply, Terminal (or whatever runs chezmoi) needs Full Disk Access:
-#   System Settings > Privacy & Security > Full Disk Access
-# To use, uncomment inside an `if [ -n "$fda" ]; then ... fi` like Mail's.
+# Safari's domain is sandboxed and needs Full Disk Access. To use a line,
+# uncomment it inside an `if [ -n "$fda" ]` block like Mail's.
 
 # defaults write com.apple.Safari IncludeDevelopMenu -bool true
 # defaults write com.apple.Safari IncludeInternalDebugMenu -bool true
@@ -351,25 +317,24 @@ defaults write NSGlobalDomain AppleICUForce24HourTime -bool true
 # defaults write com.apple.Safari AutoFillMiscellaneousForms -bool false
 # defaults write com.apple.Safari HomePage -string "about:blank"
 
-# Global web inspector flag; works for WebKit views outside Safari too.
+# Web inspector in all WebKit views, not just Safari
 defaults write NSGlobalDomain WebKitDeveloperExtras -bool true
 
 ##### Mail ####################################################################
 
 if [ -n "$fda" ]; then
-  # Attachments shown as icons rather than inline previews; kill reply/send
-  # animations.
+  # Attachments as icons; no reply/send animations
   defaults write com.apple.mail DisableInlineAttachmentViewing -bool true
   defaults write com.apple.mail DisableReplyAnimations -bool true
   defaults write com.apple.mail DisableSendAnimations -bool true
 
-  # Copying an address gives you just the address, not "Name <addr>".
+  # Copy just the address, not "Name <addr>"
   defaults write com.apple.mail AddressesIncludeNameOnPasteboard -bool false
 
-  # Cmd+Enter to send. \U21a9 is the return-arrow glyph; @ = Cmd.
+  # Cmd+Enter sends (@ = Cmd, \U21a9 = return)
   defaults write com.apple.mail NSUserKeyEquivalents -dict-add "Send" "@\U21a9"
 
-  # Threading and sort order in message lists.
+  # Drafts threaded, newest first
   defaults write com.apple.mail DraftsViewerAttributes -dict-add "DisplayInThreadedMode" -string "yes"
   defaults write com.apple.mail DraftsViewerAttributes -dict-add "SortedDescending" -string "yes"
   defaults write com.apple.mail DraftsViewerAttributes -dict-add "SortOrder" -string "received-date"
@@ -378,7 +343,7 @@ fi
 ##### TextEdit ################################################################
 
 if [ -n "$fda" ]; then
-  # Plain text by default, UTF-8 in and out. 4 = UTF-8.
+  # Plain text, UTF-8 (4) in and out
   defaults write com.apple.TextEdit RichText -int 0
   defaults write com.apple.TextEdit PlainTextEncoding -int 4
   defaults write com.apple.TextEdit PlainTextEncodingForWrite -int 4
@@ -386,55 +351,49 @@ fi
 
 ##### Activity Monitor ########################################################
 
-# Which processes to list.
-# 100 = All Processes, 101 = All Processes Hierarchically, 102 = My Processes,
-# 103 = System Processes, 104 = Other User Processes, 105 = Active,
-# 106 = Inactive, 107 = Windowed Processes
+# Show: 100 = all, 101 = hierarchical, 102 = mine, 103 = system,
+# 104 = other users, 105 = active, 106 = inactive, 107 = windowed
 defaults write com.apple.ActivityMonitor ShowCategory -int 100
-# Sorted by CPU usage.
+# Sort by CPU
 defaults write com.apple.ActivityMonitor SortColumn -string "CPUUsage"
 defaults write com.apple.ActivityMonitor SortDirection -int 0
 
-# Dock icon: 0 = app icon, 2 = network usage, 3 = disk activity,
-#            5 = CPU usage, 6 = CPU history
+# Dock icon: 0 = app icon, 2 = network, 3 = disk, 5 = CPU, 6 = CPU history
 defaults write com.apple.ActivityMonitor IconType -int 5
 
 ##### Photos #################################################
 
-# Don't launch Photos when a camera or phone is plugged in.
+# Don't open Photos when a camera or phone is connected
 defaults write com.apple.ImageCapture disableHotPlug -bool true
 
 ##### Time Machine ############################################################
 
-# Stop prompting to use every new external disk as a backup destination.
+# Don't offer new disks for backup
 defaults write com.apple.TimeMachine DoNotOfferNewDisksForBackup -bool true
 
 ##### Displays ################################################################
 
-# 2 = show the display list by default in Displays settings.
+# Show the display list in Displays settings
 if [ -n "$fda" ]; then
   defaults write com.apple.Displays-Settings.extension showListByDefault -int 2
 fi
 
 ##### App Store ###############################################################
 
-# Apps don't silently update.
+# No automatic app updates
 defaults write com.apple.commerce AutoUpdate -bool false
 
 ##### Apple Intelligence #######################################################
 
-# Undocumented feature-flag opt-out. The numeric ID is not stable across
-# releases. Verify with
-# defaults read com.apple.CloudSubscriptionFeatures.optIn
-# before trusting it. The supported route is System Settings > Apple
-# Intelligence.
+# Undocumented opt-out; the ID changes between releases. Verify with
+# `defaults read com.apple.CloudSubscriptionFeatures.optIn`. The supported
+# route is System Settings > Apple Intelligence.
 defaults write com.apple.CloudSubscriptionFeatures.optIn "545129924" -bool false
 
 ##### Siri & ads ##############################################################
 
-# Siri off and out of the menu bar; no personalised Apple ads. On macOS 27
-# Siri is folded into Spotlight -- check System Settings > Siri that these
-# still take.
+# Siri off and out of the menu bar; no personalised ads. macOS 27 folds Siri
+# into Spotlight, so check System Settings > Siri.
 defaults write com.apple.assistant.support "Assistant Enabled" -bool false
 if [ -n "$fda" ]; then
   defaults write com.apple.Siri StatusMenuVisible -bool false
@@ -448,11 +407,10 @@ chflags nohidden "${HOME}/Library" 2>/dev/null || true
 ##### Apply ###################################################################
 
 if [ "$(snapshot | shasum)" != "$before" ]; then
-  # Force cfprefsd to flush, then reload the settings daemon so as much as
-  # possible takes effect without a logout.
+  # Flush cfprefsd and reload settings, so most apply without a logout.
   killall cfprefsd 2>/dev/null || true
   /System/Library/PrivateFrameworks/SystemAdministration.framework/Resources/activateSettings -u 2>/dev/null || true
-  # Most of the above are only read at process start.
+  # Most settings are read only at launch.
   for app in Dock Finder SystemUIServer ControlCenter WindowManager; do
     killall "$app" >/dev/null 2>&1 || true
   done
