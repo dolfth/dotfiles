@@ -21,6 +21,21 @@ if ! head -c1 "/Library/Application Support/com.apple.TCC/TCC.db" >/dev/null 2>&
   echo "==> No Full Disk Access (e.g. over SSH): skipping Mail, TextEdit, Siri and Displays defaults"
 fi
 
+# Killing Dock and WindowManager rebuilds Spaces and makes AeroSpace re-tile
+# every window, so the restarts under "Apply" run only when one of the domains
+# those processes read actually changed. Re-writing an existing value leaves
+# the export byte-identical. A setting in a new domain read by Dock, Finder,
+# SystemUIServer, ControlCenter or WindowManager needs adding here.
+snapshot() {
+  for d in com.apple.dock com.apple.spaces com.apple.WindowManager \
+           com.apple.finder com.apple.menuextra.clock NSGlobalDomain; do
+    defaults export "$d" - 2>/dev/null || true
+  done
+  defaults -currentHost export com.apple.controlcenter - 2>/dev/null || true
+  defaults -currentHost export NSGlobalDomain - 2>/dev/null || true
+}
+before=$(snapshot | shasum)
+
 ##### Dock & Mission Control ##################################################
 
 # Hide the Dock
@@ -432,12 +447,14 @@ chflags nohidden "${HOME}/Library" 2>/dev/null || true
 
 ##### Apply ###################################################################
 
-# Force cfprefsd to flush, then reload the settings daemon so as much as
-# possible takes effect without a logout.
-killall cfprefsd 2>/dev/null || true
-/System/Library/PrivateFrameworks/SystemAdministration.framework/Resources/activateSettings -u 2>/dev/null || true
-# Most of the above are only read at process start.
-for app in Dock Finder SystemUIServer ControlCenter WindowManager; do
-  killall "$app" >/dev/null 2>&1 || true
-done
+if [ "$(snapshot | shasum)" != "$before" ]; then
+  # Force cfprefsd to flush, then reload the settings daemon so as much as
+  # possible takes effect without a logout.
+  killall cfprefsd 2>/dev/null || true
+  /System/Library/PrivateFrameworks/SystemAdministration.framework/Resources/activateSettings -u 2>/dev/null || true
+  # Most of the above are only read at process start.
+  for app in Dock Finder SystemUIServer ControlCenter WindowManager; do
+    killall "$app" >/dev/null 2>&1 || true
+  done
+fi
 {{- end -}}
