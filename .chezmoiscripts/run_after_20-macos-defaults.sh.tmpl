@@ -404,6 +404,22 @@ defaults write com.apple.AdLib allowApplePersonalizedAdvertising -bool false
 
 chflags nohidden "${HOME}/Library" 2>/dev/null || true
 
+##### Autostart / login items #################################################
+
+# noTunes blocks Apple Music auto-launching (Bluetooth / media keys); it is a
+# menu-bar agent, so register it as a login item ("Open at Login" in System
+# Settings). On macOS 13+ that list is the BTM database, whose only user-level
+# writer is the System Events API -- the same backend the Settings UI uses.
+# The check reads the list through that same API, so re-applying stays a no-op,
+# as does a machine without the app (the desktop -- the Brewfile installs no
+# GUI casks there).
+if [ -d /Applications/noTunes.app ] \
+  && ! osascript -e 'tell application "System Events" to get the path of login items' 2>/dev/null \
+    | grep -qF noTunes.app; then
+  osascript -e 'tell application "System Events" to make login item at end with properties {path:"/Applications/noTunes.app", hidden:false}' \
+    || echo "  Adding the noTunes login item failed (no GUI session, or the terminal lacks the Automation permission); add it under System Settings > General > Login Items" >&2
+fi
+
 ##### Apply ###################################################################
 
 if [ "$(snapshot | shasum)" != "$before" ]; then

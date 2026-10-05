@@ -76,7 +76,7 @@ In `.chezmoiscripts/`, which creates no directory in `~`.
 |---|---|---|
 | `run_once_before_00-homebrew.sh.tmpl` | macOS, once per machine, before files; needs a terminal | installs Homebrew if missing |
 | `run_onchange_before_10-brew-bundle.sh.tmpl` | macOS, when the rendered Brewfile changes, before files | `brew bundle` install and cleanup |
-| `run_after_20-macos-defaults.sh.tmpl` | macOS, every apply, so manual changes are reverted | user defaults: Dock, Finder, keyboard, trackpad, apps |
+| `run_after_20-macos-defaults.sh.tmpl` | macOS, every apply, so manual changes are reverted | user defaults: Dock, Finder, keyboard, trackpad, apps; registers noTunes as a login item (autostart) |
 | `run_onchange_30-macos-system-settings.sh.tmpl` | macOS, when the script changes; needs a terminal | sudo: hostname, firewall, Touch ID for sudo, guest account, login window, power, software updates, FileVault check; desktop: GPU wired memory limit (LaunchDaemon), Screen Sharing, Remote Login |
 | `run_onchange_35-herdr-plugins.sh.tmpl` | where herdr is installed, when the script changes | installs the herdr plugins the keybindings use |
 | `run_onchange_after_40-omlx-agent.sh.tmpl` | desktop, when the plist changes, after files | (re)loads the omlx LaunchAgent |
