@@ -5,12 +5,12 @@ chezmoi source for three machines:
 | Host | OS | Role |
 |---|---|---|
 | `mca` | macOS | laptop |
-| `gza` | macOS | desktop, always-on omlx server |
+| `gza` | macOS | desktop, always-on omlx and splash servers |
 | `nwa` | NixOS | server |
 
 Per-host data lives in `.chezmoidata.yaml`: the prompt accent and icon, and
 for Macs a `kind` (`laptop` | `desktop`) that selects the power profile, the
-Brewfile and the omlx server setup. Unknown hosts get the fallback accent and
+Brewfile and the omlx/splash server setup. Unknown hosts get the fallback accent and
 the laptop profile, so add a new Mac there before its first apply. Templates
 look up the current host through `.chezmoitemplates/host` and `kind`.
 
@@ -52,11 +52,11 @@ recommend this.
 | Source | Target | Notes |
 |---|---|---|
 | `.chezmoi.toml.tmpl` | `~/.config/chezmoi/chezmoi.toml` | asks for the machine name (macOS) |
-| `dot_Brewfile.tmpl` | `~/.Brewfile` | all installed software; omlx on the desktop only, which otherwise gets just CLI tools, Tailscale and Ghostty |
+| `dot_Brewfile.tmpl` | `~/.Brewfile` | all installed software; omlx and splash on the desktop only, which otherwise gets just CLI tools, Tailscale and Ghostty |
 | `dot_zshrc` | `~/.zshrc` | macOS only; starts fish |
 | `private_dot_ssh/private_config` | `~/.ssh/config` | macOS only; SSH key passphrases in the Keychain |
 | `dot_config/fish/config.fish` | `~/.config/fish/config.fish` | |
-| `dot_config/fish/exact_functions/up.fish` | `~/.config/fish/functions/up.fish` | macOS only; exact: other files in that directory are deleted; `up` updates CLT, brew and App Store apps, restarts omlx if upgraded |
+| `dot_config/fish/exact_functions/up.fish` | `~/.config/fish/functions/up.fish` | macOS only; exact: other files in that directory are deleted; `up` updates CLT, brew and App Store apps, restarts omlx and splash if upgraded |
 | `dot_config/starship.toml.tmpl` | `~/.config/starship.toml` | per-host accent |
 | `dot_config/git/config` | `~/.config/git/config` | signs commits and tags with `~/.ssh/id_ed25519` |
 | `dot_config/git/allowed_signers.tmpl` | `~/.config/git/allowed_signers` | every host's public key (`sshKeys` in `.chezmoidata.yaml`), for verifying signatures |
@@ -67,6 +67,7 @@ recommend this.
 | `dot_omlx/modify_*.json.tmpl` | `~/.omlx/` | desktop only; merge the pinned omlx settings, model settings and profiles into the files omlx writes (auth keys stay omlx's, not in this repo); server aliases for the host's `.local` and Tailscale names |
 | `dot_pi/agent/modify_settings.json` | `~/.pi/agent/settings.json` | merges into the file pi writes |
 | `private_Library/LaunchAgents/com.dolfth.omlx.plist.tmpl` | `~/Library/LaunchAgents/` | desktop only; keeps `omlx serve` running, unthrottled |
+| `private_Library/LaunchAgents/com.dolfth.splash.plist.tmpl` | `~/Library/LaunchAgents/` | desktop only; keeps `splash serve` running with Qwen3.8-27B-4bit, unthrottled |
 
 ### Scripts
 
@@ -80,9 +81,28 @@ In `.chezmoiscripts/`, which creates no directory in `~`.
 | `run_onchange_30-macos-system-settings.sh.tmpl` | macOS, when the script changes; needs a terminal | sudo: hostname, firewall, Touch ID for sudo, guest account, login window, power, software updates, FileVault check; desktop: GPU wired memory limit (LaunchDaemon), Screen Sharing, Remote Login |
 | `run_onchange_35-herdr-plugins.sh.tmpl` | where herdr is installed, when the script changes | installs the herdr plugins the keybindings use |
 | `run_onchange_after_40-omlx-agent.sh.tmpl` | desktop, when the plist changes, after files | (re)loads the omlx LaunchAgent |
+| `run_onchange_after_50-splash-agent.sh.tmpl` | desktop, when the plist changes, after files | (re)loads the splash LaunchAgent |
 
 Removing a line from a settings script stops setting that value; it does not
 restore the old one. Files that moved are deleted via `.chezmoiremove`.
+
+## Desktop services
+
+On `gza` (kind: desktop), two local-LLM servers run as LaunchAgents, both
+unthrottled (`ProcessType: Interactive`):
+
+- **omlx** (`~/.omlx`, port 8080, `::`): OpenAI/Anthropic-compatible; LAN and
+  tailnet access via its server aliases, CORS `*`. Log: `~/Library/Logs/omlx.log`.
+- **splash** (`~/Library/Application Support/Splash`, port 8000,
+  `127.0.0.1`): OpenAI/Anthropic-compatible with speculative decoding, on
+  `mlx-community/Qwen3.8-27B-4bit`. Chat page at
+  <http://127.0.0.1:8000>; loopback only — for LAN or tailnet access serve
+  with `--host 0.0.0.0 --api-key KEY --allowed-origin '*'` (or `--allowed-host
+  gza.<tailnet>`). Log: `~/Library/Logs/splash.log`.
+
+Both release their model memory after 10 idle minutes (splash's default) and
+reload on the next request, so idling costs no RAM. A fresh apply downloads
+splash's model and draft (~21 GB) on the desktop's first run.
 
 ## Desktop after a power cut
 
@@ -93,8 +113,8 @@ Unlock it over SSH (Apple silicon, macOS 26+):
 ssh dolf@gza.local   # account password; SSH keys don't work at this stage
 ```
 
-The connection drops while macOS finishes booting; then omlx, SSH and Screen
-Sharing are available.
+The connection drops while macOS finishes booting; then omlx, splash, SSH and
+Screen Sharing are available.
 
 ## Day to day
 

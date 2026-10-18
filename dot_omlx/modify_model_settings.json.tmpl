@@ -1,9 +1,10 @@
 {{ includeTemplate "modify-json-merge" . }}
 # omlx writes this file itself (UI). We pin only the model pi uses by default
-# (see dot_pi/agent/modify_settings.json) and Swift-1.5, a Qwen3.8-27B remix
-# tuned after the fastest oMLX benchmarks of its base on an M5 Pro (MTP with 3
-# draft tokens, TurboQuant KV off; MTP on for the VLM engine too, as the
-# checkpoint ships vision weights); other models keep whatever omlx has.
+# (see dot_pi/agent/modify_settings.json) and Swift, a Qwen3.8-27B fine-tune
+# (Yanun's oQ4e conversion, which keeps a loadable vision encoder) tuned after
+# the fastest oMLX benchmarks of its base on an M5 Pro (MTP with 3 draft tokens,
+# TurboQuant KV off, MTP on for the VLM engine too); other models keep whatever
+# omlx has.
 merge <<'EOF'
 {
   "models": {
@@ -60,7 +61,7 @@ merge <<'EOF'
       "is_favorite": false,
       "trust_remote_code": false
     },
-    "Swift-1.5-4bit-MLX": {
+    "Swift-Qwen3.8-27b-oQ4e-mtp": {
       "max_context_window": 262144,
       "temperature": 1.0,
       "top_p": 0.95,

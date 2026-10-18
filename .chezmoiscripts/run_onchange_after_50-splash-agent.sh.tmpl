@@ -1,0 +1,24 @@
+{{- if and (eq .chezmoi.os "darwin") (eq (includeTemplate "kind" .) "desktop") -}}
+#!/bin/bash
+set -euo pipefail
+
+# (Re)loads the splash LaunchAgent on the desktop when its plist changes:
+#   {{ includeTemplate "private_Library/LaunchAgents/com.dolfth.splash.plist.tmpl" . | sha256sum }}
+# after_: runs once files are written; in name order it would run before the
+# plist exists.
+
+PLIST="$HOME/Library/LaunchAgents/com.dolfth.splash.plist"
+DOMAIN="gui/$(id -u)"
+
+if [ ! -x /opt/homebrew/opt/splash/bin/splash ]; then
+  echo "splash not installed yet -- skipping LaunchAgent" >&2
+  exit 0
+fi
+
+launchctl bootout "$DOMAIN/com.dolfth.splash" 2>/dev/null || true
+# bootout returns before launchd drops the job; bootstrapping too early fails
+# with "5: Input/output error".
+for _ in {1..20}; do launchctl print "$DOMAIN/com.dolfth.splash" >/dev/null 2>&1 || break; sleep 0.5; done
+launchctl bootstrap "$DOMAIN" "$PLIST"
+echo "==> splash LaunchAgent loaded (log: ~/Library/Logs/splash.log)"
+{{- end -}}

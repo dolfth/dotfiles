@@ -6,14 +6,18 @@ function up --description 'Update Command Line Tools, Homebrew and App Store app
     end
 
     set -l omlx_before (brew list --versions omlx 2>/dev/null)
+    set -l splash_before (brew list --versions splash 2>/dev/null)
     brew update; and brew upgrade
     # App Store auto-updates are off (com.apple.commerce AutoUpdate).
     type -q mas; and mas upgrade
 
-    # A running omlx keeps the old version until it is restarted.
+    # A running omlx or splash keeps the old version until it is restarted.
     set -l omlx_after (brew list --versions omlx 2>/dev/null)
-    set -l agent gui/(id -u)/com.dolfth.omlx
-    if test "$omlx_before" != "$omlx_after"; and launchctl print $agent >/dev/null 2>&1
-        launchctl kickstart -k $agent
+    if test "$omlx_before" != "$omlx_after"; and launchctl print gui/(id -u)/com.dolfth.omlx >/dev/null 2>&1
+        launchctl kickstart -k gui/(id -u)/com.dolfth.omlx
+    end
+    set -l splash_after (brew list --versions splash 2>/dev/null)
+    if test "$splash_before" != "$splash_after"; and launchctl print gui/(id -u)/com.dolfth.splash >/dev/null 2>&1
+        launchctl kickstart -k gui/(id -u)/com.dolfth.splash
     end
 end

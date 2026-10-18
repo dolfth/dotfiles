@@ -10,9 +10,10 @@
 .ssh/config
 .config/fish/functions
 {{ end -}}
-{{- /* omlx runs only on the desktop (omlx server). */ -}}
+{{- /* omlx and splash run only on the desktop (local-LLM server). */ -}}
 {{ if ne (includeTemplate "kind" .) "desktop" -}}
 .omlx
 Library/LaunchAgents/com.dolfth.omlx.plist
+Library/LaunchAgents/com.dolfth.splash.plist
 {{ end -}}
 README.md

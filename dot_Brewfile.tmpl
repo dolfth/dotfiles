@@ -2,9 +2,9 @@
 # Applied by run_onchange_before_10-brew-bundle.sh, which re-runs whenever the
 # rendered file changes.
 #
-# A `kind: desktop` host (see .chezmoidata.yaml) is an omlx server: it gets the
-# CLI tools, omlx, tailscale and ghostty, not the rest of the GUI apps. Anything not
-# rendered here gets UNINSTALLED by `brew bundle cleanup`.
+# A `kind: desktop` host (see .chezmoidata.yaml) is a local-LLM server: it gets
+# the CLI tools, omlx, splash, tailscale and ghostty, not the rest of the GUI
+# apps. Anything not rendered here gets UNINSTALLED by `brew bundle cleanup`.
 {{- $desktop := eq (includeTemplate "kind" .) "desktop" }}
 #
 # To capture what is ALREADY installed on the machine before trusting this list:
@@ -35,6 +35,11 @@ brew "starship"
 # Run by the com.dolfth.omlx LaunchAgent, not `brew services`.
 tap "jundot/omlx", "https://github.com/jundot/omlx"
 brew "jundot/omlx/omlx", trusted: true
+
+# --- splash (desktop only) ---------------------------------------------------
+# Local inference engine; run by the com.dolfth.splash LaunchAgent.
+tap "incoai/tap", "https://github.com/incoai/homebrew-tap"
+brew "incoai/tap/splash", trusted: true
 {{- end }}
 
 # --- Python ------------------------------------------------------------------

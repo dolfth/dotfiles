@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  splash engine on the desktop (kind: desktop in .chezmoidata.yaml; ignored
+  elsewhere via .chezmoiignore). Keeps `splash serve` running with
+  mlx-community/Qwen3.8-27B-4bit; host, port (127.0.0.1:8000), memory and
+  idle-release are splash's own defaults, and the first start downloads the
+  model and its draft (~21 GB) into the Hugging Face cache, reused afterwards.
+  Used instead of `brew services` because a launchd job without a ProcessType
+  is throttled for CPU and I/O. Interactive = never throttled, like a
+  foreground app. Loaded by run_onchange_after_50-splash-agent.sh.tmpl.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.dolfth.splash</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/opt/homebrew/opt/splash/bin/splash</string>
+    <string>serve</string>
+    <string>--model</string>
+    <string>mlx-community/Qwen3.8-27B-4bit</string>
+  </array>
+  <key>ProcessType</key>
+  <string>Interactive</string>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>WorkingDirectory</key>
+  <string>{{ .chezmoi.homeDir }}</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/opt/homebrew/sbin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>{{ .chezmoi.homeDir }}/Library/Logs/splash.log</string>
+  <key>StandardErrorPath</key>
+  <string>{{ .chezmoi.homeDir }}/Library/Logs/splash.log</string>
+</dict>
+</plist>
