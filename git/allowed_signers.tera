@@ -1,0 +1,5 @@
+# Keys trusted for `git log --show-signature` and `git verify-commit`.
+# One line per host key; the ssh_keys var in mise.toml holds them
+# newline-separated, so no list value is needed (vars are scalars only).
+{% for key in vars.ssh_keys | trim | split(pat="\n") %}12677636+dolfth@users.noreply.github.com namespaces="git" {{ key }}
+{% endfor %}

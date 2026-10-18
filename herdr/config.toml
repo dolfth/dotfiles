@@ -1,0 +1,50 @@
+# Managed by mise rather than in the NixOS flake because herdr writes this
+# file itself: `herdr config reset-keys` rewrites it and drops a backup beside
+# it, and the first-run wizard persists its answer here. A read-only store
+# symlink breaks both.
+
+# The first-run notification wizard would try to persist its answer back
+# into this read-only file, so opt out up front.
+onboarding = false
+
+# prefix is ctrl+b. These commands run the sandboxed wrappers; `type =
+# "pane"` gives a real terminal pane that closes when the agent exits.
+[[keys.command]]
+key = "prefix+alt+c"
+type = "pane"
+command = "claude"
+description = "sandboxed claude-code"
+
+[[keys.command]]
+key = "prefix+alt+p"
+type = "pane"
+command = "pi"
+description = "sandboxed pi"
+
+[[keys.command]]
+key = "prefix+alt+o"
+type = "pane"
+command = "omp"
+description = "sandboxed oh-my-pi"
+# herdr plugin install ChmaraX/herdr-nvim (see the herdr-plugins mise task):
+# nvim sidebar + file picker.
+# alt+e/alt+f, not e/o: herdr 0.8.2 already binds prefix+e (edit_scrollback)
+# and prefix+o (open_notification_target); the alt+ chords are free.
+[[keys.command]]
+key = "prefix+alt+e"
+type = "plugin_action"
+command = "chmarax.herdr-nvim.toggle"
+description = "nvim sidebar"
+
+[[keys.command]]
+key = "prefix+alt+f"
+type = "plugin_action"
+command = "chmarax.herdr-nvim.pick-file"
+description = "open file from agent output"
+# `agent_panel_sort` is herdr's default, but its UI persists it to disk on
+# first use; pin the default here so the persisted file matches source and
+# `mise dot status` does not flag it as changed. "spaces" groups the agent
+# panel by workspace; the alternative, "priority", is an attention queue.
+[ui]
+agent_panel_sort = "spaces"
+
