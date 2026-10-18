@@ -26,15 +26,16 @@ tailnet = "foxhound-insen.ts.net"
 # module overrides with 127.0.0.1.
 omp_base = "gza"
 
-# Public SSH keys, one per host, as listed on https://github.com/dolfth.keys.
-# Each host signs its commits with its own ~/.ssh/id_ed25519; these fill
-# ~/.config/git/allowed_signers so every host can verify all three. Add a new
-# machine's key here as well as on GitHub (as an authentication AND a signing
-# key).
+# Public SSH keys, mirrored from https://github.com/dolfth.keys (that page
+# is the canonical record: when a host rotates its key or a new machine
+# joins, its key goes on the page and here). Each host signs its commits
+# with its own ~/.ssh/id_ed25519; these fill ~/.config/git/allowed_signers
+# so every host can verify every other's.
 ssh_keys = """
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBA2RcuVWjT5vlSHUdcNi8hWcG5xiRI1BJcHjlWq1dqY
-ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINzF3Gb0SGSSL6C4xYZ/rNfVrhEcWTgRbHnXUecY62s2
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEburPU7lpE3tnJac9R5jAbMTDqb0FA02Jqt0qVsVeUh
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINzF3Gb0SGSSL6C4xYZ/rNfVrhEcWTgRbHnXUecY62s2
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPNrEPG5Srx81xQTYTGqnZulXV4fWZQA/ooLJsUx856N
 """
 
 [dotfiles]
