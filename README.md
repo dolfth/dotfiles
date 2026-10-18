@@ -5,7 +5,7 @@ chezmoi source for three machines:
 | Host | OS | Role |
 |---|---|---|
 | `mca` | macOS | laptop |
-| `gza` | macOS | desktop, always-on omlx and splash servers |
+| `gza` | macOS | desktop, always-on omlx and splash servers, omp |
 | `nwa` | NixOS | server |
 
 Per-host data lives in `.chezmoidata.yaml`: the prompt accent and icon, and
@@ -52,7 +52,7 @@ recommend this.
 | Source | Target | Notes |
 |---|---|---|
 | `.chezmoi.toml.tmpl` | `~/.config/chezmoi/chezmoi.toml` | asks for the machine name (macOS) |
-| `dot_Brewfile.tmpl` | `~/.Brewfile` | all installed software; omlx and splash on the desktop only, which otherwise gets just CLI tools, Tailscale and Ghostty |
+| `dot_Brewfile.tmpl` | `~/.Brewfile` | all installed software; omlx, splash and omp on the desktop only, which otherwise gets just CLI tools, Tailscale and Ghostty |
 | `dot_zshrc` | `~/.zshrc` | macOS only; starts fish |
 | `private_dot_ssh/private_config` | `~/.ssh/config` | macOS only; SSH key passphrases in the Keychain |
 | `dot_config/fish/config.fish` | `~/.config/fish/config.fish` | |

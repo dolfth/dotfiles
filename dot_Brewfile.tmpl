@@ -3,8 +3,8 @@
 # rendered file changes.
 #
 # A `kind: desktop` host (see .chezmoidata.yaml) is a local-LLM server: it gets
-# the CLI tools, omlx, splash, tailscale and ghostty, not the rest of the GUI
-# apps. Anything not rendered here gets UNINSTALLED by `brew bundle cleanup`.
+# the CLI tools, omlx, splash, omp, tailscale and ghostty, not the rest of the
+# GUI apps. Anything not rendered here gets UNINSTALLED by `brew bundle cleanup`.
 {{- $desktop := eq (includeTemplate "kind" .) "desktop" }}
 #
 # To capture what is ALREADY installed on the machine before trusting this list:
@@ -40,6 +40,13 @@ brew "jundot/omlx/omlx", trusted: true
 # Local inference engine; run by the com.dolfth.splash LaunchAgent.
 tap "incoai/tap", "https://github.com/incoai/homebrew-tap"
 brew "incoai/tap/splash", trusted: true
+
+# --- omp (desktop only) -----------------------------------------------------
+# Terminal coding agent; gza is the headless-reachable machine, so it hosts
+# the omp session that verifies the macOS defaults. First run: `omp` to pick a
+# provider.
+tap "can1357/tap", "https://github.com/can1357/homebrew-tap"
+brew "can1357/tap/omp", trusted: true
 {{- end }}
 
 # --- Python ------------------------------------------------------------------
