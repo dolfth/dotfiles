@@ -1,0 +1,69 @@
+# mca: the laptop. The GUI machine. Select with env = ["mac", "mca"].
+
+[vars]
+host = "mca"
+kind = "laptop"
+accent = "color_purple"
+icon = "\uF179"  # nf-fa-apple
+
+[env]
+HOST = "mca"
+KIND = "laptop"
+
+[bootstrap.brew.taps]
+"chamburr/tap" = "https://github.com/chamburr/homebrew-tap"
+"nikitabobko/tap" = "https://github.com/nikitabobko/homebrew-tap"
+# Window borders; aerospace.toml starts it (after-startup-command).
+"FelixKratz/formulae" = "https://github.com/FelixKratz/homebrew-formulae"
+
+[bootstrap.packages]
+# GUI casks -- the desktop runs headless, so these are laptop only (in the
+# old dot_Brewfile they sat under `{{ if not $desktop }}`).
+"brew-cask:balenaetcher" = "latest"
+"brew-cask:brave-browser" = "latest"
+"brew-cask:chamburr/tap/glance" = "latest"
+"brew-cask:citrix-workspace" = "latest"
+"brew-cask:grandperspective" = "latest"
+"brew-cask:nikitabobko/tap/aerospace" = "latest"
+"brew:FelixKratz/formulae/borders" = "latest"
+"brew-cask:iina" = "latest"
+"brew-cask:imageoptim" = "latest"
+"brew-cask:linearmouse" = "latest"
+"brew-cask:lulu" = "latest"
+"brew-cask:monitorcontrol" = "latest"
+"brew-cask:notunes" = "latest"
+"brew-cask:obsidian" = "latest"
+"brew-cask:soulseek" = "latest"
+"brew-cask:the-unarchiver" = "latest"
+"brew-cask:utm" = "latest"
+"brew-cask:vscodium" = "latest"
+"brew-cask:whatcable" = "latest"
+# Background sync, laptop only (it was uninstalled from the desktop).
+"brew:syncthing" = "latest"
+
+# App Store -- the IDs come from `mas list`, or the trailing digits of the
+# App Store URL. Requires being signed in, and the app must already be in
+# your purchase history.
+"mas:1435127111" = "latest"   # KeePassium
+"mas:361285480" = "latest"    # Keynote
+"mas:361304891" = "latest"    # Numbers
+"mas:6720708363" = "latest"   # Obsidian Web Clipper
+"mas:361309726" = "latest"    # Pages
+"mas:1289583905" = "latest"   # Pixelmator Pro
+"mas:6745342698" = "latest"   # uBlock Origin Lite
+
+# The old `brew "syncthing", restart_service: :changed`: a mise user service.
+# mise runs `command` directly (no shell), so the path is absolute;
+# `restart` maps to launchd's KeepAlive, the same restart the brew-services
+# formula relied on. Logs go where mise puts user-service logs, not the old
+# Homebrew/var/log/syncthing.log.
+[bootstrap.services.syncthing]
+scope = "user"
+command = "{{ system_brew_prefix }}/opt/syncthing/bin/syncthing serve --no-browser --no-restart"
+working_directory = "{{ env.HOME }}"
+restart = "on-failure"
+enabled = true
+# The macOS-shared dotfiles (~/.zshrc, ~/.ssh/config, up.fish) deploy from
+# mise.mac.toml: the old .chezmoiignore shipped them on both Macs.
+[dotfiles]
+# The old brew-services agent, replaced by the mise user service above.
