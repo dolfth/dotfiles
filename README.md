@@ -10,7 +10,9 @@ chezmoi source for three machines:
 
 Per-host data lives in `.chezmoidata.yaml`: the prompt accent and icon, and
 for Macs a `kind` (`laptop` | `desktop`) that selects the power profile, the
-Brewfile and the omlx/splash server setup. Unknown hosts get the fallback accent and
+Brewfile and the omlx/splash server setup. An `omp` flag marks the hosts that
+run the omp agent (gza and nwa) so its config deploys there and is ignored on
+the laptop. Unknown hosts get the fallback accent and
 the laptop profile, so add a new Mac there before its first apply. Templates
 look up the current host through `.chezmoitemplates/host` and `kind`.
 
@@ -66,6 +68,8 @@ recommend this.
 | `dot_config/linearmouse/create_linearmouse.json` | `~/.config/linearmouse/linearmouse.json` | written only if missing; after that LinearMouse owns it |
 | `dot_omlx/modify_*.json.tmpl` | `~/.omlx/` | desktop only; merge the pinned omlx settings, model settings and profiles into the files omlx writes (auth keys stay omlx's, not in this repo); server aliases for the host's `.local` and Tailscale names |
 | `dot_pi/agent/modify_settings.json` | `~/.pi/agent/settings.json` | merges into the file pi writes |
+| `dot_omp/agent/models.yml.tmpl` | `~/.omp/agent/models.yml` | the omlx + splash providers omp talks to; `baseUrl` is `127.0.0.1` on gza, `gza` (Tailscale) elsewhere; whole file -- a UI model edit resets on the next update, so edit this source |
+| `dot_omp/agent/config.yml` | `~/.omp/agent/config.yml` | omp's own settings (theme, composer shape, thinking level); whole file -- a `/settings` change resets on the next update, so edit this source |
 | `private_Library/LaunchAgents/com.dolfth.omlx.plist.tmpl` | `~/Library/LaunchAgents/` | desktop only; keeps `omlx serve` running, unthrottled |
 | `private_Library/LaunchAgents/com.dolfth.splash.plist.tmpl` | `~/Library/LaunchAgents/` | desktop only; keeps `splash serve` running with Qwen3.8-27B-4bit, unthrottled |
 

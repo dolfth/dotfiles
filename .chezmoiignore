@@ -16,4 +16,10 @@
 Library/LaunchAgents/com.dolfth.omlx.plist
 Library/LaunchAgents/com.dolfth.splash.plist
 {{ end -}}
+{{- /* omp config: deploy only where omp is actually installed -- the `omp` flag
+       in .chezmoidata.yaml (gza via brew, nwa via nix). The laptop runs no omp,
+       so .omp is ignored there to leave no dead config. */ -}}
+{{ if not (dig (includeTemplate "host" .) "omp" false .hosts) -}}
+.omp
+{{ end -}}
 README.md

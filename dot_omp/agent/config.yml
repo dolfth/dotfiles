@@ -1,0 +1,17 @@
+# omp's agent settings (theme, composer shape, thinking level, ...).
+# Moved into the repo alongside models.yml so a fresh box comes up configured.
+#
+# This is a whole file, owned by the repo. omp writes here too -- `/settings`
+# and the model picker persist into it -- so a local change is a local change:
+# the next `chezmoi update` resets it to this content. To make a lasting change
+# edit this source (or move a key into a `modify_` merge if it must survive).
+composer:
+  shape: pi
+theme:
+  dark: titanium
+  light: light
+setupVersion: 2
+symbolPreset: nerd
+defaultThinkingLevel: medium
+task:
+  maxRecursionDepth: 0

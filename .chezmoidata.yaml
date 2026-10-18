@@ -2,6 +2,9 @@
 # the `hostThemes` attrset that used to live in the NixOS fish module.
 # kind (Macs only): laptop | desktop, picks the power profile in
 # run_onchange_30-macos-system-settings.sh.tmpl.
+# omp: hosts that run the omp agent. The agent binary is installed wherever
+# omp exists -- gza via brew (the desktop), nwa via nix -- and the config
+# files in dot_omp deploy there and are ignored everywhere else.
 # wiredLimitMb (desktops only): iogpu.wired_limit_mb, the GPU wired-memory
 # ceiling omlx reports for this machine's RAM; set by the same script.
 #
@@ -12,6 +15,7 @@ tailnet: foxhound-insen.ts.net
 
 hosts:
   nwa:
+    omp: true
     accent: color_green
     icon: "\U000F048B"   # nf-md-server
   mca:
@@ -19,6 +23,7 @@ hosts:
     accent: color_purple
     icon: "\uF179"       # nf-fa-apple
   gza:
+    omp: true
     kind: desktop
     wiredLimitMb: 45056
     accent: color_red
