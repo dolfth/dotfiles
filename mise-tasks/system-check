@@ -1,0 +1,253 @@
+#!/usr/bin/env bash
+# macOS system settings, the sudo part of the old run_onchange_30 script,
+# plus the Full Disk Access-gated defaults from the old run_after_20 script,
+# the AppleInterfaceStyle delete, the nohidden ~/Library flag, and the
+# Dock/Finder/... restart when a defaults domain they read changed.
+#
+# Runs from the bootstrap final hook. The sandboxed-app defaults and the
+# restart apply without sudo (user-level); the system part is TTY-gated like
+# the old script, so an unattended bootstrap skips it instead of hanging on
+# a password prompt. Deleting a line stops setting it; it does not restore
+# the old value.
+
+set -uo pipefail   # no -e: one failure shouldn't abort the rest
+
+if [ "$(uname -s)" != "Darwin" ]; then
+  echo "system-check is macOS-only; skipping."
+  exit 0
+fi
+
+##### Sandboxed app defaults (need Full Disk Access) ##########################
+#
+# Sandboxed apps (Mail, TextEdit, Siri, Displays) keep their domain in a
+# container only Full Disk Access can write, which SSH sessions lack. Reading
+# the TCC database needs the same access, so it doubles as the check.
+fda=1
+if ! head -c1 "/Library/Application Support/com.apple.TCC/TCC.db" >/dev/null 2>&1; then
+  fda=
+  echo "==> No Full Disk Access (e.g. over SSH): skipping Mail, TextEdit, Siri and Displays defaults"
+fi
+
+if [ -n "$fda" ]; then
+  # Mail: attachments as icons; no reply/send animations
+  defaults write com.apple.mail DisableInlineAttachmentViewing -bool true
+  defaults write com.apple.mail DisableReplyAnimations -bool true
+  defaults write com.apple.mail DisableSendAnimations -bool true
+  # Copy just the address, not "Name <addr>"
+  defaults write com.apple.mail AddressesIncludeNameOnPasteboard -bool false
+  # Cmd+Enter sends (@ = Cmd, \U21a9 = return); dict-add keeps the other keys
+  defaults write com.apple.mail NSUserKeyEquivalents -dict-add "Send" "@\U21a9"
+  # Drafts threaded, newest first
+  defaults write com.apple.mail DraftsViewerAttributes -dict-add "DisplayInThreadedMode" -string "yes"
+  defaults write com.apple.mail DraftsViewerAttributes -dict-add "SortedDescending" -string "yes"
+  defaults write com.apple.mail DraftsViewerAttributes -dict-add "SortOrder" -string "received-date"
+  # TextEdit: plain text, UTF-8 (4) in and out
+  defaults write com.apple.TextEdit RichText -int 0
+  defaults write com.apple.TextEdit PlainTextEncoding -int 4
+  defaults write com.apple.TextEdit PlainTextEncodingForWrite -int 4
+  # Displays: show the display list in Displays settings
+  defaults write com.apple.Displays-Settings.extension showListByDefault -int 2
+  # Siri out of the menu bar (macOS 27 folds Siri into Spotlight; the rest is
+  # declarative in mise.mac.toml)
+  defaults write com.apple.Siri StatusMenuVisible -bool false
+fi
+
+# Manual light or dark mode conflicts with the automatic switch (declarative
+# in mise.mac.toml); `defaults delete` exits 1 when the key is already gone.
+if defaults read NSGlobalDomain AppleInterfaceStyle >/dev/null 2>&1; then
+  defaults delete NSGlobalDomain AppleInterfaceStyle
+fi
+
+# Show ~/Library in Finder.
+chflags nohidden "${HOME}/Library" 2>/dev/null || true
+
+##### UI restart (only when a domain they read changed) ######################
+#
+# Killing Dock and WindowManager rebuilds Spaces and makes AeroSpace re-tile,
+# so only restart them if the defaults bootstrap just wrote actually changed
+# what they read. The pre-packages hook (defaults-snapshot) saved the hash.
+snap() {
+  for d in com.apple.dock com.apple.spaces com.apple.WindowManager \
+           com.apple.finder com.apple.menuextra.clock NSGlobalDomain; do
+    defaults export "$d" - 2>/dev/null || true
+  done
+  defaults -currentHost export com.apple.controlcenter - 2>/dev/null || true
+  defaults -currentHost export NSGlobalDomain - 2>/dev/null || true
+}
+before_file="${TMPDIR:-/tmp}/mise-defaults-snapshot"
+if [ -f "$before_file" ] && [ "$(snap | shasum | awk '{print $1}')" != "$(cat "$before_file" 2>/dev/null)" ]; then
+  # Flush cfprefsd and reload settings, so most apply without a logout.
+  killall cfprefsd 2>/dev/null || true
+  /System/Library/PrivateFrameworks/SystemAdministration.framework/Resources/activateSettings -u 2>/dev/null || true
+  # Most settings are read only at launch.
+  for app in Dock Finder SystemUIServer ControlCenter WindowManager; do
+    killall "$app" >/dev/null 2>&1 || true
+  done
+fi
+
+##### Sudo part (TTY-gated) ###################################################
+
+if [ ! -t 0 ]; then
+  echo "==> Skipping system settings (no TTY; run 'mise run system-check' in a terminal)"
+  exit 0
+fi
+
+echo "==> System settings (sudo required)"
+sudo -v || { echo "No sudo; skipping."; exit 0; }
+
+##### Touch ID for sudo #######################################################
+#
+# From Apple's template when macOS ships one.
+
+if [ ! -f /etc/pam.d/sudo_local ]; then
+  if [ -f /etc/pam.d/sudo_local.template ]; then
+    sudo sed 's/^#auth/auth/' /etc/pam.d/sudo_local.template \
+      | sudo tee /etc/pam.d/sudo_local >/dev/null
+  else
+    printf 'auth       sufficient     pam_tid.so\n' \
+      | sudo tee /etc/pam.d/sudo_local >/dev/null
+  fi
+  echo "  Touch ID for sudo enabled"
+fi
+
+##### Firewall ################################################################
+#
+# Block unsolicited inbound connections; stealth mode ignores probes.
+
+sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setglobalstate on >/dev/null
+sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setstealthmode on >/dev/null
+
+# Block ALL inbound (breaks file sharing, AirDrop, SSH):
+# sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setblockall on >/dev/null
+
+##### Guest account ###########################################################
+#
+# Disable and remove.
+
+sudo defaults write /Library/Preferences/com.apple.loginwindow GuestEnabled -bool false
+# dscl reports errors on stdout, so check first.
+if dscl . -read /Users/Guest >/dev/null 2>&1; then
+  sudo dscl . -delete /Users/Guest
+fi
+
+##### Login window ############################################################
+#
+# Username field instead of the account picker.
+sudo defaults write /Library/Preferences/com.apple.loginwindow SHOWFULLNAME -bool true
+
+##### Power management ########################################################
+#
+# By the host module's KIND (laptop | desktop); unknown hosts get the laptop
+# profile.
+
+case "${KIND:-laptop}" in
+  desktop)
+    # Desktop (omlx server): only the display sleeps. No standby, hibernation,
+    # Power Nap or Low Power Mode. Restart after a power cut; wake on LAN and
+    # TCP keepalive as backups.
+    sudo pmset -a sleep 0 disksleep 0 standby 0 hibernatemode 0 \
+      powernap 0 lowpowermode 0 displaysleep 15 autorestart 1 womp 1 tcpkeepalive 1
+    ;;
+  *)
+    # Laptop: sleep when idle, sooner on battery than on AC.
+    sudo pmset -b sleep 5 displaysleep 5 disksleep 10 standby 1 powernap 0
+    sudo pmset -c sleep 10 displaysleep 10 disksleep 10 powernap 0
+    ;;
+esac
+# Lock on wake is askForPassword in the declarative defaults; pmset can't.
+
+##### Hostname ################################################################
+# All names set to HOST (the module var), else the current hostname.
+H="${HOST:-$(scutil --get ComputerName)}"
+sudo scutil --set ComputerName "$H"
+sudo scutil --set HostName "$H"
+sudo scutil --set LocalHostName "$H"
+sudo defaults write /Library/Preferences/SystemConfiguration/com.apple.smb.server \
+  NetBIOSName -string "$H"
+
+##### Software Update #########################################################
+#
+# Check for macOS updates, but never download or install them unasked (that
+# is how Tahoe arrived). Install by hand: `softwareupdate -l` / `-i <label>`.
+# Security stays automatic:
+#   - ConfigDataInstall: XProtect, Gatekeeper and malware data; no restart.
+#   - CriticalUpdateInstall: Rapid Security Responses; at most a short restart.
+# Point releases (26.x.y) are macOS updates, even security-only ones.
+sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticCheckEnabled -bool true
+sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticDownload -bool false
+sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticallyInstallMacOSUpdates -bool false
+sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate ConfigDataInstall -bool true
+sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate CriticalUpdateInstall -bool true
+
+if [ "${KIND:-laptop}" = "desktop" ]; then
+
+  ##### GPU wired memory ######################################################
+  #
+  # macOS caps GPU-wired memory, and so the model size omlx can load. Raise
+  # it to omlx's ceiling for this host (WIRED_LIMIT_MB from the gza module);
+  # more can get omlx killed mid-load, stranding memory until a reboot. The
+  # sysctl resets at boot, so a LaunchDaemon reapplies it; it is also set now.
+  # (The old com.dolfth.wired-limit daemon, renamed for the migration.)
+  W="${WIRED_LIMIT_MB:?WIRED_LIMIT_MB is not set; add it to the host module (the old .chezmoidata.yaml wiredLimitMb)}"
+  WIRED="sysctl -w iogpu.wired_limit_mb=${W}"
+  sudo tee /Library/LaunchDaemons/dev.mise.wired-limit.plist >/dev/null <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>dev.mise.wired-limit</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/sh</string>
+    <string>-c</string>
+    <string>$WIRED</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+</dict>
+</plist>
+EOF
+  sudo launchctl bootout system/dev.mise.wired-limit 2>/dev/null || true
+  sudo launchctl bootstrap system /Library/LaunchDaemons/dev.mise.wired-limit.plist 2>/dev/null || true
+  sudo sh -c "$WIRED" >/dev/null
+
+  ##### Screen Sharing ########################################################
+  #
+  # vnc://gza.local or the tailnet name. Access: System Settings > General >
+  # Sharing > Screen Sharing (admins by default). If it doesn't show as on
+  # there, toggle it once by hand.
+  sudo launchctl enable system/com.apple.screensharing
+  sudo launchctl bootstrap system /System/Library/LaunchDaemons/com.apple.screensharing.plist 2>/dev/null || true
+
+  ##### Remote Login (SSH) ####################################################
+  #
+  # Also the way back after a power cut: on Apple silicon with macOS 26+, a
+  # minimal sshd runs before FileVault unlocks. `ssh dolf@gza.local` with the
+  # account password (keys don't work there) unlocks the disk; SSH drops and
+  # the Mac boots normally. See `man apple_ssh_and_filevault`. So password
+  # auth must stay on. launchctl, as `systemsetup -setremotelogin on` needs
+  # Full Disk Access.
+  sudo launchctl enable system/com.openssh.sshd
+  sudo launchctl bootstrap system /System/Library/LaunchDaemons/ssh.plist 2>/dev/null || true
+
+fi
+
+##### FileVault ################################################################
+#
+# Not automatable: `fdesetup enable` handles the recovery key interactively,
+# and the key must not go to stdout.
+
+if ! fdesetup status | grep -q "FileVault is On"; then
+  echo "  FileVault is OFF. Enable it: System Settings > Privacy & Security"
+fi
+
+##### Manual checklist ########################################################
+#
+# Not scriptable (the TCC database is SIP-protected):
+#   - Full Disk Access for the terminal (~/Library/Mail, /dev)
+#   - Accessibility for window managers and hotkey tools
+#   - Screen Recording for capture tools
+#   - iCloud sign-in and services
+
+echo "==> System settings applied."

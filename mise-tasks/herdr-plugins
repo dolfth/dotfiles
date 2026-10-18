@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Herdr plugins the herdr keybindings and nvim config rely on:
+#   - ChmaraX/herdr-nvim: nvim sidebar and picker for files the agent touched
+#   - lmilojevicc/herdr-tab-rename: names each tab after its focused pane's
+#     directory, leaving manual names alone; autostarts with Herdr
+# Re-runs on every bootstrap; reinstalling replaces the checkout, which is
+# what we want. (The old run_onchange_35-herdr-plugins.sh ran on script
+# change; a final hook runs on every bootstrap, so keep this cheap.)
+set -uo pipefail   # no -e: one failed plugin shouldn't abort the bootstrap
+
+if [ "$(uname -s)" != "Darwin" ]; then
+  exit 0
+fi
+
+if ! command -v herdr >/dev/null 2>&1; then
+  echo "herdr not installed -- skipping herdr plugin install."
+  exit 0
+fi
+
+echo "==> Installing herdr plugins"
+herdr plugin install ChmaraX/herdr-nvim --yes || echo "  herdr-nvim: install failed"
+herdr plugin install lmilojevicc/herdr-tab-rename --yes || echo "  herdr-tab-rename: install failed"

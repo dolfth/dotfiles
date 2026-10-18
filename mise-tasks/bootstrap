@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+# Cutover from the old com.dolfth.* LaunchAgents to the dev.mise.* agents
+# (the com.dolfth.* plist files are removed by the gza module's absent
+# dotfile entries). Runs from the bootstrap task slot on every bootstrap,
+# like the old run_onchange_after_40/50 scripts did: register the new agents,
+# boot out the old jobs launchd still has loaded, and kickstart the new ones.
+#
+# It never kills processes of its own: an agent whose port is held by
+# something else (an interactive `splash serve` in a terminal, say) just
+# retries under KeepAlive until the port frees up.
+#
+# Safe everywhere: no-op off macOS and wherever the agents are not declared
+# (mca, nwa) -- the plists are only written on gza by bootstrap's
+# macos-launchd-agents part, which runs before this task.
+
+set -uo pipefail   # no -e: one agent failing must not abort the other
+
+if [ "$(uname -s)" != "Darwin" ]; then
+  echo "agent-cutover is macOS-only; skipping."
+  exit 0
+fi
+
+gui="gui/$(id -u)"
+for agent in dev.mise.omlx dev.mise.splash; do
+  plist="${HOME}/Library/LaunchAgents/${agent}.plist"
+  if [ ! -f "$plist" ]; then
+    continue   # agents not declared on this machine (the gza module owns them)
+  fi
+
+  # Register (idempotent: already-loaded jobs are replaced).
+  launchctl bootstrap "$gui" "$plist" 2>/dev/null \
+    || launchctl kickstart -k "$gui/$agent" 2>/dev/null || true
+
+  # The old jobs from the com.dolfth.* days, if launchd still has them
+  # loaded (their plist files are already gone).
+  old="com.dolfth.${agent#dev.mise.}"
+  launchctl bootout "$gui/$old" 2>/dev/null || true
+done
+
+# Report without killing: a port still held by another process means the
+# agent will pick it up on its own when that process exits.
+for pair in "omlx:8080" "splash:8000"; do
+  name="${pair%%:*}"
+  port="${pair#*:}"
+  pid=$(lsof -nP -iTCP:"$port" -sTCP:LISTEN -t 2>/dev/null | head -1)
+  if [ -n "$pid" ] && [ -f "${HOME}/Library/LaunchAgents/dev.mise.${name}.plist" ]; then
+    owner=$(ps -o comm= -p "$pid" 2>/dev/null || echo "?")
+    jobpid=$(launchctl print "$gui/dev.mise.${name}" 2>/dev/null | awk '/pid/ {print $2; exit}')
+    if [ -n "${jobpid:-}" ] && [ "$pid" = "$jobpid" ]; then
+      echo "  ${name}: agent owns port ${port}"
+    else
+      echo "  ${name}: port ${port} held by ${owner} (pid ${pid}); the agent will take over when it exits"
+    fi
+  fi
+done
+
+echo "agent cutover done (logs: ~/Library/Logs/omlx.log, ~/Library/Logs/splash.log)"
