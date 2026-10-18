@@ -1,0 +1,5 @@
+# Per-machine config: which environment modules to load (see the README).
+miserc.local.toml
+# mise's own runtime state.
+*.log
+mise.lock

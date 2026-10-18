@@ -1,0 +1,21 @@
+# nwa: the NixOS server. Select with env = ["nwa"].
+#
+# The NixOS flake still manages the OS itself (home-manager writes its fish
+# functions into ~/.config/fish/functions, so this repo deploys only the
+# config there -- see the base mise.toml). mise on nwa comes from Nix, not
+# from a package list here.
+
+[vars]
+host = "nwa"
+accent = "color_green"
+icon = "\U000F048B"  # nf-md-server
+
+[env]
+HOST = "nwa"
+KIND = "server"
+
+[dotfiles]
+# omp: the binary is installed by Nix; the config deploys here. (The old
+# .chezmoiignore deployed .omp only to the omp-flagged hosts: gza and nwa.)
+"~/.omp/agent/config.yml" = "omp/agent/config.yml"
+"~/.omp/agent/models.yml" = { source = "omp/agent/models.yml.tera", mode = "template" }
