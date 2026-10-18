@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Saves a hash of the defaults domains the UI reads, taken BEFORE bootstrap
+# writes the declarative defaults. system-check (final hook) compares against
+# it: re-writing a value leaves the export unchanged, so a match means the
+# Dock/Finder/... restart can be skipped. (The old run_after_20 script did
+# the same with an in-script before/after snapshot.)
+set -euo pipefail
+
+if [ "$(uname -s)" != "Darwin" ]; then
+  exit 0
+fi
+
+snap() {
+  for d in com.apple.dock com.apple.spaces com.apple.WindowManager \
+           com.apple.finder com.apple.menuextra.clock NSGlobalDomain; do
+    defaults export "$d" - 2>/dev/null || true
+  done
+  defaults -currentHost export com.apple.controlcenter - 2>/dev/null || true
+  defaults -currentHost export NSGlobalDomain - 2>/dev/null || true
+}
+
+snap | shasum | awk '{print $1}' > "${TMPDIR:-/tmp}/mise-defaults-snapshot"

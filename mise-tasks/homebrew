@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# Installs Homebrew before the brew packages step needs it. Runs on every
+# bootstrap (the old run_once_before_00-homebrew.sh ran once per machine):
+# a Mac with Homebrew just exits. The README bootstrap already installed the
+# Command Line Tools, so the installer skips them.
+set -euo pipefail
+
+if [ "$(uname -s)" != "Darwin" ]; then
+  exit 0
+fi
+
+if command -v brew >/dev/null 2>&1 || [ -x /opt/homebrew/bin/brew ]; then
+  exit 0
+fi
+
+# The installer needs sudo and a keypress.
+if [ ! -t 0 ]; then
+  echo "Homebrew is not installed and there is no terminal to install it." >&2
+  echo "Run 'mise bootstrap' in a terminal." >&2
+  exit 1
+fi
+
+echo "==> Installing Homebrew"
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"

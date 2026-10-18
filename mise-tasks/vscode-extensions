@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# The VS Code (vscodium) extensions the laptop uses -- the old dot_Brewfile's
+# `vscode` directive, which ran when the Brewfile changed. A final hook runs
+# on every bootstrap instead; installing an already-present extension is a
+# quick no-op, so that is acceptable. (The mca module declares this in its
+# bootstrap hooks; on machines without vscodium the task no-ops.)
+set -uo pipefail   # no -e: one failed extension shouldn't abort the bootstrap
+
+if ! command -v codium >/dev/null 2>&1; then
+  echo "vscodium not installed -- skipping extension install."
+  exit 0
+fi
+
+echo "==> Installing VS Code extensions"
+codium --install-extension jeanp413.open-remote-ssh || echo "  open-remote-ssh: install failed"
+codium --install-extension ms-python.python || echo "  ms-python.python: install failed"
+codium --install-extension charliermarsh.ruff || echo "  ruff: install failed"
+codium --install-extension yzhang.markdown-all-in-one || echo "  markdown-all-in-one: install failed"
