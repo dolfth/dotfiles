@@ -4,7 +4,6 @@
 
 [vars]
 host = "gza"
-kind = "desktop"
 accent = "color_red"
 icon = "\uF179"  # nf-fa-apple
 # omp's baseUrl: the servers below are local here (the base says "gza").

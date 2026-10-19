@@ -15,7 +15,6 @@
 # Fallback for a host with no module yet: a new Mac selected with only
 # env = ["mac"] gets the laptop defaults.
 host = "localhost"
-kind = "laptop"
 accent = "color_blue"
 icon = "\U000F033D"  # nf-md-linux
 
