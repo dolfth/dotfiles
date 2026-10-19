@@ -10,46 +10,8 @@ icon = "\uF179"  # nf-fa-apple
 HOST = "mca"
 KIND = "laptop"
 
-[bootstrap.brew.taps]
-"chamburr/tap" = "https://github.com/chamburr/homebrew-tap"
-"nikitabobko/tap" = "https://github.com/nikitabobko/homebrew-tap"
-# Window borders for aerospace (its config is not in this repo).
-"FelixKratz/formulae" = "https://github.com/FelixKratz/homebrew-formulae"
-
-[bootstrap.packages]
-# GUI casks -- the desktop runs headless, so these are laptop only.
-"brew-cask:balenaetcher" = "latest"
-"brew-cask:brave-browser" = "latest"
-"brew-cask:chamburr/tap/glance" = "latest"
-"brew-cask:citrix-workspace" = "latest"
-"brew-cask:grandperspective" = "latest"
-"brew-cask:nikitabobko/tap/aerospace" = "latest"
-"brew:FelixKratz/formulae/borders" = "latest"
-"brew-cask:iina" = "latest"
-"brew-cask:imageoptim" = "latest"
-"brew-cask:linearmouse" = "latest"
-"brew-cask:lulu" = "latest"
-"brew-cask:monitorcontrol" = "latest"
-"brew-cask:notunes" = "latest"
-"brew-cask:obsidian" = "latest"
-"brew-cask:soulseek" = "latest"
-"brew-cask:the-unarchiver" = "latest"
-"brew-cask:utm" = "latest"
-"brew-cask:vscodium" = "latest"
-"brew-cask:whatcable" = "latest"
-# Background sync, laptop only.
-"brew:syncthing" = "latest"
-
-# App Store -- the IDs come from `mas list`, or the trailing digits of the
-# App Store URL. Requires being signed in, and the app must already be in
-# your purchase history.
-"mas:1435127111" = "latest"   # KeePassium
-"mas:361285480" = "latest"    # Keynote
-"mas:361304891" = "latest"    # Numbers
-"mas:6720708363" = "latest"   # Obsidian Web Clipper
-"mas:361309726" = "latest"    # Pages
-"mas:1289583905" = "latest"   # Pixelmator Pro
-"mas:6745342698" = "latest"   # uBlock Origin Lite
+# The laptop's GUI software (casks, the two formulae, the App Store apps)
+# lives in Brewfile.mca, installed by the brew-bundle bootstrap task.
 
 # A mise user service. mise runs `command` directly (no shell), so the path
 # is absolute; `restart` maps to launchd's KeepAlive. Logs go where mise

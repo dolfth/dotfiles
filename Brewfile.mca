@@ -1,0 +1,42 @@
+# mca: the laptop -- the GUI software. The desktop runs headless, so these
+# are laptop only. The shared entries live in Brewfile (see it for the how
+# and the why).
+
+tap "chamburr/tap"
+tap "nikitabobko/tap"
+# Window borders for aerospace (its config is not in this repo).
+tap "FelixKratz/formulae"
+
+cask "balenaetcher"
+cask "brave-browser"
+cask "chamburr/tap/glance"
+cask "citrix-workspace"
+cask "grandperspective"
+cask "nikitabobko/tap/aerospace"
+brew "FelixKratz/formulae/borders"
+cask "iina"
+cask "imageoptim"
+cask "linearmouse"
+cask "lulu"
+cask "monitorcontrol"
+cask "notunes"
+cask "obsidian"
+cask "soulseek"
+cask "the-unarchiver"
+cask "utm"
+cask "vscodium"
+cask "whatcable"
+# Background sync, laptop only (the user service for it stays in
+# mise.mca.toml, so it runs under mise, not `brew services`).
+brew "syncthing"
+
+# App Store -- the IDs come from `mas list`, or the trailing digits of the
+# App Store URL. Requires being signed in, and the app must already be in
+# your purchase history.
+mas "1435127111"  # KeePassium
+mas "361285480"   # Keynote
+mas "361304891"   # Numbers
+mas "6720708363"  # Obsidian Web Clipper
+mas "361309726"   # Pages
+mas "1289583905"  # Pixelmator Pro
+mas "6745342698"  # uBlock Origin Lite

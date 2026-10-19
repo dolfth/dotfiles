@@ -17,38 +17,8 @@ KIND = "desktop"
 # the system-check task's LaunchDaemon.
 WIRED_LIMIT_MB = "45056"
 
-[tools]
-# The venv base for omlx (the omlx-splash bootstrap task builds the venv
-# from it). Declared so `mise prune` never removes it.
-python = "3.11"
-
-[bootstrap.brew.taps]
-"jundot/omlx" = "https://github.com/jundot/omlx"
-# incoai/tap was renamed upstream to incoai/homebrew-tap (the old name 404s
-# since 2026-10-19); the formula and keg name are unchanged.
-"incoai/homebrew-tap" = "https://github.com/incoai/homebrew-tap"
-
-[bootstrap.packages]
-# Run by the user agents below, not `brew services` (a brew service would be
-# a second, throttled copy on the same port).
-#
-# The current mise release (2026.10.14) cannot evaluate the omlx and splash
-# definitions (their tap formulas use constructs its metadata shim lacks --
-# see the omlx-splash task for the reproducer). They stay listed for status
-# display only: resolution is all-or-nothing per batch, and on a fresh
-# machine the omlx-splash task pre-installs them, so `apply` finds them
-# already installed and never resolves them. The daily upgrade uses the
-# named list in the packages-upgrade task, which names every resolvable
-# formula of the Mac modules.
-#
-# omp (can1357/homebrew-tap) is deliberately NOT listed: its formula's
-# install step uses `with_env`, which mise's source-build shim rejects
-# outright ("formula uses `with_env (install-time helper)`..."), so mise can
-# neither install nor upgrade it. The keg, once present, still serves; its
-# upgrade lives in the `up` fish function's brew bridge block (machines
-# with Homebrew) until mise supports with_env.
-"brew:jundot/omlx/omlx" = "latest"
-"brew:incoai/homebrew-tap/splash" = "latest"
+# The omlx, splash and omp brew formulae live in Brewfile.gza (installed
+# by the brew-bundle bootstrap task); the LaunchAgents below run them.
 
 # The user LaunchAgents that run the local servers. `kickstart` re-asserts
 # the job on every bootstrap (idempotent: already-loaded jobs are replaced).

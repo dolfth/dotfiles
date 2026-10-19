@@ -1,0 +1,15 @@
+# gza: the always-on desktop -- the local-LLM servers and the omp agent.
+# The LaunchAgents that run the servers stay in mise.gza.toml (run by mise,
+# not `brew services` -- a brew service would be a second, throttled copy on
+# the same port). The shared entries live in Brewfile (see it for the how
+# and the why).
+
+tap "jundot/omlx"
+# incoai/tap was renamed upstream to incoai/homebrew-tap (the old name 404s
+# since 2026-10-19); the formula and keg name are unchanged.
+tap "incoai/homebrew-tap"
+tap "can1357/homebrew-tap"
+
+brew "omlx"
+brew "splash"
+brew "omp"

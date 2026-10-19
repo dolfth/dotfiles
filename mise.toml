@@ -72,10 +72,11 @@ ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPNrEPG5Srx81xQTYTGqnZulXV4fWZQA/ooLJsUx856N
 # Both no-op off macOS (they guard on uname), so they are safe in the base
 # for all three machines. defaults-snapshot is taken before bootstrap writes
 # the declarative defaults, so the final system check can skip the UI
-# restart when nothing the UI reads changed. omlx-splash installs the two
-# tap formulae the current mise release cannot yet evaluate (see the task);
-# it self-guards on the active config, so it acts only on the host that
-# declares them -- gza. It runs in pre-packages, before the packages step
-# would otherwise fail to resolve them on a fresh machine.
-pre-packages = "mise run defaults-snapshot && mise run omlx-splash"
+# restart when nothing the UI reads changed. brew-bundle runs `brew bundle`
+# over the Brewfiles (brew is a bootstrap dependency on the Macs -- see
+# README, "Why brew + mise"); it installs what is missing and never upgrades
+# what is present (upgrades are `up`'s job), and warns instead of aborting
+# the bootstrap when a download fails, so the dotfiles and agents still
+# deploy.
+pre-packages = "mise run defaults-snapshot && mise run brew-bundle"
 final = "mise run herdr-plugins && mise run vscode-extensions && mise run system-check"
