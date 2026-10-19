@@ -20,7 +20,7 @@ Everything a machine needs -- packages, dotfiles, and the settings tasks
 | `mise.toml` | always | per-host data in `[vars]` (accent/icon/tailnet/sshKeys), shared dotfiles, bootstrap hooks |
 | `mise.mac.toml` | `mac` selected | both Macs: the declarative macOS defaults, `~/.zshrc`, `~/.ssh/config`, `up.fish` |
 | `mise.mca.toml` | `mca` selected | laptop: the syncthing user service (the GUI software lives in `Brewfile.mca`) |
-| `mise.gza.toml` | `gza` selected | desktop: the omlx + splash LaunchAgents, the agent cutover, merged omlx/omp configs (the brew formulae live in `Brewfile.gza`) |
+| `mise.gza.toml` | `gza` selected | desktop: the omlx + splash LaunchAgents, the agent self-heal, merged omlx/omp configs (the brew formulae live in `Brewfile.gza`) |
 | `mise.nwa.toml` | `nwa` selected | the omp agent config (mise on nwa comes from Nix, not from a package list) |
 | `miserc.local.toml` | not committed | this machine: `env = ["mac", "<host>"]` |
 | `Brewfile`, `Brewfile.mca`, `Brewfile.gza` | the brew-bundle bootstrap task (Macs) | the brew-ecosystem manifest: the 19 formulae (incl. mise) + 3 casks both Macs share; the laptop's GUI casks, 2 formulae and 7 App Store apps; the desktop's omlx, splash, omp |
@@ -55,10 +55,11 @@ brew install mise   # 4. mise itself, from brew.
 #    config) and runs bootstrap from it: the pre-packages hooks take the
 #    defaults snapshot and run `brew bundle` over the Brewfiles (the
 #    brew-ecosystem packages, incl. the desktop's omlx, splash and omp), the
-#    dotfiles deploy, the launchd agents register, and the final hooks run
-#    the system settings, the herdr and vscodium extensions. Asks for sudo
-#    (the system settings) and, if the machine has no terminal, it skips the
-#    TTY-gated parts; re-run `mise run system-check` in one.
+#    dotfiles deploy, the launchd agents register, the bootstrap task
+#    self-heals the agents, and the final hooks run the system settings,
+#    the herdr and vscodium extensions. Asks for sudo (the system settings)
+#    and, if the machine has no terminal, it skips the TTY-gated parts;
+#    re-run `mise run system-check` in one.
 mise bootstrap --adopt 'git@github.com:dolfth/dotfiles.git?ref=main' -E mac,gza
 ```
 
@@ -170,7 +171,7 @@ that used to deploy it.
 |---|---|---|
 | `defaults-snapshot` | pre-packages (always) | hashes the defaults domains the UI reads, before bootstrap writes them |
 | `brew-bundle` | pre-packages (always) | runs `brew bundle` over `Brewfile` + `Brewfile.<host>`: installs what is missing, never upgrades (that is `up`'s job); on a failed entry it warns and continues so the dotfiles and agents still deploy -- re-run `brew bundle` in a terminal; no-op off macOS |
-| `bootstrap` | the bootstrap task slot (always) | the LaunchAgent cutover: registers the `dev.mise.*` agents, boots out `com.dolfth.*` jobs if launchd still has them, kickstarts the new ones; no-op off gza (it never kills a process holding a port -- the agent retries under KeepAlive until it frees up) |
+| `bootstrap` | the bootstrap task slot (always) | the LaunchAgent self-heal: for each `dev.mise.*` agent, a guarded `launchctl bootstrap` (only (re)loads a not-loaded job) and a bare `kickstart` (starts a loaded-but-dead agent, no-op on a healthy one -- never kills a running server); then reports who holds each server port. No-op off gza |
 | `herdr-plugins` | final (always) | installs the herdr plugins the keybindings and nvim config rely on; no-op where herdr is absent |
 | `vscode-extensions` | final (always) | the vscodium extensions; no-op where codium is absent (i.e. everywhere but mca) |
 | `system-check` | final (always) | the macOS system settings: FDA-gated app defaults, the hostname, firewall, Touch ID, power, software updates, FileVault check, the GPU wired-limit daemon; desktop: Screen Sharing and Remote Login. The sudo part is TTY-gated. Re-starts Dock/Finder/… only if a domain they read changed |
@@ -183,9 +184,11 @@ they are all written to no-op when there is nothing to do.
 `omlx serve` (port 8080, `::`) and `splash serve` (port 8000, `127.0.0.1`)
 run as user LaunchAgents declared in `mise.gza.toml`
 (`dev.mise.omlx`, `dev.mise.splash`, both `ProcessType: Interactive`,
-unthrottled). mise keeps them alive, and the `bootstrap` task re-kickstarts
-them on every bootstrap, so no hand `launchctl` dance. Logs:
-`~/Library/Logs/{omlx,splash}.log`.
+unthrottled). KeepAlive keeps them alive, mise reloads them when their
+definition changes, and the `bootstrap` task self-heals a dead agent on
+every bootstrap (a bare kickstart: no-op on a healthy one) and reports who
+holds each port, so no hand `launchctl` dance. `up` restarts a server whose
+keg was upgraded. Logs: `~/Library/Logs/{omlx,splash}.log`.
 
 splash is loopback only — for LAN or tailnet access serve with
 `--host 0.0.0.0 --api-key KEY --allowed-origin '*'` (or `--allowed-host
