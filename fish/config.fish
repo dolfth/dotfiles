@@ -1,9 +1,12 @@
 # Managed by mise.
 
-# Homebrew's bin is not on PATH by default. Harmless no-op off macOS.
+# The Homebrew prefix's bin on PATH, as a static path rather than
+# `brew shellenv`: every Mac this repo runs on has (or gets at bootstrap)
+# the prefix, and `brew shellenv` needs Homebrew itself to exist, which a
+# fresh machine does not until bootstrap runs. An absent prefix adds nothing.
 for p in /opt/homebrew /usr/local
-    if test -x $p/bin/brew
-        $p/bin/brew shellenv fish | source
+    if test -d $p/bin
+        set -gx PATH $p/bin $PATH
         break
     end
 end
