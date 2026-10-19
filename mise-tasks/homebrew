@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 # Installs Homebrew before the brew packages step needs it. Runs on every
-# bootstrap (the old run_once_before_00-homebrew.sh ran once per machine):
-# a Mac with Homebrew just exits. The README bootstrap already installed the
-# Command Line Tools, so the installer skips them.
+# bootstrap; a Mac that already has Homebrew just exits. The README bootstrap
+# already installed the Command Line Tools, so the installer skips them.
 set -euo pipefail
 
 if [ "$(uname -s)" != "Darwin" ]; then

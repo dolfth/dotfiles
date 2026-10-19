@@ -1,10 +1,10 @@
-# Managed by mise rather than in the NixOS flake because herdr writes this
-# file itself: `herdr config reset-keys` rewrites it and drops a backup beside
-# it, and the first-run wizard persists its answer here. A read-only store
-# symlink breaks both.
+# Managed by mise as a copy, not a symlink: herdr writes this file itself --
+# `herdr config reset-keys` rewrites it and drops a backup beside it, and the
+# first-run wizard persists its answer here. A symlink would put both writes
+# (and the backup) into the repo checkout.
 
-# The first-run notification wizard would try to persist its answer back
-# into this read-only file, so opt out up front.
+# The first-run notification wizard persists its answer into this file, so
+# opt out up front.
 onboarding = false
 
 # prefix is ctrl+b. These commands run the sandboxed wrappers; `type =

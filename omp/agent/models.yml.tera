@@ -1,7 +1,6 @@
 # omp's model catalog (the file omp reads for available providers/models).
-# Moved out of NixOS, where dev-agents.nix generated this as a /nix/store
-# file and symlinked it in. This is a whole file: the repo is the source of
-# truth for the provider list.
+# This is a whole file: the repo is the source of truth for the provider
+# list.
 #
 # The one host-specific bit is baseUrl. The omlx and splash servers run on
 # the desktop (gza), so:

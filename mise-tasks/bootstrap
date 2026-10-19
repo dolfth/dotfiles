@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
-# Cutover from the old com.dolfth.* LaunchAgents to the dev.mise.* agents
-# (the com.dolfth.* plist files are removed by the gza module's absent
-# dotfile entries). Runs from the bootstrap task slot on every bootstrap,
-# like the old run_onchange_after_40/50 scripts did: register the new agents,
-# boot out the old jobs launchd still has loaded, and kickstart the new ones.
+# The LaunchAgent cutover: register the dev.mise.* agents, boot out any
+# com.dolfth.* jobs launchd still has loaded (their plist files are removed
+# by the gza module's absent dotfile entries), and kickstart the new ones.
+# Runs from the bootstrap task slot on every bootstrap.
 #
 # It never kills processes of its own: an agent whose port is held by
 # something else (an interactive `splash serve` in a terminal, say) just
@@ -31,8 +30,8 @@ for agent in dev.mise.omlx dev.mise.splash; do
   launchctl bootstrap "$gui" "$plist" 2>/dev/null \
     || launchctl kickstart -k "$gui/$agent" 2>/dev/null || true
 
-  # The old jobs from the com.dolfth.* days, if launchd still has them
-  # loaded (their plist files are already gone).
+  # Superseded com.dolfth.* jobs, if launchd still has them loaded (their
+  # plist files are already gone).
   old="com.dolfth.${agent#dev.mise.}"
   launchctl bootout "$gui/$old" 2>/dev/null || true
 done

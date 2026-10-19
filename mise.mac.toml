@@ -5,12 +5,10 @@
 # servers) live in mise.mca.toml / mise.gza.toml.
 
 [bootstrap.packages]
-# The single source of truth for installed software on these Macs (the old
-# dot_Brewfile.tmpl, minus its `trusted` keys: mise reads the taps' published
-# metadata directly, so a `brew bundle`-style trust flag has no equivalent).
-# `brew "chezmoi"` is gone -- this repo is the dotfiles manager now;
-# `brew "mise"` keeps mise itself on the Homebrew track after the initial
-# curl install.
+# The single source of truth for installed software on these Macs. mise reads
+# the taps' published metadata directly, so no `brew bundle`-style trust flag
+# is needed. `brew "mise"` keeps mise itself on the Homebrew track after the
+# initial curl install.
 "brew:bat" = "latest"
 "brew:duckdb" = "latest"
 "brew:dust" = "latest"
@@ -36,23 +34,20 @@
 "brew-cask:ghostty" = "latest"
 "brew-cask:tailscale-app" = "latest"
 
-# The old dot_Brewfile.tmpl's GUI section and its syncthing/mas entries were
-# `{{ if not $desktop }}` (laptop only) -- those live in mise.mca.toml.
+# The laptop-only GUI apps, syncthing and the App Store entries live in
+# mise.mca.toml; Homebrew itself and the vscodium extensions install as mise
+# tasks (mise-tasks/*), run from the bootstrap hooks.
 
-# The old run_once_before_00-homebrew.sh and the `vscode` directive are mise
-# tasks now (mise-tasks/homebrew, mise-tasks/vscode-extensions), run from the
-# bootstrap hooks.
-
-##### macOS defaults (the old run_after_20-macos-defaults.sh) ################
+##### macOS defaults #####
 #
-# Declared instead of scripted: mise writes these on every `mise bootstrap`,
-# so settings flipped by hand get put back, and deleting a line stops setting
-# it (it does not restore the old value).
+# Mise writes these on every `mise bootstrap`, so settings flipped by hand
+# get put back, and deleting a line stops setting it (it does not restore
+# the old value).
 #
 # The sandboxed-app defaults Mail/TextEdit/Siri/Displays are NOT here: they
 # live in a container only Full Disk Access can write, which SSH sessions
 # lack, so the system-check task applies those (and skips them with a message
-# when the terminal lacks FDA, exactly like the old script).
+# when the terminal lacks FDA).
 
 [bootstrap.macos.defaults."com.apple.dock"]
 "autohide" = true
@@ -141,9 +136,8 @@
 "com.apple.mouse.linear" = true
 "AppleICUForce24HourTime" = true
 "WebKitDeveloperExtras" = true
-# The old script also deleted AppleInterfaceStyle when present (it conflicts
-# with the automatic switch) -- a delete has no declarative form, so the
-# system-check task does it.
+# AppleInterfaceStyle (manual light/dark) conflicts with the automatic
+# switch; a delete has no declarative form, so the system-check task does it.
 
 # -currentHost keys (the login window reads them):
 [[bootstrap.macos.defaults_entries]]
@@ -222,14 +216,13 @@ value = 1
 [bootstrap.macos.defaults."com.apple.assistant.support"]
 "Assistant Enabled" = false
 
-# Dotfiles both Macs get (the old .chezmoiignore deployed these on darwin;
-# they are what the mca module used to declare, minus nothing -- the mca-
-# specific casks and services stay there).
+# Dotfiles both Macs get; the laptop-only casks and services stay in
+# mise.mca.toml.
 [dotfiles]
 "~/.zshrc" = "zshrc"
-# A real file at 0600 (the old private_ entry): a symlink would expose the
-# repo file's permissions to ssh's checks.
+# A real file at 0600: a symlink would expose the repo file's permissions to
+# ssh's checks.
 "~/.ssh/config" = { source = "ssh_config", mode = "copy", permissions = "0600" }
-# exact_ in the old repo: on nwa, home-manager writes its own fish functions
-# there, so this deploys only on the Macs.
+# On nwa, home-manager writes its own fish functions there, so this deploys
+# only on the Macs.
 "~/.config/fish/functions/up.fish" = "fish/functions/up.fish"

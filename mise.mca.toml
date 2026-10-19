@@ -13,12 +13,11 @@ KIND = "laptop"
 [bootstrap.brew.taps]
 "chamburr/tap" = "https://github.com/chamburr/homebrew-tap"
 "nikitabobko/tap" = "https://github.com/nikitabobko/homebrew-tap"
-# Window borders; aerospace.toml starts it (after-startup-command).
+# Window borders for aerospace (its config is not in this repo).
 "FelixKratz/formulae" = "https://github.com/FelixKratz/homebrew-formulae"
 
 [bootstrap.packages]
-# GUI casks -- the desktop runs headless, so these are laptop only (in the
-# old dot_Brewfile they sat under `{{ if not $desktop }}`).
+# GUI casks -- the desktop runs headless, so these are laptop only.
 "brew-cask:balenaetcher" = "latest"
 "brew-cask:brave-browser" = "latest"
 "brew-cask:chamburr/tap/glance" = "latest"
@@ -38,7 +37,7 @@ KIND = "laptop"
 "brew-cask:utm" = "latest"
 "brew-cask:vscodium" = "latest"
 "brew-cask:whatcable" = "latest"
-# Background sync, laptop only (it was uninstalled from the desktop).
+# Background sync, laptop only.
 "brew:syncthing" = "latest"
 
 # App Store -- the IDs come from `mas list`, or the trailing digits of the
@@ -52,11 +51,9 @@ KIND = "laptop"
 "mas:1289583905" = "latest"   # Pixelmator Pro
 "mas:6745342698" = "latest"   # uBlock Origin Lite
 
-# The old `brew "syncthing", restart_service: :changed`: a mise user service.
-# mise runs `command` directly (no shell), so the path is absolute;
-# `restart` maps to launchd's KeepAlive, the same restart the brew-services
-# formula relied on. Logs go where mise puts user-service logs, not the old
-# Homebrew/var/log/syncthing.log.
+# A mise user service. mise runs `command` directly (no shell), so the path
+# is absolute; `restart` maps to launchd's KeepAlive. Logs go where mise
+# puts user-service logs.
 [bootstrap.services.syncthing]
 scope = "user"
 command = "{{ system_brew_prefix }}/opt/syncthing/bin/syncthing serve --no-browser --no-restart"
@@ -64,6 +61,4 @@ working_directory = "{{ env.HOME }}"
 restart = "on-failure"
 enabled = true
 # The macOS-shared dotfiles (~/.zshrc, ~/.ssh/config, up.fish) deploy from
-# mise.mac.toml: the old .chezmoiignore shipped them on both Macs.
-[dotfiles]
-# The old brew-services agent, replaced by the mise user service above.
+# mise.mac.toml.

@@ -11,8 +11,8 @@ function up --description 'Update Command Line Tools, Homebrew and App Store app
     # App Store auto-updates are off (com.apple.commerce AutoUpdate).
     type -q mas; and mas upgrade
 
-    # A running omlx or splash keeps the old version until it is restarted;
-    # the mise user services below carry the dev.mise.* labels.
+    # A running omlx or splash keeps the old version until it is restarted:
+    # kickstart the dev.mise.* agent that changed.
     set -l omlx_after (brew list --versions omlx 2>/dev/null)
     if test "$omlx_before" != "$omlx_after"; and launchctl print gui/(id -u)/dev.mise.omlx >/dev/null 2>&1
         launchctl kickstart -k gui/(id -u)/dev.mise.omlx

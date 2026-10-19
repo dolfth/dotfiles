@@ -8,7 +8,7 @@ for p in /opt/homebrew /usr/local
     end
 end
 
-# What `programs.neovim.defaultEditor = true` used to do in the NixOS module.
+# nvim as $EDITOR/$VISUAL.
 set -gx EDITOR nvim
 set -gx VISUAL nvim
 

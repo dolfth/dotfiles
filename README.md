@@ -8,17 +8,17 @@
 | `gza` | macOS | desktop, always-on omlx and splash servers, omp |
 | `nwa` | NixOS | server |
 
-mise takes over what chezmoi used to do here: packages (the old Brewfile),
-files (dotfiles and templates) and the settings scripts (mise tasks and the
-bootstrap hooks). This checkout *is* the global mise config, so it doubles as
-the dotfile history: edit, `git commit`, push; the other machines pull it.
+Everything a machine needs -- packages, dotfiles, and the settings tasks
+(mise tasks and the bootstrap hooks) -- lives in this one checkout, which
+*is* the global mise config, so it doubles as the dotfile history: edit,
+`git commit`, push; the other machines pull it.
 
 ## Config layout
 
 | File | Loads when | Holds |
 |---|---|---|
-| `mise.toml` | always | shared packages, shared dotfiles, bootstrap hooks, the per-host data that used to live in `.chezmoidata.yaml` (in `[vars]`: accent/icon/kind/tailnet/sshKeys) |
-| `mise.mac.toml` | `mac` selected | both Macs: GUI CLI tools, declarative macOS defaults, Dock/Finder restart, `~/.zshrc`, `~/.ssh/config`, `up.fish` |
+| `mise.toml` | always | per-host data in `[vars]` (accent/icon/kind/tailnet/sshKeys), shared dotfiles, bootstrap hooks |
+| `mise.mac.toml` | `mac` selected | both Macs: CLI tools, the declarative macOS defaults, `~/.zshrc`, `~/.ssh/config`, `up.fish` |
 | `mise.mca.toml` | `mca` selected | laptop: GUI casks, App Store, noTunes, syncthing |
 | `mise.gza.toml` | `gza` selected | desktop: omlx + splash + omp, the LaunchAgents, the agent cutover, merged omlx/omp configs |
 | `mise.nwa.toml` | `nwa` selected | the omp agent config (mise on nwa comes from Nix, not from a package list) |
@@ -50,7 +50,7 @@ export PATH="$HOME/.local/bin:$PATH"   # or start a new shell
 
 # 4. Everything else. Clones this repo into ~/.config/mise (the global mise
 #    config) and runs bootstrap from it: the hooks install Homebrew, the
-#    brew step installs every package in mise.toml + the host modules, the
+#    brew step installs the modules' packages, the
 #    dotfiles deploy, and the final hooks run the system settings, the herdr
 #    and vscodium extensions. Asks for sudo (system settings) and, if the
 #    machine has no terminal, it skips the TTY-gated parts; re-run
@@ -80,16 +80,14 @@ like the Macs.
 
 ## Layout
 
-### Packages (`[bootstrap.brew]` in `mise.toml` + the host modules)
+### Packages (`[bootstrap.packages]` in the host modules)
 
-The single source of truth for installed software, which the bootstrap
-applies. In the old world this was `dot_Brewfile.tmpl`, run by
-`brew bundle`:
+The single source of truth for installed software; the bootstrap applies it:
 
 | What | Where |
 |---|---|
-| 26 formulae and casks both Macs share (brew, git, gh, ripgrep, …, tailscale-app, ghostty) | `mise.toml` |
-| 19 GUI casks + syncthing + 7 App Store apps, laptop only | `mise.mca.toml` |
+| 18 formulae + 3 casks both Macs share (git, fish, neovim, starship, …, tailscale-app, ghostty) | `mise.mac.toml` |
+| 18 GUI casks + 2 formulae (aerospace borders, syncthing) + 7 App Store apps, laptop only | `mise.mca.toml` |
 | omlx + splash + omp, desktop only | `mise.gza.toml` |
 
 App Store IDs come from `mas list`, or the trailing digits of the App Store
@@ -112,8 +110,8 @@ purchase history.
 | `herdr/config.toml` | `~/.config/herdr/config.toml` | mode `copy`: herdr rewrites the file itself |
 | `linearmouse/linearmouse.json` | `~/.config/linearmouse/linearmouse.json` | `merge: missing`: written only if absent, then LinearMouse owns it |
 | `pi/agent/settings.json` | `~/.pi/agent/settings.json` | `merge`: the two pinned keys over the file pi writes |
-| `omlx/*.tera` | `~/.omlx/` | gza only; `merge` + `template`: the pinned omlx settings, model settings and profiles deep-merged into the files omlx writes (auth keys stay omlx's, not in this repo); server aliases for the host's `.local` and Tailscale names |
-| `omp/agent/config.yml` | `~/.omp/agent/config.yml` | gza + nwa (symlink); omp's own settings -- a `/settings` change resets on the next bootstrap, so edit this source |
+| `omlx/*.json` | `~/.omlx/` | gza only; `merge` + `template`: the pinned omlx settings, model settings and profiles deep-merged into the files omlx writes (auth keys stay omlx's, not in this repo); server aliases for the host's `.local` and Tailscale names |
+| `omp/agent/config.yml` | `~/.omp/agent/config.yml` | gza + nwa (symlink); omp's own settings -- `/settings` changes flow back into this repo through the symlink, so commit them |
 | `omp/agent/models.yml.tera` | `~/.omp/agent/models.yml` | gza + nwa (template); the omlx + splash providers omp talks to; `baseUrl` is `127.0.0.1` on gza, `gza` (Tailscale) elsewhere |
 
 Files that exist on disk but are not declared in the loaded modules are
@@ -127,14 +125,13 @@ that used to deploy it.
 |---|---|---|
 | `homebrew` | pre-packages (always) | installs Homebrew if missing; a TTY is required, so a fresh Mac bootstraps in a terminal |
 | `defaults-snapshot` | pre-packages (always) | hashes the defaults domains the UI reads, before bootstrap writes them |
-| `bootstrap` | the bootstrap task slot (always) | the LaunchAgent cutover: registers the `dev.mise.*` agents, boots out the old `com.dolfth.*` jobs if launchd still has them, kickstarts the new ones; no-op off gza (it never kills a process holding a port -- the agent retries under KeepAlive until it frees up) |
+| `bootstrap` | the bootstrap task slot (always) | the LaunchAgent cutover: registers the `dev.mise.*` agents, boots out `com.dolfth.*` jobs if launchd still has them, kickstarts the new ones; no-op off gza (it never kills a process holding a port -- the agent retries under KeepAlive until it frees up) |
 | `herdr-plugins` | final (always) | installs the herdr plugins the keybindings and nvim config rely on; no-op where herdr is absent |
 | `vscode-extensions` | final (always) | the vscodium extensions; no-op where codium is absent (i.e. everywhere but mca) |
 | `system-check` | final (always) | the macOS system settings: FDA-gated app defaults, the hostname, firewall, Touch ID, power, software updates, FileVault check, the GPU wired-limit daemon; desktop: Screen Sharing and Remote Login. The sudo part is TTY-gated. Re-starts Dock/Finder/… only if a domain they read changed |
 
-Where the old chezmoi scripts ran on first apply and on content change, mise
-runs the tasks on **every** bootstrap (`mise bootstrap` / `mise update`).
-They are all written to no-op when there is nothing to do.
+The tasks run on **every** bootstrap (`mise bootstrap` / `mise update`);
+they are all written to no-op when there is nothing to do.
 
 ### Desktop services (gza)
 
@@ -142,8 +139,8 @@ They are all written to no-op when there is nothing to do.
 run as user LaunchAgents declared in `mise.gza.toml`
 (`dev.mise.omlx`, `dev.mise.splash`, both `ProcessType: Interactive`,
 unthrottled). mise keeps them alive, and the `bootstrap` task re-kickstarts
-them on every bootstrap -- the successor of the old run_onchange scripts --
-so no hand `launchctl` dance. Logs: `~/Library/Logs/{omlx,splash}.log`.
+them on every bootstrap, so no hand `launchctl` dance. Logs:
+`~/Library/Logs/{omlx,splash}.log`.
 
 splash is loopback only — for LAN or tailnet access serve with
 `--host 0.0.0.0 --api-key KEY --allowed-origin '*'` (or `--allowed-host
@@ -154,27 +151,9 @@ gza.<tailnet>`); the chat page is at <http://127.0.0.1:8000>.
 ```bash
 cd ~/.config/mise          # the repo; the mise config reads from here
 mise bootstrap             # apply everything (hooks + packages + dotfiles)
-mise dot                   # the file list; `mise dot diff` previews
-mise dot sync --no-push    # stage local changes into the repo
+mise dot status            # the file list; `mise dot diff` previews
 git commit -am "…"; git push
 ```
 
-Edit a template and run `mise dot` to re-render it; `mise dot diff` shows
+Edit a template and run `mise dot apply` to re-render it; `mise dot diff` shows
 what would change first.
-
-## Migrating from the chezmoi repo
-
-One-time, on each machine:
-
-1. Deploy the new world: `mise bootstrap` from this checkout. On gza the
-   `bootstrap` task then cuts the LaunchAgents over from `com.dolfth.*` to
-   `dev.mise.*`. If an interactive `splash serve` in a terminal still holds
-   port 8000, the agent simply waits for it -- close that terminal and the
-   agent takes the port on its own.
-2. Retire the old: `rm -rf ~/.local/share/chezmoi ~/.config/chezmoi` (the
-   new `~/.config/mise` replaces it; the old files are untouched by the
-   new one).
-3. Uninstall chezmoi: `brew uninstall chezmoi`.
-
-The old repo stays pushed as a backup branch/tag; nothing here depends on
-it.

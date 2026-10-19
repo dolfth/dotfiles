@@ -1,10 +1,9 @@
 # omp's agent settings (theme, composer shape, thinking level, ...).
-# Moved into the repo alongside models.yml so a fresh box comes up configured.
+# In the repo so a fresh box comes up configured.
 #
 # omp writes here too -- `/settings` and the model picker persist into it --
 # but this is a symlink into this repo, so local changes flow back to the
-# source and get committed with the rest of the dotfiles (the mise way,
-# unlike the old chezmoi whole-file copy that reset them on update).
+# source and get committed with the rest of the dotfiles.
 composer:
   shape: pi
 theme:

@@ -6,8 +6,8 @@
 # the fish docs themselves recommend:
 #   https://fishshell.com/docs/current/index.html#default-shell
 
-# What `programs.neovim.defaultEditor = true` used to do on nwa. Set here too,
-# not just in fish, because `zsh -c` skips the hand-off below entirely.
+# nvim as $EDITOR/$VISUAL here too, not just in fish: `zsh -c` skips the
+# hand-off below entirely.
 export EDITOR=nvim
 export VISUAL=nvim
 
