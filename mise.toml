@@ -16,7 +16,7 @@
 # env = ["mac"] gets the laptop defaults.
 host = "localhost"
 accent = "color_blue"
-icon = "\U000F033D"  # nf-md-linux
+icon = "\U000F033D"   # nf-md-linux
 
 # Tailscale MagicDNS domain: hosts are reachable as <host>.<tailnet>.
 tailnet = "foxhound-insen.ts.net"
@@ -68,3 +68,36 @@ ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPNrEPG5Srx81xQTYTGqnZulXV4fWZQA/ooLJsUx856N
 # deploy.
 pre-packages = "mise run defaults-snapshot && mise run brew-bundle"
 final = "mise run herdr-plugins && mise run vscode-extensions && mise run system-check"
+
+[bootstrap.remote]
+# The fleet inventory for `mise bootstrap remote` (README, "Fleet sync").
+# Any machine can run it -- gza is the default (always on, so the fleet is
+# always reachable); adding a machine here joins the fleet on every machine.
+# Host values are literal, not templates, so the tailnet name is repeated.
+#
+# mise_env is authoritative for the remote run: MISE_ENV replaces the
+# host's own miserc.local.toml selection (a brand-new machine has none),
+# so keep it in sync with each machine's local file.
+#
+# No `source` or `remote_mise`: run with `--adopt` (the tracked tree is
+# transferred as a git bundle -- untracked files never leave the repo),
+# and the host's own mise stays installed; the bootstrap runs under the
+# orchestrator's staged copy, and LaunchAgent services persist in launchd.
+
+[bootstrap.remote.hosts.mca]
+host = "mca.foxhound-insen.ts.net"
+mise_env = ["mac", "mca"]
+tags = ["mac"]
+
+[bootstrap.remote.hosts.gza]
+host = "gza.foxhound-insen.ts.net"
+mise_env = ["mac", "gza"]
+tags = ["mac"]
+
+[bootstrap.remote.hosts.nwa]
+host = "nwa.foxhound-insen.ts.net"
+mise_env = ["nwa"]
+tags = ["nix"]
+# nwa runs Tailscale SSH: the first connection prints a one-off approval
+# URL (visit it; persistently approve the key in the Tailscale admin
+# console so unattended runs work).
