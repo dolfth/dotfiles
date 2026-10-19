@@ -119,21 +119,6 @@ sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setstealthmode on >/dev/n
 # Block ALL inbound (breaks file sharing, AirDrop, SSH):
 # sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setblockall on >/dev/null
 
-##### Guest account ###########################################################
-#
-# Disable and remove.
-
-sudo defaults write /Library/Preferences/com.apple.loginwindow GuestEnabled -bool false
-# dscl reports errors on stdout, so check first.
-if dscl . -read /Users/Guest >/dev/null 2>&1; then
-  sudo dscl . -delete /Users/Guest
-fi
-
-##### Login window ############################################################
-#
-# Username field instead of the account picker.
-sudo defaults write /Library/Preferences/com.apple.loginwindow SHOWFULLNAME -bool true
-
 ##### Power management ########################################################
 #
 # By the host module's KIND (laptop | desktop); unknown hosts get the laptop
