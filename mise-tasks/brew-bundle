@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# Install the brew-ecosystem packages from the Brewfiles (Brewfile, both
+# Macs; Brewfile.<host>, the host's own). brew is a hard dependency of the
+# Mac flow -- the Homebrew install is bootstrap step 3 (see README, "Why
+# brew + mise") -- and the bootstrap installs mise from brew on a fresh
+# machine before it runs. Re-runs on every bootstrap; cheap when nothing is
+# missing.
+#
+# brew bundle installs what is missing and does not upgrade what is present;
+# upgrades are `up`'s job. A failed entry (a flaky download) does not abort
+# the bootstrap: the dotfiles, agents and defaults deploy anyway, and the
+# server LaunchAgents retry their binary under KeepAlive once a manual
+# `brew bundle` finishes.
+set -euo pipefail
+if [ "$(uname -s)" != "Darwin" ]; then
+  exit 0
+fi
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+files=("--file=$REPO/Brewfile")
+if [ -n "${HOST:-}" ] && [ -f "$REPO/Brewfile.$HOST" ]; then
+  files+=("--file=$REPO/Brewfile.$HOST")
+fi
+if brew bundle "${files[@]}"; then
+  echo "brew bundle: all Brewfile entries installed"
+else
+  echo "WARNING: brew bundle reported failures; the bootstrap continues (dotfiles and agents still deploy)." >&2
+  echo "Re-run in a terminal:" >&2
+  echo "  brew bundle ${files[*]#--file=}" >&2
+fi
