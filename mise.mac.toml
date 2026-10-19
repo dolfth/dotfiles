@@ -68,9 +68,8 @@
 "mru-spaces" = false
 "show-recents" = false
 "expose-group-apps" = true
-# Hot corners: bottom-left shows Desktop, bottom-right (Quick Note) off.
+# Hot corner: bottom-left shows Desktop.
 "wvous-bl-corner" = 4
-"wvous-br-corner" = 0
 
 [bootstrap.macos.defaults."com.apple.spaces"]
 # true = one Space spans all displays ("Displays have separate Spaces" off);
@@ -87,16 +86,13 @@
 "EnableTiledWindowMargins" = false
 
 [bootstrap.macos.defaults."com.apple.finder"]
-"AppleShowAllFiles" = false
 # New window view: Nlsv = list, icnv = icon, clmv = column, Flwv = gallery
 "FXPreferredViewStyle" = "clmv"
-"FXItemTimeout" = 0
 "ShowPathbar" = true
 "ShowStatusBar" = true
 "_FXShowPosixPathInTitle" = true
 "_FXSortFoldersFirst" = true
 "_FXSortFoldersFirstOnDesktop" = true
-"FXSortBy" = "name"
 "FXEnableExtensionChangeWarning" = false
 # Search: SCcf = current folder, SCsp = previous, SCev = this Mac
 "FXDefaultSearchScope" = "SCcf"
@@ -107,9 +103,7 @@
 "NewWindowTargetPath" = "file:///Users/dolf/"
 "QuitMenuItem" = true
 "FXRemoveOldTrashItems" = true
-"ShowHardDrivesOnDesktop" = false
 "ShowMountedServersOnDesktop" = true
-"OpenWindowForNewRemovableDisk" = true
 "FXInfoPanesExpanded" = { "General" = true, "OpenWith" = true, "Privileges" = true }
 
 [bootstrap.macos.defaults."com.apple.NetworkBrowser"]
@@ -117,7 +111,6 @@
 "BrowseAllInterfaces" = true
 
 [bootstrap.macos.defaults."NSGlobalDomain"]
-"AppleInterfaceStyleSwitchesAutomatically" = true
 "AppleShowAllExtensions" = true
 "InitialKeyRepeat" = 15
 "KeyRepeat" = 2
@@ -135,18 +128,13 @@
 "NSNavPanelExpandedStateForSaveMode2" = true
 "AppleActionOnDoubleClick" = "Minimize"
 "AppleShowScrollBars" = "Always"
-"NSCloseAlwaysConfirmsChanges" = true
-"NSQuitAlwaysKeepsWindows" = true
 "NSDocumentSaveNewDocumentsToCloud" = false
-"NSPersonNameDefaultShouldPreferNicknamesPreference" = false
-"userMenuExtraStyle" = 2
 "AppleHighlightColor" = "0.764700 0.976500 0.568600"
 "NSUseAnimatedFocusRing" = false
 "NSWindowResizeTime" = 0.001
 "NSTextShowsControlCharacters" = true
 "NSDisableAutomaticTermination" = true
 "NSWindowShouldDragOnGesture" = true
-"com.apple.springing.delay" = 0.0
 "AppleKeyboardUIMode" = 2
 "com.apple.trackpad.scaling" = 2.0
 "com.apple.mouse.scaling" = 1.5
@@ -173,28 +161,8 @@ value = 4
 [[bootstrap.macos.defaults_entries]]
 domain = "NSGlobalDomain"
 host = "current"
-key = "com.apple.mouse.tapBehavior"
-value = 1
-
-[[bootstrap.macos.defaults_entries]]
-domain = "NSGlobalDomain"
-host = "current"
 key = "com.apple.trackpad.trackpadCornerClickBehavior"
 value = 1
-
-[[bootstrap.macos.defaults_entries]]
-# Control Centre items: 1 = menu bar, 2 = Control Centre, 3 = both, 8 = hidden.
-domain = "com.apple.controlcenter"
-host = "current"
-key = "NSStatusItem Visible UserSwitcher"
-value = 1
-
-[[bootstrap.macos.defaults_entries]]
-# 6 = round picture, 10 = full name
-domain = "com.apple.controlcenter"
-host = "current"
-key = "UserSwitcher"
-value = 6
 
 [bootstrap.macos.defaults."com.apple.LaunchServices"]
 # No "downloaded from the internet" dialog; Gatekeeper still blocks unsigned
@@ -208,17 +176,12 @@ value = 6
 "reduceTransparency" = true
 "showWindowTitlebarIcons" = true
 "closeViewScrollWheelToggle" = true
-"closeViewZoomFollowsFocus" = true
 
 [bootstrap.macos.defaults."com.apple.HIToolbox"]
 # Fn/Globe alone: 0 = nothing, 1 = input source, 2 = emoji, 3 = dictation
 "AppleFnUsageType" = 2
 
-[bootstrap.macos.defaults."com.apple.AppleMultitouchTrackpad"]
-"Clicking" = true
-
 [bootstrap.macos.defaults."com.apple.driver.AppleBluetoothMultitouch.trackpad"]
-"Clicking" = true
 # Corner: 0 = off, 1 = bottom-left, 2 = bottom-right
 "TrackpadCornerSecondaryClick" = 2
 
@@ -231,23 +194,13 @@ value = 6
 "include-date" = false
 "show-thumbnail" = false
 
-[bootstrap.macos.defaults."com.apple.screensaver"]
-# Password immediately after screen saver or sleep. Deprecated since Ventura
-# (System Settings > Lock Screen) but still works on Tahoe; verify there.
-"askForPassword" = 1
-"askForPasswordDelay" = 0
-
 [bootstrap.macos.defaults."com.apple.menuextra.clock"]
 "Show24Hour" = true
 "ShowAMPM" = false
 "ShowDate" = 1
 
 [bootstrap.macos.defaults."com.apple.ActivityMonitor"]
-# Show: 100 = all, 101 = hierarchical, 102 = mine, 103 = system,
-# 104 = other users, 105 = active, 106 = inactive, 107 = windowed
-"ShowCategory" = 100
 "SortColumn" = "CPUUsage"
-"SortDirection" = 0
 # Dock icon: 0 = app icon, 2 = network, 3 = disk, 5 = CPU, 6 = CPU history
 "IconType" = 5
 
@@ -269,8 +222,6 @@ value = 6
 [bootstrap.macos.defaults."com.apple.assistant.support"]
 "Assistant Enabled" = false
 
-[bootstrap.macos.defaults."com.apple.AdLib"]
-"allowApplePersonalizedAdvertising" = false
 # Dotfiles both Macs get (the old .chezmoiignore deployed these on darwin;
 # they are what the mca module used to declare, minus nothing -- the mca-
 # specific casks and services stay there).

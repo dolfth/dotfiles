@@ -154,7 +154,8 @@ case "${KIND:-laptop}" in
     sudo pmset -c sleep 10 displaysleep 10 disksleep 10 powernap 0
     ;;
 esac
-# Lock on wake is askForPassword in the declarative defaults; pmset can't.
+# Lock on wake: the stock default is "require password immediately" (what the
+# old script pinned); pmset has no such setting.
 
 ##### Hostname ################################################################
 # All names set to HOST (the module var), else the current hostname.
