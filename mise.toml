@@ -66,8 +66,21 @@ ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPNrEPG5Srx81xQTYTGqnZulXV4fWZQA/ooLJsUx856N
 # what is present (upgrades are `up`'s job), and warns instead of aborting
 # the bootstrap when a download fails, so the dotfiles and agents still
 # deploy.
-pre-packages = "mise run defaults-snapshot && mise run brew-bundle"
-final = "mise run herdr-plugins && mise run vscode-extensions && mise run system-check"
+#
+# The prologue (repeated in both hooks): when bootstrap runs in a
+# non-login ssh session -- mise bootstrap remote -- the inherited PATH
+# holds only the bare system directories, so resolve mise there (brew's
+# prefix, the Nix store, the mise-run install) and put its directory on
+# PATH before `mise run`; that also puts brew on PATH for brew-bundle.
+# Locally, mise is already on PATH and the prologue is a no-op.
+pre-packages = """
+if ! command -v mise >/dev/null 2>&1; then for d in /opt/homebrew/bin /run/current-system/sw/bin "$HOME"/.local/share/mise/bin "$HOME"/.local/bin "$HOME"/.cargo/bin /usr/local/bin; do [ -x "$d/mise" ] && PATH="$d:$PATH" && break; done; fi
+mise run defaults-snapshot && mise run brew-bundle
+"""
+final = """
+if ! command -v mise >/dev/null 2>&1; then for d in /opt/homebrew/bin /run/current-system/sw/bin "$HOME"/.local/share/mise/bin "$HOME"/.local/bin "$HOME"/.cargo/bin /usr/local/bin; do [ -x "$d/mise" ] && PATH="$d:$PATH" && break; done; fi
+mise run herdr-plugins && mise run vscode-extensions && mise run system-check
+"""
 
 [bootstrap.remote]
 # The fleet inventory for `mise bootstrap remote` (README, "Fleet sync").
