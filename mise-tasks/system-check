@@ -1,14 +1,13 @@
 #!/usr/bin/env bash
-# macOS system settings, the sudo part of the old run_onchange_30 script,
-# plus the Full Disk Access-gated defaults from the old run_after_20 script,
-# the AppleInterfaceStyle delete, the nohidden ~/Library flag, and the
-# Dock/Finder/... restart when a defaults domain they read changed.
+# macOS system settings: the FDA-gated app defaults, the AppleInterfaceStyle
+# delete, the nohidden ~/Library flag, the hostname, firewall, Touch ID,
+# power, software updates, the FileVault check, the GPU wired-limit daemon
+# (desktop: Screen Sharing and Remote Login), plus the Dock/Finder/...
+# restart when a defaults domain they read changed.
 #
 # Runs from the bootstrap final hook. The sandboxed-app defaults and the
-# restart apply without sudo (user-level); the system part is TTY-gated like
-# the old script, so an unattended bootstrap skips it instead of hanging on
-# a password prompt. Deleting a line stops setting it; it does not restore
-# the old value.
+# restart apply without sudo (user-level); the system part is TTY-gated, so
+# an unattended bootstrap skips it instead of hanging on a password prompt.
 
 set -uo pipefail   # no -e: one failure shouldn't abort the rest
 
@@ -154,8 +153,8 @@ case "${KIND:-laptop}" in
     sudo pmset -c sleep 10 displaysleep 10 disksleep 10 powernap 0
     ;;
 esac
-# Lock on wake: the stock default is "require password immediately" (what the
-# old script pinned); pmset has no such setting.
+# Lock on wake: the stock default is "require password immediately"; pmset
+# has no such setting.
 
 ##### Hostname ################################################################
 # All names set to HOST (the module var), else the current hostname.
@@ -188,8 +187,7 @@ if [ "${KIND:-laptop}" = "desktop" ]; then
   # it to omlx's ceiling for this host (WIRED_LIMIT_MB from the gza module);
   # more can get omlx killed mid-load, stranding memory until a reboot. The
   # sysctl resets at boot, so a LaunchDaemon reapplies it; it is also set now.
-  # (The old com.dolfth.wired-limit daemon, renamed for the migration.)
-  W="${WIRED_LIMIT_MB:?WIRED_LIMIT_MB is not set; add it to the host module (the old .chezmoidata.yaml wiredLimitMb)}"
+  W="${WIRED_LIMIT_MB:?WIRED_LIMIT_MB is not set; add it to the gza module}"
   WIRED="sysctl -w iogpu.wired_limit_mb=${W}"
   sudo tee /Library/LaunchDaemons/dev.mise.wired-limit.plist >/dev/null <<EOF
 <?xml version="1.0" encoding="UTF-8"?>

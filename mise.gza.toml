@@ -14,8 +14,7 @@ omp_base = "127.0.0.1"
 HOST = "gza"
 KIND = "desktop"
 # iogpu.wired_limit_mb, the GPU wired-memory ceiling omlx reports; applied by
-# the system-check task's LaunchDaemon (the old wiredLimitMb in
-# .chezmoidata.yaml).
+# the system-check task's LaunchDaemon.
 WIRED_LIMIT_MB = "45056"
 
 [bootstrap.brew.taps]
@@ -28,14 +27,11 @@ WIRED_LIMIT_MB = "45056"
 # a second, throttled copy on the same port).
 "brew:jundot/omlx/omlx" = "latest"
 "brew:incoai/tap/splash" = "latest"
-# Terminal coding agent; gza is the headless-reachable machine, so it hosts
-# the omp session that verifies the macOS defaults. First run: `omp` to pick
-# a provider.
+# Terminal coding agent. First run: `omp` to pick a provider.
 "brew:can1357/tap/omp" = "latest"
 
-# The old com.dolfth.* LaunchAgents, renamed to dev.mise.*. Label is the
-# default; kickstart replaces the bootout/bootstrap dance the 40/50 scripts
-# did by hand (including the wait-for-launchd poll).
+# The user LaunchAgents that run the local servers. `kickstart` re-asserts
+# the job on every bootstrap (idempotent: already-loaded jobs are replaced).
 [bootstrap.macos.launchd.agents.omlx]
 program = "{{ system_brew_prefix }}/opt/omlx/bin/omlx"
 args = ["serve"]
@@ -62,12 +58,11 @@ kickstart = true
 
 [dotfiles]
 # omlx writes these files itself (UI). Each is a merge edit (the id segment
-# names the edit within the file) deep over the live file -- the old dot_omlx
-# modify_ scripts: objects merge, arrays and scalars replace, keys omlx wrote
-# that we don't own are never touched -- so the auth secrets in
-# settings.json stay local, and the models omlx has stay. A missing target is
-# created from the source. Rendered as Tera first ({{ vars.host }},
-# {{ vars.tailnet }}, {{ env.HOME }}).
+# names the edit within the file) deep over the live file: objects merge,
+# arrays and scalars replace, keys omlx wrote that we don't own are never
+# touched -- so the auth secrets in settings.json stay local, and the models
+# omlx has stay. A missing target is created from the source. Rendered as Tera
+# first ({{ vars.host }}, {{ vars.tailnet }}, {{ env.HOME }}).
 "~/.omlx/settings.json/pinned" = { source = "omlx/settings.json", merge = true, template = "tera" }
 "~/.omlx/model_settings.json/pinned" = { source = "omlx/model_settings.json", merge = true, template = "tera" }
 "~/.omlx/model_profiles.json/pinned" = { source = "omlx/model_profiles.json", merge = true, template = "tera" }
@@ -81,6 +76,6 @@ kickstart = true
 "~/.omp/agent/config.yml" = "omp/agent/config.yml"
 "~/.omp/agent/models.yml" = { source = "omp/agent/models.yml.tera", mode = "template" }
 
-# The old com.dolfth.* plists, replaced by the dev.mise.* agents above.
+# The dev.mise.* agents above replace these plists; keep them deleted.
 "~/Library/LaunchAgents/com.dolfth.omlx.plist" = { mode = "absent" }
 "~/Library/LaunchAgents/com.dolfth.splash.plist" = { mode = "absent" }

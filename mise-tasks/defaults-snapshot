@@ -2,8 +2,7 @@
 # Saves a hash of the defaults domains the UI reads, taken BEFORE bootstrap
 # writes the declarative defaults. system-check (final hook) compares against
 # it: re-writing a value leaves the export unchanged, so a match means the
-# Dock/Finder/... restart can be skipped. (The old run_after_20 script did
-# the same with an in-script before/after snapshot.)
+# Dock/Finder/... restart can be skipped.
 set -euo pipefail
 
 if [ "$(uname -s)" != "Darwin" ]; then

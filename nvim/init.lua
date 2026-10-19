@@ -1,7 +1,7 @@
--- Managed by mise. Ported from the nixvim config in the nixos flake:
--- catppuccin + lualine + treesitter, and nothing else. Kept deliberately small
--- -- it exists so nwa and mca share an editor without nix-darwin, and it is
--- meant to be cheap to throw away if this becomes a helix config.
+-- Managed by mise: catppuccin + lualine + treesitter, and nothing else.
+-- Kept deliberately small -- it exists so nwa and mca share an editor without
+-- nix-darwin, and it is meant to be cheap to throw away if this becomes a
+-- helix config.
 
 -- lazy.nvim bootstrap ------------------------------------------------------
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
@@ -40,9 +40,8 @@ require("lazy").setup({
       auto_install = true,
       highlight = { enable = true },
       indent = { enable = true },
-      -- The nixvim config set `folding.enable = false`. Neovim's default
-      -- foldmethod is already "manual", so there is nothing to turn off --
-      -- noted so the omission reads as deliberate rather than lost.
+      -- No `folding` key: Neovim's default foldmethod is already "manual",
+      -- so the omission is deliberate, not lost.
     },
   },
   {
