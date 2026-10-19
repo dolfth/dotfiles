@@ -11,7 +11,8 @@
 Everything a machine needs -- packages, dotfiles, and the settings tasks
 (mise tasks and the bootstrap hooks) -- lives in this one checkout, which
 *is* the global mise config, so it doubles as the dotfile history: edit,
-`git commit -am "…"; git push`; the other machines pull. The remote is
+`git commit`, push; then `mise bootstrap remote` takes the fleet (see
+below). The remote is
 `git@github.com:dolfth/dotfiles.git` -- `main` is the mise era, the pre-mise
 chezmoi iteration lives on under `archive/chezmoi`.
 
@@ -19,7 +20,7 @@ chezmoi iteration lives on under `archive/chezmoi`.
 
 | File | Loads when | Holds |
 |---|---|---|
-| `mise.toml` | always | per-host data in `[vars]` (accent/icon/tailnet/sshKeys), the shared dotfiles, the bootstrap hooks |
+| `mise.toml` | always | per-host data in `[vars]` (accent/icon/tailnet/sshKeys), the shared dotfiles, the bootstrap hooks, the fleet inventory (`[bootstrap.remote]`) |
 | `mise.mac.toml` | `mac` selected | both Macs: the declarative macOS defaults, `~/.zshrc`, `~/.ssh/config`, `up.fish`, linearmouse |
 | `mise.mca.toml` | `mca` selected | the laptop: the syncthing user service (its GUI software lives in `Brewfile.mca`) |
 | `mise.gza.toml` | `gza` selected | the desktop: the omlx + splash LaunchAgents, the agent self-heal, the omlx, omp and pi configs (its formulae live in `Brewfile.gza`) |
@@ -161,3 +162,40 @@ git commit -am "…"; git push
 
 Edit a template and run `mise dot apply` to re-render it; `mise dot diff`
 shows what would change first.
+
+## Fleet sync (`mise bootstrap remote`)
+
+One command takes the whole fleet from this repo:
+
+```bash
+cd ~/.config/mise   # the repo; run it here
+mise bootstrap remote --adopt 'git@github.com:dolfth/dotfiles.git?ref=main' --all
+```
+
+It connects to every machine in the `[bootstrap.remote.hosts]` inventory
+(`mise.toml`) over SSH and, on each, adopts this checkout as its
+`~/.config/mise` (an existing checkout is reused and fast-forwarded),
+stages the orchestrator's mise so the run parses with one version, and
+runs the full `mise bootstrap` there -- hooks, packages, dotfiles,
+services, all of it. A host's own mise install and its running services
+are left alone; a host that fails is reported at the end while the others
+proceed.
+
+Any machine can orchestrate; gza is the default because it is always on
+and reachable, while mca (the laptop) is reachable only while awake on
+the tailnet. `--tag mac` targets just the Macs, `--tag nix` just nwa.
+
+Two notes:
+
+- The inventory's `mise_env` is authoritative for the remote run: it
+  replaces the host's own `miserc.local.toml` selection (a brand-new
+  machine has none at all), so keep it in sync with each machine's local
+  file.
+- nwa runs Tailscale SSH: the first connection prints a one-off approval
+  URL -- visit it, then persistently approve the key in the Tailscale
+  admin console so unattended runs work.
+
+A brand-new machine lays its OS floor first (a Mac: the steps above; a
+NixOS box: its flake, which declares mise) -- then
+`mise bootstrap remote --adopt '…' --host newbox.ts.net` does the rest
+from anywhere, no session on the box needed.
