@@ -14,3 +14,22 @@ symbolPreset: nerd
 defaultThinkingLevel: medium
 task:
   maxRecursionDepth: 0
+  maxConcurrency: 1
+compaction:
+  asyncEnabled: false
+bash:
+  gitGuard: true
+checkpoint:
+  enabled: true
+autoResume: true
+display:
+  showTurnTime: true
+tui:
+  completeScrollback: true
+memory:
+  backend: mnemopi
+mnemopi:
+  llmMode: none
+  noEmbeddings: true
+providers:
+  cacheWarming: "off"
