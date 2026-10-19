@@ -11,10 +11,11 @@
 export EDITOR=nvim
 export VISUAL=nvim
 
-# Homebrew on PATH before we look for fish.
+# The Homebrew prefix's bin on PATH, as a static path rather than
+# `brew shellenv` (see config.fish): a fresh machine has no Homebrew yet.
 for p in /opt/homebrew /usr/local; do
-  if [ -x "$p/bin/brew" ]; then
-    eval "$("$p/bin/brew" shellenv)"
+  if [ -d "$p/bin" ]; then
+    PATH="$p/bin:$PATH"
     break
   fi
 done
