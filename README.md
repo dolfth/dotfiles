@@ -18,11 +18,12 @@ Everything a machine needs -- packages, dotfiles, and the settings tasks
 | File | Loads when | Holds |
 |---|---|---|
 | `mise.toml` | always | per-host data in `[vars]` (accent/icon/kind/tailnet/sshKeys), shared dotfiles, bootstrap hooks |
-| `mise.mac.toml` | `mac` selected | both Macs: CLI tools, the declarative macOS defaults, `~/.zshrc`, `~/.ssh/config`, `up.fish` |
-| `mise.mca.toml` | `mca` selected | laptop: GUI casks, App Store, noTunes, syncthing |
-| `mise.gza.toml` | `gza` selected | desktop: omlx + splash, the LaunchAgents, the agent cutover, merged omlx/omp configs |
+| `mise.mac.toml` | `mac` selected | both Macs: the declarative macOS defaults, `~/.zshrc`, `~/.ssh/config`, `up.fish` |
+| `mise.mca.toml` | `mca` selected | laptop: the syncthing user service (the GUI software lives in `Brewfile.mca`) |
+| `mise.gza.toml` | `gza` selected | desktop: the omlx + splash LaunchAgents, the agent cutover, merged omlx/omp configs (the brew formulae live in `Brewfile.gza`) |
 | `mise.nwa.toml` | `nwa` selected | the omp agent config (mise on nwa comes from Nix, not from a package list) |
 | `miserc.local.toml` | not committed | this machine: `env = ["mac", "<host>"]` |
+| `Brewfile`, `Brewfile.mca`, `Brewfile.gza` | the brew-bundle bootstrap task (Macs) | the brew-ecosystem manifest: the 19 formulae (incl. mise) + 3 casks both Macs share; the laptop's GUI casks, 2 formulae and 7 App Store apps; the desktop's omlx, splash, omp |
 
 Selecting the environments in `miserc.local.toml` loads the module files
 (`mise.<env>.toml`); everything else in the config is environment-neutral.
@@ -42,28 +43,23 @@ pbcopy < ~/.ssh/id_ed25519.pub
 #    Add it under GitHub → Settings → SSH and GPG keys, then check:
 ssh -T git@github.com
 
-# 3. mise itself, for the bootstrap command below. The bootstrap's packages
-# step then installs mise into the Homebrew prefix (brew:mise in the mac
-# module) -- the copy in the prefix is the one that stays, so delete the
-# curl-installed one afterwards (step 5).
-curl -fsSL https://mise.run | sh
-export PATH="$HOME/.local/bin:$PATH"   # or start a new shell
+# 3. Homebrew, the brew-ecosystem installer (a bootstrap dependency on the
+#    Macs -- see "Why brew + mise" below). The installer needs sudo, then
+#    follow the "shells" note it prints (on Apple silicon an
+#    `eval "$(/opt/homebrew/bin/brew shellenv)"` line in ~/.zprofile) so
+#    brew is on PATH in new shells.
+curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh | bash
+brew install mise   # 4. mise itself, from brew.
 
-# 4. Everything else. Clones this repo into ~/.config/mise (the global mise
+# 5. Everything else. Clones this repo into ~/.config/mise (the global mise
 #    config) and runs bootstrap from it: the pre-packages hooks take the
-#    defaults snapshot and, on the desktop, pre-install omlx and splash (the
-#    two formulae the current mise release cannot evaluate -- see the
-#    tasks table), the packages step installs the modules' packages into
-#    the Homebrew prefix (no Homebrew installation needed; mise creates
-#    the prefix on first use), the dotfiles deploy, and the final hooks run
+#    defaults snapshot and run `brew bundle` over the Brewfiles (the
+#    brew-ecosystem packages, incl. the desktop's omlx, splash and omp), the
+#    dotfiles deploy, the launchd agents register, and the final hooks run
 #    the system settings, the herdr and vscodium extensions. Asks for sudo
-#    (the prefix, system settings) and, if the machine has no terminal, it
-#    skips the TTY-gated parts; re-run `mise run system-check` in one.
+#    (the system settings) and, if the machine has no terminal, it skips the
+#    TTY-gated parts; re-run `mise run system-check` in one.
 mise bootstrap --adopt 'git@github.com:dolfth/dotfiles.git?ref=main' -E mac,gza
-# 5. The curl-installed mise in ~/.local/bin is a duplicate of what the
-#    packages step just installed in the prefix -- delete it so there is
-#    exactly one mise.
-rm -f ~/.local/bin/mise
 ```
 
 The environment selection (`-E mac,gza`) is written into
@@ -84,35 +80,64 @@ like the Macs.
 
 ## Layout
 
-### Packages (`[bootstrap.packages]` in the host modules)
+### Packages (the Brewfiles)
+
 | What | Where |
 |---|---|
-| 19 formulae + 3 casks both Macs share (git, fish, neovim, starship, …, tailscale-app, ghostty) | `mise.mac.toml` |
-| 18 GUI casks + 2 formulae (aerospace borders, syncthing) + 7 App Store apps, laptop only | `mise.mca.toml` |
-| omlx + splash, desktop only (omp is deliberately not a package -- see the note below) | `mise.gza.toml` |
+| 19 formulae (incl. mise) + 3 casks both Macs share (git, fish, neovim, starship, …, ghostty, tailscale-app) | `Brewfile` |
+| 18 GUI casks + 2 formulae (aerospace borders, syncthing) + 7 App Store apps, laptop only | `Brewfile.mca` |
+| omlx + splash + omp, desktop only | `Brewfile.gza` |
 
-App Store IDs come from `mas list`, or the trailing digits of the App Store
-URL. They require being signed in, and the app must already be in your
-purchase history.
+App Store entries (`mas`) require being signed in, and the app must already
+be in your purchase history; the IDs come from `mas list`, or the trailing
+digits of the App Store URL.
 
-The formulae and casks install into the standard Homebrew prefix, but no
-Homebrew installation is required: mise creates the prefix on first use and
-keeps the layout (Cellar, opt, receipts) brew-compatible, so a Homebrew that
-exists or appears later coexists -- mise never overwrites prefix files it did
-not create, and it counts a keg linked into `opt/` as installed no matter
-who poured it.
+brew bundle (the bootstrap's brew-bundle task) installs what is missing and
+does not upgrade what is present; daily upgrades go through `up`. The kegs
+land in the standard Homebrew prefix, which is why Homebrew is a bootstrap
+step on the Macs.
 
-One wrinkle: the current mise release (2026.10.14) cannot evaluate three of
-the tap formulas. The omlx and splash definitions use constructs its formula
-metadata shim lacks (`MacOS` constant, `Requirement` class), and omp's
-install step uses `with_env`, which its source-build shim rejects outright --
-so a run that resolves any of them dies on them. The bridges, until the
-upstream fixes land: `omlx-splash` pre-installs both server kegs on a fresh
-machine (the bootstrap's pre-packages hook) and, since a clean machine has no
-Homebrew, is the only way omp gets installed there at all; `packages-upgrade`
-names every resolvable formula for the daily `up`; and `up` itself carries a
-Homebrew-bridge block (`brew upgrade omlx splash` + a reinstall of omp) for
-machines that *do* have Homebrew. Delete the pieces as the fixes ship.
+### Why brew + mise (and not all-mise)
+
+This repo first landed fully on mise, with the brew-ecosystem packages
+declared in the modules' `[bootstrap.packages]` -- until the current mise
+release (2026.10.14, the one this migration used) turned out to be unable to
+handle three of the formulae:
+
+- the **omlx** and **splash** tap definitions use brew DSL constructs mise's
+  formula-metadata shim does not implement (a `MacOS` constant, a
+  `Requirement` class, `unavailable:`), so mise cannot resolve them;
+- **omp**'s install step uses `with_env`, which mise's source-build shim
+  rejects outright;
+- and resolution is all-or-nothing per batch: one unresolvable formula fails
+  the whole packages step.
+
+The previous revision bridged the gap by hand -- a task replicating the two
+live tap formulas line for line, a named upgrade list, a brew-bridge block in
+`up` -- which had to be re-synced every time an upstream formula changed a
+pin, a resource or a build step. That tax is paid on real machines, while the
+only thing it bought was a fresh Mac without Homebrew; this fleet has none
+(both Macs run Homebrew, nwa is Nix and needs no package manager at all).
+
+So on 2026-10-19 the split became the standard one, one owner per
+ecosystem:
+
+- **brew** owns the brew-ecosystem: the Brewfiles above are the manifest,
+  `brew bundle` installs, `up` upgrades. brew evaluates its own formulas
+  natively, so all of the above formulae work as-is (omp installed from its
+  renamed tap in 12 seconds when the cutover was tested).
+- **mise** owns the rest: the dotfiles (with merge and template support),
+  the tasks and bootstrap hooks, the launchd agents, the declarative macOS
+  defaults, and declared tool versions -- plus itself, as a brew formula.
+
+The kegs the migration had already poured are brew-compatible, so brew
+simply adopts them -- no reinstall, and `brew bundle` no-ops on what is
+present. The no-brew capability is not lost, just no longer the default: the
+hand-rolled bridge (the `omlx-splash` task and the upgrade named-list) is in
+the git history; if mise's shim gaps get fixed upstream and you want brew
+gone, it is one restore plus deleting the Brewfiles. The two upstream gaps
+(the metadata shim missing brew DSL, the source-build shim rejecting
+`with_env`) are both bugs worth an issue against mise-dev/mise.
 
 ### Files (`[dotfiles]`)
 
@@ -144,8 +169,7 @@ that used to deploy it.
 | Task | Hook | Does |
 |---|---|---|
 | `defaults-snapshot` | pre-packages (always) | hashes the defaults domains the UI reads, before bootstrap writes them |
-| `omlx-splash` | pre-packages (always) | installs the omlx + splash kegs the current mise release cannot resolve, on the host that declares them (gza); no-op elsewhere and wherever the kegs already exist (`MISE_OMLX_SPLASH_FORCE=1` replaces them -- the upgrade path on a machine without Homebrew) |
-| `packages-upgrade` | none (the `up` function) | the daily mise-side upgrade: every resolvable formula of the Mac modules, named, so the omlx, splash and omp definitions mise cannot evaluate stay out (their upgrades live in the `up` function's Homebrew-bridge block and the omlx-splash task) |
+| `brew-bundle` | pre-packages (always) | runs `brew bundle` over `Brewfile` + `Brewfile.<host>`: installs what is missing, never upgrades (that is `up`'s job); on a failed entry it warns and continues so the dotfiles and agents still deploy -- re-run `brew bundle` in a terminal; no-op off macOS |
 | `bootstrap` | the bootstrap task slot (always) | the LaunchAgent cutover: registers the `dev.mise.*` agents, boots out `com.dolfth.*` jobs if launchd still has them, kickstarts the new ones; no-op off gza (it never kills a process holding a port -- the agent retries under KeepAlive until it frees up) |
 | `herdr-plugins` | final (always) | installs the herdr plugins the keybindings and nvim config rely on; no-op where herdr is absent |
 | `vscode-extensions` | final (always) | the vscodium extensions; no-op where codium is absent (i.e. everywhere but mca) |
