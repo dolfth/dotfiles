@@ -1,21 +1,30 @@
 #!/usr/bin/env bash
-# The LaunchAgent cutover: register the dev.mise.* agents, boot out any
-# com.dolfth.* jobs launchd still has loaded (their plist files are removed
-# by the gza module's absent dotfile entries), and kickstart the new ones.
-# Runs from the bootstrap task slot on every bootstrap.
+# LaunchAgent self-heal + port report. Runs from the bootstrap task slot on
+# every bootstrap.
 #
-# It never kills processes of its own: an agent whose port is held by
-# something else (an interactive `splash serve` in a terminal, say) just
-# retries under KeepAlive until the port frees up.
+# For each dev.mise.* agent this machine declared, the loop runs (both
+# branches verified against a throwaway agent on 2026-10-19):
+#
+#   launchctl bootstrap || true -- (re)loads a job whose plist exists but is
+#     not loaded (a bare kickstart cannot find it: "Could not find service");
+#     a suppressed no-op error when the job is already loaded. The plist
+#     itself is mise's: the macos-launchd-agents part (it runs before this
+#     task) re-writes and reloads the job when its definition changes.
+#
+#   launchctl kickstart         -- starts a loaded-but-dead agent, and is a
+#     no-op on a healthy one (same pid before and after; the same rule mise's
+#     own launchd code follows -- a killed-and-respawned process can wait out
+#     ThrottleInterval). So a bootstrap never kills a running server or drops
+#     a session talking to it. Version-driven restarts after a keg upgrade
+#     live in `up`, which compares the opt link and kicks with -k on purpose.
 #
 # Safe everywhere: no-op off macOS and wherever the agents are not declared
-# (mca, nwa) -- the plists are only written on gza by bootstrap's
-# macos-launchd-agents part, which runs before this task.
+# (mca, nwa) -- the plists are only written on gza.
 
 set -uo pipefail   # no -e: one agent failing must not abort the other
 
 if [ "$(uname -s)" != "Darwin" ]; then
-  echo "agent-cutover is macOS-only; skipping."
+  echo "agent self-heal is macOS-only; skipping."
   exit 0
 fi
 
@@ -25,26 +34,21 @@ for agent in dev.mise.omlx dev.mise.splash; do
   if [ ! -f "$plist" ]; then
     continue   # agents not declared on this machine (the gza module owns them)
   fi
-
-  # Register (idempotent: already-loaded jobs are replaced).
-  launchctl bootstrap "$gui" "$plist" 2>/dev/null \
-    || launchctl kickstart -k "$gui/$agent" 2>/dev/null || true
-
-  # Superseded com.dolfth.* jobs, if launchd still has them loaded (their
-  # plist files are already gone).
-  old="com.dolfth.${agent#dev.mise.}"
-  launchctl bootout "$gui/$old" 2>/dev/null || true
+  launchctl bootstrap "$gui" "$plist" 2>/dev/null || true
+  launchctl kickstart "$gui/$agent" 2>/dev/null || true
 done
 
-# Report without killing: a port still held by another process means the
-# agent will pick it up on its own when that process exits.
+# Report without touching: a port still held by another process (an
+# interactive `splash serve` in a terminal, say) is left to its owner -- the
+# agent picks it up on its own under KeepAlive when that process exits.
 for pair in "omlx:8080" "splash:8000"; do
   name="${pair%%:*}"
   port="${pair#*:}"
   pid=$(lsof -nP -iTCP:"$port" -sTCP:LISTEN -t 2>/dev/null | head -1)
   if [ -n "$pid" ] && [ -f "${HOME}/Library/LaunchAgents/dev.mise.${name}.plist" ]; then
     owner=$(ps -o comm= -p "$pid" 2>/dev/null || echo "?")
-    jobpid=$(launchctl print "$gui/dev.mise.${name}" 2>/dev/null | awk '/pid/ {print $2; exit}')
+    # `launchctl print` renders the line "pid = N": fields "pid", "=", "N".
+    jobpid=$(launchctl print "$gui/dev.mise.${name}" 2>/dev/null | awk '$1 == "pid" {print $3; exit}')
     if [ -n "${jobpid:-}" ] && [ "$pid" = "$jobpid" ]; then
       echo "  ${name}: agent owns port ${port}"
     else
@@ -53,4 +57,4 @@ for pair in "omlx:8080" "splash:8000"; do
   fi
 done
 
-echo "agent cutover done (logs: ~/Library/Logs/omlx.log, ~/Library/Logs/splash.log)"
+echo "agent self-heal done (logs: ~/Library/Logs/omlx.log, ~/Library/Logs/splash.log)"

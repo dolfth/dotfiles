@@ -19,8 +19,10 @@ WIRED_LIMIT_MB = "45056"
 # The omlx, splash and omp brew formulae live in Brewfile.gza (installed
 # by the brew-bundle bootstrap task); the LaunchAgents below run them.
 
-# The user LaunchAgents that run the local servers. `kickstart` re-asserts
-# the job on every bootstrap (idempotent: already-loaded jobs are replaced).
+# The user LaunchAgents that run the local servers. When the definition
+# changes, bootstrap re-writes the plist and reloads the job; the `kickstart`
+# there is a bare (no -k) no-op, since the reload already started the process.
+# The per-bootstrap self-heal of a dead agent lives in the `bootstrap` task.
 [bootstrap.macos.launchd.agents.omlx]
 program = "{{ system_brew_prefix }}/opt/omlx/bin/omlx"
 args = ["serve"]
