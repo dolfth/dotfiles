@@ -7,8 +7,10 @@
 [bootstrap.packages]
 # The single source of truth for installed software on these Macs. mise reads
 # the taps' published metadata directly, so no `brew bundle`-style trust flag
-# is needed. `brew "mise"` keeps mise itself on the Homebrew track after the
-# initial curl install.
+# is needed. It installs into the standard Homebrew prefix itself, so no
+# Homebrew installation is required (an existing one coexists: mise never
+# overwrites prefix files it did not create). `brew "mise"` puts mise in the
+# prefix; the curl-installed ~/.local/bin copy is only a bootstrap stopgap.
 "brew:bat" = "latest"
 "brew:duckdb" = "latest"
 "brew:dust" = "latest"
@@ -24,6 +26,10 @@
 "brew:mosh" = "latest"
 "brew:neovim" = "latest"
 "brew:python@3.14" = "latest"
+# Ruby 3: mise evaluates tap definitions that publish no API metadata (such
+# as the omp tap) with it, and `upgrade` fails without a compatible one --
+# the system Ruby is 2.6.
+"brew:ruby" = "latest"
 "brew:starship" = "latest"
 "brew:uv" = "latest"
 "brew:mise" = "latest"
@@ -35,8 +41,8 @@
 "brew-cask:tailscale-app" = "latest"
 
 # The laptop-only GUI apps, syncthing and the App Store entries live in
-# mise.mca.toml; Homebrew itself and the vscodium extensions install as mise
-# tasks (mise-tasks/*), run from the bootstrap hooks.
+# mise.mca.toml; the vscodium extensions install as a mise task
+# (mise-tasks/*), run from the bootstrap final hook.
 
 ##### macOS defaults #####
 #

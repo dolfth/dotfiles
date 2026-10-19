@@ -69,12 +69,13 @@ ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPNrEPG5Srx81xQTYTGqnZulXV4fWZQA/ooLJsUx856N
 "~/.pi/agent/settings.json/pinned" = { source = "pi/agent/settings.json", merge = true }
 
 [bootstrap.hooks]
-# Both no-op off macOS (they guard on uname/TTY), so they are safe in the
-# base for all three machines. pre-packages runs before the brew step: a
-# fresh Mac needs Homebrew itself, and the snapshot lets the final system
-# check skip the UI restart when nothing the UI reads changed. final then
-# reinstalls the herdr plugins and the vscodium extensions (no-op where the
-# CLI is absent, i.e. everywhere but the laptop), then applies the sudo
-# system settings, the Full Disk Access-gated defaults, and the UI restart.
-pre-packages = "mise run homebrew && mise run defaults-snapshot"
+# Both no-op off macOS (they guard on uname), so they are safe in the base
+# for all three machines. defaults-snapshot is taken before bootstrap writes
+# the declarative defaults, so the final system check can skip the UI
+# restart when nothing the UI reads changed. omlx-splash installs the two
+# tap formulae the current mise release cannot yet evaluate (see the task);
+# it self-guards on the active config, so it acts only on the host that
+# declares them -- gza. It runs in pre-packages, before the packages step
+# would otherwise fail to resolve them on a fresh machine.
+pre-packages = "mise run defaults-snapshot && mise run omlx-splash"
 final = "mise run herdr-plugins && mise run vscode-extensions && mise run system-check"
