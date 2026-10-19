@@ -2,7 +2,6 @@
 
 [vars]
 host = "mca"
-kind = "laptop"
 accent = "color_purple"
 icon = "\uF179"  # nf-fa-apple
 

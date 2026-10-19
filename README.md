@@ -17,7 +17,7 @@ Everything a machine needs -- packages, dotfiles, and the settings tasks
 
 | File | Loads when | Holds |
 |---|---|---|
-| `mise.toml` | always | per-host data in `[vars]` (accent/icon/kind/tailnet/sshKeys), shared dotfiles, bootstrap hooks |
+| `mise.toml` | always | per-host data in `[vars]` (accent/icon/tailnet/sshKeys), shared dotfiles, bootstrap hooks |
 | `mise.mac.toml` | `mac` selected | both Macs: the declarative macOS defaults, `~/.zshrc`, `~/.ssh/config`, `up.fish` |
 | `mise.mca.toml` | `mca` selected | laptop: the syncthing user service (the GUI software lives in `Brewfile.mca`) |
 | `mise.gza.toml` | `gza` selected | desktop: the omlx + splash LaunchAgents, the agent cutover, merged omlx/omp configs (the brew formulae live in `Brewfile.gza`) |
