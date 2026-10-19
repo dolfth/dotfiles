@@ -18,3 +18,11 @@ KIND = "server"
 # omp: the binary is installed by Nix; the config deploys here.
 "~/.omp/agent/config.yml" = "omp/agent/config.yml"
 "~/.omp/agent/models.yml" = { source = "omp/agent/models.yml.tera", mode = "template" }
+
+# pi owns its settings file (pi install and /settings both write it), so a
+# merge entry re-asserts the two pinned keys; everything pi writes for
+# itself -- installed extensions, whatever /settings persists -- is kept.
+"~/.pi/agent/settings.json/pinned" = { source = "pi/agent/settings.json", merge = true }
+# herdr rewrites this file itself (config reset-keys, the first-run wizard),
+# so it is a copy, not a symlink.
+"~/.config/herdr/config.toml" = { source = "herdr/config.toml", mode = "copy" }
