@@ -55,11 +55,6 @@ ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPNrEPG5Srx81xQTYTGqnZulXV4fWZQA/ooLJsUx856N
 "~/.config/starship.toml" = { source = "starship.toml.tera", mode = "template" }
 "~/.config/ghostty/config" = "ghostty/config"
 "~/.config/nvim/init.lua" = "nvim/init.lua"
-# linearmouse creates the file on first run; an edit entry (the id segment
-# names the edit within the file) seeds it: written when missing, and only
-# missing keys are filled in afterwards -- once LinearMouse has written its
-# own values they are kept.
-"~/.config/linearmouse/linearmouse.json/initial" = { source = "linearmouse.json", merge = "missing" }
 
 [bootstrap.hooks]
 # Both no-op off macOS (they guard on uname), so they are safe in the base

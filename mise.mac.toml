@@ -198,3 +198,9 @@ value = 1
 
 # herdr is nwa-only (the nwa module deploys it); keep it removed on the Macs.
 "~/.config/herdr/config.toml" = { mode = "absent" }
+
+# linearmouse creates the file on first run; an edit entry (the id segment
+# names the edit within the file) seeds it: written when missing, and only
+# missing keys are filled in afterwards -- once LinearMouse has written its
+# own values they are kept.
+"~/.config/linearmouse/linearmouse.json/initial" = { source = "linearmouse.json", merge = "missing" }

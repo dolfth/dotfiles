@@ -20,7 +20,7 @@ chezmoi iteration lives on under `archive/chezmoi`.
 | File | Loads when | Holds |
 |---|---|---|
 | `mise.toml` | always | per-host data in `[vars]` (accent/icon/tailnet/sshKeys), the shared dotfiles, the bootstrap hooks |
-| `mise.mac.toml` | `mac` selected | both Macs: the declarative macOS defaults, `~/.zshrc`, `~/.ssh/config`, `up.fish` |
+| `mise.mac.toml` | `mac` selected | both Macs: the declarative macOS defaults, `~/.zshrc`, `~/.ssh/config`, `up.fish`, linearmouse |
 | `mise.mca.toml` | `mca` selected | the laptop: the syncthing user service (its GUI software lives in `Brewfile.mca`) |
 | `mise.gza.toml` | `gza` selected | the desktop: the omlx + splash LaunchAgents, the agent self-heal, the omlx, omp and pi configs (its formulae live in `Brewfile.gza`) |
 | `mise.nwa.toml` | `nwa` selected | the omp, pi and herdr configs (mise on nwa comes from Nix, not a package list) |
@@ -112,7 +112,7 @@ and the task.
 | `nvim/init.lua` | `~/.config/nvim/init.lua` | lazy.nvim |
 | `ghostty/config` | `~/.config/ghostty/config` | Nerd Font, so starship glyphs render |
 | `herdr/config.toml` | `~/.config/herdr/config.toml` | nwa only; copied -- herdr rewrites the file itself |
-| `linearmouse/linearmouse.json` | `~/.config/linearmouse/linearmouse.json` | written only if absent; then LinearMouse owns it |
+| `linearmouse/linearmouse.json` | `~/.config/linearmouse/linearmouse.json` | both Macs; written only if absent, then LinearMouse owns it |
 | `pi/agent/settings.json` | `~/.pi/agent/settings.json` | gza + nwa; two pinned keys deep-merged into the file pi writes |
 | `omlx/*.json` | `~/.omlx/` | gza; the pinned settings, model settings and profiles deep-merged into the files omlx writes (auth keys stay omlx's), plus server aliases for the host's `.local` and Tailscale names |
 | `omp/agent/config.yml` | `~/.omp/agent/config.yml` | gza + nwa, symlinked: `/settings` changes flow back into the repo -- commit them |
