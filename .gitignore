@@ -3,3 +3,7 @@ miserc.local.toml
 # mise's own runtime state.
 *.log
 mise.lock
+# omp's config lock: the deployed config is a symlink into the repo, so omp
+# realpaths it and drops its 0-byte flock sentinel here. Inert once omp
+# exits; reappears on every run.
+omp/agent/*.lock
