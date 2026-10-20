@@ -12,14 +12,21 @@ KIND = "laptop"
 # The laptop's GUI software (casks, the two formulae, the App Store apps)
 # lives in Brewfile.mca, installed by the brew-bundle bootstrap task.
 
-# A mise user service. mise runs `command` directly (no shell), so the path
-# is absolute; `restart` maps to launchd's KeepAlive. Logs go where mise
-# puts user-service logs.
-[bootstrap.services.syncthing]
-scope = "user"
-command = "{{ system_brew_prefix }}/opt/syncthing/bin/syncthing serve --no-browser --no-restart"
+# Background sync. Declared as a launchd agent, not a [bootstrap.services]
+# user service: mise 2026.10.15 does not render user-service values (the
+# `command` string reaches launchd verbatim -- an unrendered {{
+# system_brew_prefix }} became a job whose program was the literal `{{`),
+# while [bootstrap.macos.launchd.agents] does (see the gza agents). Same
+# label and plist as the old entry (dev.mise.syncthing), so the first
+# bootstrap after the move replaces the broken job in place.
+[bootstrap.macos.launchd.agents.syncthing]
+program = "{{ system_brew_prefix }}/opt/syncthing/bin/syncthing"
+args = ["serve", "--no-browser", "--no-restart"]
+run_at_load = true
+keep_alive_on_failure = true
 working_directory = "{{ env.HOME }}"
-restart = "on-failure"
-enabled = true
+stdout_path = "{{ env.HOME }}/Library/Logs/syncthing.log"
+stderr_path = "{{ env.HOME }}/Library/Logs/syncthing.log"
+kickstart = true
 # The macOS-shared dotfiles (~/.zshrc, ~/.ssh/config, up.fish) deploy from
 # mise.mac.toml.
