@@ -8,6 +8,7 @@ function up --description 'Upgrade macOS software: CLT, brew (the Brewfiles), Ap
     # The version a running server was started with, from the opt link.
     set -l omlx_before (string trim (readlink /opt/homebrew/opt/omlx 2>/dev/null))
     set -l splash_before (string trim (readlink /opt/homebrew/opt/splash 2>/dev/null))
+    set -l syncthing_before (string trim (readlink /opt/homebrew/opt/syncthing 2>/dev/null))
 
     # brew owns the brew-ecosystem packages (the Brewfiles, see README "Why
     # brew + mise"): one upgrade path for all of them -- the 18 shared
@@ -29,6 +30,12 @@ function up --description 'Upgrade macOS software: CLT, brew (the Brewfiles), Ap
     set -l splash_after (string trim (readlink /opt/homebrew/opt/splash 2>/dev/null))
     if test "$splash_before" != "$splash_after"; and launchctl print gui/(id -u)/dev.mise.splash >/dev/null 2>&1
         launchctl kickstart -k gui/(id -u)/dev.mise.splash
+    end
+    # Syncthing, laptop only: now a dev.mise launchd agent, so an upgraded
+    # keg needs the same kick; the guard no-ops where it is not installed.
+    set -l syncthing_after (string trim (readlink /opt/homebrew/opt/syncthing 2>/dev/null))
+    if test "$syncthing_before" != "$syncthing_after"; and launchctl print gui/(id -u)/dev.mise.syncthing >/dev/null 2>&1
+        launchctl kickstart -k gui/(id -u)/dev.mise.syncthing
     end
 
     # mise owns the declared tool versions (language runtimes and friends):

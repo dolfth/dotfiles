@@ -26,7 +26,7 @@ cask "the-unarchiver"
 cask "utm"
 cask "vscodium"
 cask "whatcable"
-# Background sync, laptop only (the user service for it stays in
+# Background sync, laptop only (the launchd agent for it stays in
 # mise.mca.toml, so it runs under mise, not `brew services`).
 brew "syncthing"
 

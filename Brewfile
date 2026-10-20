@@ -1,11 +1,12 @@
 # The single source of truth for brew-ecosystem software on the Macs.
 #
 # Run by the bootstrap's brew-bundle task:
-#   brew bundle --file=Brewfile --file=Brewfile.<host>
-# where the host file is Brewfile.mca (the laptop's GUI apps) or
-# Brewfile.gza (the desktop's local-LLM servers). brew bundle installs what
-# is missing and does not upgrade what is present; daily upgrades go
-# through `up` (brew upgrade).
+# The brew-bundle task runs: brew bundle --no-upgrade --file=Brewfile
+# --file=Brewfile.<host>, where the host file is Brewfile.mca (the laptop's
+# GUI apps) or Brewfile.gza (the desktop's local-LLM servers). --no-upgrade:
+# current Homebrew's plain `brew bundle` also upgrades installed entries;
+# here it installs what is missing, and daily upgrades go through `up` (brew
+# upgrade).
 #
 # Why brew and not mise: README, "Why brew + mise".
 #
