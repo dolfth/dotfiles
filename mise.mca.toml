@@ -9,6 +9,13 @@ icon = "\uF179"  # nf-fa-apple
 HOST = "mca"
 KIND = "laptop"
 
+# Window tiling (the cask lives in Brewfile.mca). AeroSpace rewrites this
+# file when the layout changes in-app, so it is a merge: the keys in the
+# source are ours, everything else AeroSpace or the user wrote stays, and a
+# missing file is created from the source.
+[dotfiles]
+"~/.config/aerospace/aerospace.toml/pinned" = { source = "aerospace/aerospace.toml", merge = true }
+
 # The laptop's GUI software (casks, the two formulae, the App Store apps)
 # lives in Brewfile.mca, installed by the brew-bundle bootstrap task.
 
