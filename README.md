@@ -21,7 +21,7 @@ chezmoi iteration lives on under `archive/chezmoi`.
 | File | Loads when | Holds |
 |---|---|---|
 | `mise.toml` | always | per-host data in `[vars]` (accent/icon/tailnet/sshKeys), the shared dotfiles, the bootstrap hooks, the fleet inventory (`[bootstrap.remote]`) |
-| `mise.mac.toml` | `mac` selected | both Macs: the declarative macOS defaults, `~/.zshrc`, `~/.ssh/config`, `up.fish`, linearmouse |
+| `mise.mac.toml` | `mac` selected | both Macs: the declarative macOS defaults, `$EDITOR`/`$VISUAL` (helix), `~/.zshrc`, `~/.ssh/config`, `up.fish`, linearmouse |
 | `mise.mca.toml` | `mca` selected | the laptop: the syncthing user service (its GUI software lives in `Brewfile.mca`) |
 | `mise.gza.toml` | `gza` selected | the desktop: the omlx + splash LaunchAgents, the agent self-heal, the omlx, omp and pi configs (its formulae live in `Brewfile.gza`) |
 | `mise.nwa.toml` | `nwa` selected | the omp, pi and herdr configs (mise on nwa comes from Nix, not a package list) |
@@ -71,7 +71,7 @@ config. After that, nwa follows this repo like the Macs.
 
 | What | Where |
 |---|---|
-| 18 formulae (incl. mise) + 3 casks, both Macs | `Brewfile` |
+| 14 formulae (incl. mise) + 3 casks, both Macs | `Brewfile` |
 | 18 GUI casks + 2 formulae (aerospace borders, syncthing) + 7 App Store apps, laptop only | `Brewfile.mca` |
 | omlx + splash + omp, desktop only | `Brewfile.gza` |
 
@@ -110,7 +110,6 @@ and the task.
 | `starship.toml.tera` | `~/.config/starship.toml` | per-host accent and icon from the vars |
 | `git/config` | `~/.config/git/config` | signs commits and tags with `~/.ssh/id_ed25519` |
 | `git/allowed_signers.tera` | `~/.config/git/allowed_signers` | every host's public key (the `sshKeys` var) |
-| `nvim/init.lua` | `~/.config/nvim/init.lua` | lazy.nvim |
 | `ghostty/config` | `~/.config/ghostty/config` | Nerd Font, so starship glyphs render |
 | `herdr/config.toml` | `~/.config/herdr/config.toml` | nwa only; copied -- herdr rewrites the file itself |
 | `linearmouse/linearmouse.json` | `~/.config/linearmouse/linearmouse.json` | both Macs; written only if absent, then LinearMouse owns it |
@@ -131,7 +130,7 @@ ones the repo used to track. To delete a file the repo deployed, declare it
 | `defaults-snapshot` | pre-packages | hashes the defaults domains the UI reads, before bootstrap writes them |
 | `brew-bundle` | pre-packages | `brew bundle` over `Brewfile` + `Brewfile.<host>`: installs what is missing, never upgrades (`up` does); a failed entry warns and continues (re-run `brew bundle` in a terminal). No-op off macOS |
 | `bootstrap` | the bootstrap task slot | for each `dev.mise.*` LaunchAgent: a guarded `launchctl bootstrap` (only (re)loads a not-loaded job) + a bare `kickstart` (starts a dead agent, no-op on a healthy one -- never kills a running server); then reports who holds each port. No-op off gza |
-| `herdr-plugins` | final | the herdr plugins the keybindings and nvim config rely on; no-op where herdr is absent |
+| `herdr-plugins` | final | the herdr plugins the keybindings rely on; no-op where herdr is absent |
 | `vscode-extensions` | final | the vscodium extensions; no-op where codium is absent |
 | `system-check` | final | the macOS system settings: FDA-gated app defaults, hostname, firewall, Touch ID, power, updates, FileVault check, the GPU wired-limit daemon; the desktop gets Screen Sharing + Remote Login. The sudo part is TTY-gated. Restarts Dock/Finder/… only when a domain they read changed |
 
