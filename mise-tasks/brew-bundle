@@ -17,14 +17,19 @@ if [ "$(uname -s)" != "Darwin" ]; then
   exit 0
 fi
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-files=("--file=$REPO/Brewfile")
+files=("$REPO/Brewfile")
 if [ -n "${HOST:-}" ] && [ -f "$REPO/Brewfile.$HOST" ]; then
-  files+=("--file=$REPO/Brewfile.$HOST")
+  files+=("$REPO/Brewfile.$HOST")
 fi
-if brew bundle --no-upgrade "${files[@]}"; then
+# brew bundle reads exactly one --file (a repeated flag does not accumulate
+# -- the last one wins), so the manifest is the concatenation of the files.
+manifest="$(mktemp)"
+trap 'rm -f "$manifest"' EXIT
+cat "${files[@]}" > "$manifest"
+if brew bundle --no-upgrade --file="$manifest"; then
   echo "brew bundle: all Brewfile entries installed"
 else
   echo "WARNING: brew bundle reported failures; the bootstrap continues (dotfiles and agents still deploy)." >&2
   echo "Re-run in a terminal:" >&2
-  echo "  brew bundle --no-upgrade ${files[*]#--file=}" >&2
+  echo "  cat ${files[*]} > /tmp/Brewfile.all && brew bundle --no-upgrade --file=/tmp/Brewfile.all" >&2
 fi

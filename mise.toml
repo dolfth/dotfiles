@@ -51,10 +51,12 @@ ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPNrEPG5Srx81xQTYTGqnZulXV4fWZQA/ooLJsUx856N
 # the mac module.
 "~/.config/fish/config.fish" = "fish/config.fish"
 
-# Prompt, terminal, editor -- all machines.
+# Prompt and terminal -- all machines.
 "~/.config/starship.toml" = { source = "starship.toml.tera", mode = "template" }
 "~/.config/ghostty/config" = "ghostty/config"
-"~/.config/nvim/init.lua" = "nvim/init.lua"
+# The nvim config is retired (the editor is now helix, a brew formula); the
+# absent entry removes the file the old entry deployed.
+"~/.config/nvim/init.lua" = { mode = "absent" }
 
 [bootstrap.hooks]
 # Both no-op off macOS (they guard on uname), so they are safe in the base

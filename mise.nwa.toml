@@ -13,6 +13,10 @@ icon = "\U000F048B"  # nf-md-server
 [env]
 HOST = "nwa"
 KIND = "server"
+# The editor comes from Nix on nwa (brew is not there); it is nvim until
+# helix lands in the flake -- then flip these to "hx".
+EDITOR = "nvim"
+VISUAL = "nvim"
 
 [dotfiles]
 # omp: the binary is installed by Nix; the config deploys here.

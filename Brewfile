@@ -1,11 +1,11 @@
 # The single source of truth for brew-ecosystem software on the Macs.
 #
-# Run by the bootstrap's brew-bundle task:
-# The brew-bundle task runs: brew bundle --no-upgrade --file=Brewfile
-# --file=Brewfile.<host>, where the host file is Brewfile.mca (the laptop's
-# GUI apps) or Brewfile.gza (the desktop's local-LLM servers). --no-upgrade:
-# current Homebrew's plain `brew bundle` also upgrades installed entries;
-# here it installs what is missing, and daily upgrades go through `up` (brew
+# Run by the bootstrap's brew-bundle task, which concatenates this file and
+# Brewfile.<host> into one manifest -- the host file is Brewfile.mca (the
+# laptop's GUI apps) or Brewfile.gza (the desktop's local-LLM servers) --
+# because brew bundle reads a single --file. --no-upgrade: current
+# Homebrew's plain `brew bundle` also upgrades installed entries; the task
+# installs what is missing, and daily upgrades go through `up` (brew
 # upgrade).
 #
 # Why brew and not mise: README, "Why brew + mise".
@@ -14,21 +14,17 @@
 # for a fresh machine (the bootstrap installs Homebrew before it runs).
 
 brew "bat"
-brew "duckdb"
 brew "dust"
 brew "exiftool"
 brew "ffmpeg"
 brew "fish"
+brew "helix"
 brew "git"
-brew "git-delta"
-brew "htop"
 brew "jq"
 brew "mas"
 brew "mise"
 brew "mole"
 brew "mosh"
-brew "neovim"
-brew "python@3.14"
 brew "starship"
 brew "uv"
 

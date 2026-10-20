@@ -6,10 +6,10 @@
 # the fish docs themselves recommend:
 #   https://fishshell.com/docs/current/index.html#default-shell
 
-# nvim as $EDITOR/$VISUAL here too, not just in fish: `zsh -c` skips the
+# helix as $EDITOR/$VISUAL here too, not just in fish: `zsh -c` skips the
 # hand-off below entirely.
-export EDITOR=nvim
-export VISUAL=nvim
+export EDITOR=hx
+export VISUAL=hx
 
 # The Homebrew prefix's bin on PATH, as a static path rather than
 # `brew shellenv` (see config.fish): a fresh machine has no Homebrew yet.

@@ -5,7 +5,15 @@
 # servers) live in mise.mca.toml / mise.gza.toml.
 # The brew-ecosystem packages live in the Brewfiles (the brew-bundle
 # bootstrap task installs them); this module holds the declarative macOS
-# defaults and the dotfiles both Macs get.
+# defaults, the editor ($EDITOR/$VISUAL) and the dotfiles both Macs get.
+
+[env]
+# The editor for both Macs (brew's helix formula; the binary is `hx`). mise
+# exports [env] into every activated shell -- both the interactive
+# activation and the --shims one -- so this reaches every fish; the zshrc
+# covers the POSIX login shell that skips the fish hand-off.
+EDITOR = "hx"
+VISUAL = "hx"
 
 ##### macOS defaults #####
 #
