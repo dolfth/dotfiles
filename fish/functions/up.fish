@@ -11,7 +11,7 @@ function up --description 'Upgrade macOS software: CLT, brew (the Brewfiles), Ap
     set -l syncthing_before (string trim (readlink /opt/homebrew/opt/syncthing 2>/dev/null))
 
     # brew owns the brew-ecosystem packages (the Brewfiles, see README "Why
-    # brew + mise"): one upgrade path for all of them -- the 18 shared
+    # brew + mise): one upgrade path for all of them -- the 14 shared
     # formulae and 3 casks both Macs get, the laptop's GUI apps, the
     # desktop's omlx, splash and omp -- including the three tap formulae the
     # current mise release cannot evaluate itself. `brew upgrade` covers
