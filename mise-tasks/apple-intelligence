@@ -125,26 +125,32 @@ else
   fi
 fi
 
-##### 4. Model cleanup (FDA-gated) ###########################################
+##### 4. Model cleanup #######################################################
 #
 # Asks Apple's asset service to remove the models the disabled features
-# would have downloaded, then checks the folders; the check needs Full
-# Disk Access (the same probe system-check uses -- SSH sessions lack it).
-# Never fails the bootstrap: warnings only.
+# would have downloaded, then checks the folders. The removal itself is
+# daemon-driven and always runs (the profile blocks re-downloads); the
+# folder check needs Full Disk Access (the same probe system-check uses --
+# SSH sessions lack it), so without it the result is reported unverified
+# rather than skipped. Never fails the bootstrap: warnings only.
 
+fda=1
 if ! head -c1 "/Library/Application Support/com.apple.TCC/TCC.db" >/dev/null 2>&1; then
-  echo "  no Full Disk Access (e.g. over SSH): skipping model cleanup"
-  exit 0
+  fda=
 fi
 if "$pared" models cleanup; then
   echo "  models clean (the profile blocks new downloads)"
 else
   rc=$?
-  case "$rc" in
-    1) echo "  some model folders remain (apps still hold them? close them, then re-run: mise run apple-intelligence)" ;;
-    3) echo "  removal unverified (give your terminal Full Disk Access, then re-run: mise run apple-intelligence)" ;;
-    *) echo "  cleanup exited $rc (re-run: mise run apple-intelligence)" ;;
-  esac
+  if [ -z "$fda" ]; then
+    echo "  removal unverified (no Full Disk Access in this session -- e.g. over SSH); in a terminal with it: mise run apple-intelligence"
+  else
+    case "$rc" in
+      1) echo "  some model folders remain (apps still hold them? close them, then re-run: mise run apple-intelligence)" ;;
+      3) echo "  removal unverified (give your terminal Full Disk Access, then re-run: mise run apple-intelligence)" ;;
+      *) echo "  cleanup exited $rc (re-run: mise run apple-intelligence)" ;;
+    esac
+  fi
 fi
 
 echo "==> Apple Intelligence done."
