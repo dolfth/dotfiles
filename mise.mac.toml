@@ -15,13 +15,19 @@
 EDITOR = "hx"
 VISUAL = "hx"
 
+[vars]
+# The pared release the apple-intelligence task installs (the official
+# GitHub release -- no mainline brew formula, no mise backend). Bump to
+# upgrade; the task replaces the binary on a version change.
+pared_version = "2.2.0"
+
 ##### macOS defaults #####
 #
 # Mise writes these on every `mise bootstrap`, so settings flipped by hand
 # get put back, and deleting a line stops setting it (it does not restore
 # the old value).
 #
-# The sandboxed-app defaults Mail/TextEdit/Siri/Displays are NOT here: they
+# The sandboxed-app defaults Mail/TextEdit/Displays are NOT here: they
 # live in a container only Full Disk Access can write, which SSH sessions
 # lack, so the system-check task applies those (and skips them with a message
 # when the terminal lacks FDA).
@@ -183,15 +189,6 @@ value = 1
 
 [bootstrap.macos.defaults."com.apple.commerce"]
 "AutoUpdate" = false
-
-[bootstrap.macos.defaults."com.apple.CloudSubscriptionFeatures"]
-# Undocumented Apple Intelligence opt-out; the ID changes between releases.
-# Verify with `defaults read com.apple.CloudSubscriptionFeatures.optIn`. The
-# supported route is System Settings > Apple Intelligence.
-"optIn" = { "545129924" = false }
-
-[bootstrap.macos.defaults."com.apple.assistant.support"]
-"Assistant Enabled" = false
 
 # Dotfiles both Macs get; the laptop-only GUI software stays in Brewfile.mca
 # (the syncthing user service in mise.mca.toml).

@@ -1,0 +1,150 @@
+#!/usr/bin/env bash
+# Apple Intelligence removal via pared (https://github.com/4evy/pared) on
+# both Macs. Pared is the maintained catalog of Apple's feature flags; the
+# hand-rolled opt-outs it replaces (the CloudSubscriptionFeatures ID that
+# changes between releases, the assistant-support keys) are gone from
+# mise.mac.toml / system-check.
+#
+# How pared works: the policy (every feature off) applies the local
+# preferences and generates the managed profile; the profile installs the
+# forced preferences plus the model-download blocks (a loopback URL) into
+# /Library/Managed Preferences -- the only place mobileassetd reads them
+# from (its sandbox rejects ordinary `defaults` writes); the cleanup asks
+# Apple's own asset service to remove downloaded models, with SIP left on.
+# The strongest controls (the Intelligence/Siri declarations) need
+# supervised MDM enrollment, which these machines do not have, so forced
+# preferences + download blocks is the ceiling here.
+#
+# Runs from the bootstrap final hook on every bootstrap, so the policy and
+# the removal self-heal across OS upgrades. Steps:
+#   1. ensure the pinned release binary (checksum-verified)
+#   2. `pared disable all` (the policy + local preferences, Siri included)
+#   3. the profile: installed? done : open it in System Settings (the one
+#      manual step, once per machine)
+#   4. `pared models cleanup` (FDA-gated like system-check; warnings only)
+#
+# Guarded: Apple silicon + macOS 27 or newer (pared's floor); no-op
+# elsewhere, so it is safe in the base for all three machines.
+
+set -uo pipefail   # no -e: one step failing must not abort the rest
+
+if [ "$(uname -s)" != "Darwin" ]; then
+  echo "apple-intelligence is macOS-only; skipping."
+  exit 0
+fi
+if [ "$(sysctl -in hw.optional.arm64)" != "1" ]; then
+  echo "apple-intelligence: Apple silicon only; skipping."
+  exit 0
+fi
+if [ "$(sw_vers -productVersion | cut -d. -f1)" -lt 27 ]; then
+  echo "apple-intelligence: needs macOS 27 or newer (have $(sw_vers -productVersion)); skipping."
+  exit 0
+fi
+
+##### 1. The pinned release binary ###########################################
+#
+# No mainline brew formula (the tap's is a source build wanting full Xcode)
+# and no mise backend, so the task installs the official release itself:
+# into ~/.local/share/pared, called by absolute path (a bootstrap internal,
+# not on PATH). Bump the PARED_VERSION var (mise.mac.toml) to upgrade; a
+# version mismatch replaces the install.
+
+ver="${PARED_VERSION:-2.2.0}"
+dir="${HOME}/.local/share/pared"
+pared="$dir/pared"
+if [ -x "$pared" ] && [ "$(cat "$dir/.version" 2>/dev/null)" = "$ver" ]; then
+  : # current
+else
+  work=$(mktemp -d)
+  trap 'rm -rf "${work:-}"' EXIT
+  asset="pared-macos-arm64.tar.gz"
+  base="https://github.com/4evy/pared/releases/download/$ver"
+  if ! curl -fsSL --output "$work/$asset" "$base/$asset" \
+    || ! curl -fsSL --output "$work/$asset.sha256" "$base/$asset.sha256"; then
+    echo "  release download failed; skipping (re-run: mise run apple-intelligence)"
+    exit 0
+  fi
+  expected=$(awk 'NR == 1 { print $1 }' "$work/$asset.sha256" | tr 'ABCDEF' 'abcdef')
+  actual=$(shasum -a 256 "$work/$asset" | awk '{ print $1 }')
+  if [ -z "$expected" ] || [ "$expected" != "$actual" ]; then
+    echo "  release checksum mismatch; refusing to install"
+    exit 0
+  fi
+  rm -rf "$dir"
+  mkdir -p "$dir"
+  if ! tar -xzf "$work/$asset" -C "$dir" --no-same-owner \
+    pared pared_Pared.bundle; then
+    echo "  release archive is malformed; skipping"
+    exit 0
+  fi
+  [ -x "$pared" ] && [ -d "$dir/pared_Pared.bundle" ] || {
+    echo "  bad install layout; skipping"
+    exit 0
+  }
+  printf '%s' "$ver" > "$dir/.version"
+  echo "  pared $ver installed at $dir"
+fi
+
+##### 2. The policy: every feature off #######################################
+#
+# Applies the supported local preferences (including the Siri keys
+# system-check used to write) and saves the policy the profile is
+# generated from. A sandboxed domain that cannot be written (Messages,
+# Mail, ... over a session without Full Disk Access) fails the command but
+# not the run: the policy is saved and the profile generated, the profile
+# and the cleanup below do not depend on the preference writes, and the
+# next bootstrap with Full Disk Access re-applies them.
+
+if "$pared" disable all; then
+  echo "  policy: every feature disabled (Siri included)"
+else
+  echo "  policy saved; some preferences could not be written (the sandboxed domains need Full Disk Access -- re-run in a terminal with it); continuing"
+fi
+
+##### 3. The profile (the one manual step) ###################################
+#
+# `pared profile open` stages the .mobileconfig and opens System Settings;
+# the user clicks Install. The download blocks land in
+# /Library/Managed Preferences/com.apple.MobileAsset.plist, which is what
+# is checked: absent means the profile is not installed, so it is opened
+# again. The installed profile is never replaced by this task (its
+# settings stay in effect) -- the check re-opens it only when it is gone.
+
+if [ -f "/Library/Managed Preferences/com.apple.MobileAsset.plist" ]; then
+  echo "  profile installed (the download blocks are in place)"
+else
+  if [ "$(stat -f '%Su' /dev/console)" = "$(id -un)" ]; then
+    if "$pared" profile open; then
+      echo "  ONE-TIME: install the profile in System Settings, then it stays"
+    else
+      echo "  could not open the profile installer; at the machine: mise run apple-intelligence"
+    fi
+  else
+    echo "  profile not installed and no GUI session for $(id -un) (console: $(stat -f '%Su' /dev/console))"
+    echo "  at the machine: mise run apple-intelligence"
+  fi
+fi
+
+##### 4. Model cleanup (FDA-gated) ###########################################
+#
+# Asks Apple's asset service to remove the models the disabled features
+# would have downloaded, then checks the folders; the check needs Full
+# Disk Access (the same probe system-check uses -- SSH sessions lack it).
+# Never fails the bootstrap: warnings only.
+
+if ! head -c1 "/Library/Application Support/com.apple.TCC/TCC.db" >/dev/null 2>&1; then
+  echo "  no Full Disk Access (e.g. over SSH): skipping model cleanup"
+  exit 0
+fi
+if "$pared" models cleanup; then
+  echo "  models clean (the profile blocks new downloads)"
+else
+  rc=$?
+  case "$rc" in
+    1) echo "  some model folders remain (apps still hold them? close them, then re-run: mise run apple-intelligence)" ;;
+    3) echo "  removal unverified (give your terminal Full Disk Access, then re-run: mise run apple-intelligence)" ;;
+    *) echo "  cleanup exited $rc (re-run: mise run apple-intelligence)" ;;
+  esac
+fi
+
+echo "==> Apple Intelligence done."

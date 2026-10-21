@@ -18,13 +18,13 @@ fi
 
 ##### Sandboxed app defaults (need Full Disk Access) ##########################
 #
-# Sandboxed apps (Mail, TextEdit, Siri, Displays) keep their domain in a
+# Sandboxed apps (Mail, TextEdit, Displays) keep their domain in a
 # container only Full Disk Access can write, which SSH sessions lack. Reading
 # the TCC database needs the same access, so it doubles as the check.
 fda=1
 if ! head -c1 "/Library/Application Support/com.apple.TCC/TCC.db" >/dev/null 2>&1; then
   fda=
-  echo "==> No Full Disk Access (e.g. over SSH): skipping Mail, TextEdit, Siri and Displays defaults"
+  echo "==> No Full Disk Access (e.g. over SSH): skipping Mail, TextEdit and Displays defaults"
 fi
 
 if [ -n "$fda" ]; then
@@ -46,9 +46,6 @@ if [ -n "$fda" ]; then
   defaults write com.apple.TextEdit PlainTextEncodingForWrite -int 4
   # Displays: show the display list in Displays settings
   defaults write com.apple.Displays-Settings.extension showListByDefault -int 2
-  # Siri out of the menu bar (macOS 27 folds Siri into Spotlight; the rest is
-  # declarative in mise.mac.toml)
-  defaults write com.apple.Siri StatusMenuVisible -bool false
 fi
 
 # Manual light or dark mode conflicts with the automatic switch (declarative
