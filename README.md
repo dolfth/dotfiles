@@ -50,8 +50,10 @@ global mise config) and runs bootstrap: the pre-packages hooks take the
 defaults snapshot and run `brew bundle` over the Brewfiles, the dotfiles
 deploy, the launchd agents register (the `bootstrap` task self-heals them),
 and the final hooks run the system settings (the sudo part is TTY-gated and
-skipped without a terminal -- re-run `mise run system-check` in one) plus the
-herdr and vscodium extensions.
+skipped without a terminal -- re-run `mise run system-check` in one), the
+herdr and vscodium extensions, and the Apple Intelligence removal (its one
+manual bit: install the profile it opens in System Settings, once per
+machine).
 
 The `-E mac,gza` lands in `~/.config/mise/miserc.local.toml`, and every later
 mise command on the machine uses it (select `-E mac,mca` on the laptop).
@@ -94,6 +96,11 @@ ecosystem instead:
   tasks and bootstrap hooks, the launchd agents, the declarative macOS
   defaults, declared tool versions -- plus itself, as a brew formula.
 
+One tool is neither: the Apple Intelligence removal (pared) has no mainline
+brew formula (the tap's is a source build wanting full Xcode) and no mise
+backend, so the apple-intelligence task installs the pinned GitHub release
+into `~/.local/share/pared` (the task explains the mechanism).
+
 brew adopts the kegs the mise era already poured -- no reinstall. The
 all-mise fallback (the hand-rolled tap bridge) is in the git history; if
 mise's shim gaps get fixed upstream, dropping brew is deleting the Brewfiles
@@ -133,6 +140,7 @@ ones the repo used to track. To delete a file the repo deployed, declare it
 | `herdr-plugins` | final | the herdr plugins the keybindings rely on; no-op where herdr is absent |
 | `vscode-extensions` | final | the vscodium extensions; no-op where codium is absent |
 | `system-check` | final | the macOS system settings: FDA-gated app defaults, hostname, firewall, Touch ID, power, updates, FileVault check, the GPU wired-limit daemon; the desktop gets Screen Sharing + Remote Login. The sudo part is TTY-gated. Restarts Dock/Finder/… only when a domain they read changed |
+| `apple-intelligence` | final | the Apple Intelligence removal via the pinned pared release (checksum-verified into `~/.local/share/pared`): disables every feature in its catalog (Siri included), keeps the managed profile installed (one System Settings click per machine), removes downloaded models. No-op off Apple-silicon macOS 27+ |
 
 They run on every `mise bootstrap` / `mise update` and no-op when there is
 nothing to do.

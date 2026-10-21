@@ -81,7 +81,7 @@ mise run defaults-snapshot && mise run brew-bundle
 """
 final = """
 if ! command -v mise >/dev/null 2>&1; then for d in /opt/homebrew/bin /run/current-system/sw/bin "$HOME"/.local/share/mise/bin "$HOME"/.local/bin "$HOME"/.cargo/bin /usr/local/bin; do [ -x "$d/mise" ] && PATH="$d:$PATH" && break; done; fi
-mise run herdr-plugins && mise run vscode-extensions && mise run system-check
+mise run herdr-plugins && mise run vscode-extensions && mise run system-check && mise run apple-intelligence
 """
 
 [bootstrap.remote]
