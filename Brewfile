@@ -10,8 +10,8 @@
 #
 # Why brew and not mise: README, "Why brew + mise".
 #
-# Shared by both Macs. mise itself is included so the manifest is complete
-# for a fresh machine (the bootstrap installs Homebrew before it runs).
+# mise itself is in the manifest so a fresh machine is complete (the
+# bootstrap installs Homebrew before it runs).
 
 brew "bat"
 brew "dust"

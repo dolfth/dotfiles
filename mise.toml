@@ -1,15 +1,7 @@
-# Base mise config for all three machines. Always loaded.
-#
-#   mise.toml      -- this file: per-host vars (fallback) + the dotfiles
-#                     every machine gets
-#   mise.mac.toml  -- module: what both Macs share (selected with env "mac")
-#   mise.mca.toml  -- module: mca, the laptop
-#   mise.gza.toml  -- module: gza, the always-on desktop
-#   mise.nwa.toml  -- module: nwa, the NixOS server
-#
-# Each machine selects its modules in miserc.local.toml (machine-local, never
-# committed):  env = ["mac", "gza"]  and so on. A new machine gets a new
-# module file and is added there. See README.md.
+# Base config: always loaded. Per-host vars (the fallback values) and the
+# dotfiles every machine gets; per-machine modules are selected in
+# miserc.local.toml (machine-local, never committed) with
+# env = ["mac", "gza"]  and so on. See README.md.
 
 [vars]
 # Fallback for a host with no module yet: a new Mac selected with only
@@ -38,20 +30,17 @@ ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPNrEPG5Srx81xQTYTGqnZulXV4fWZQA/ooLJsUx856N
 """
 
 [dotfiles]
-# Dotfiles declared here go to every machine; per-host dotfiles live in
-# the host module (mise.<host>.toml), which loads only on that machine.
-# Git, all machines. The config lives in the canonical place; a stray
-# ~/.gitconfig would override it, so keep that one removed.
+# Declared here, they go to every machine; per-host dotfiles live in the
+# host module. ~/.gitconfig would override ~/.config/git/config, so keep it
+# removed.
 "~/.config/git/config" = "git/config"
 "~/.config/git/allowed_signers" = { source = "git/allowed_signers.tera", mode = "template" }
 "~/.gitconfig" = { mode = "absent" }
 
-# fish, all machines; the functions directory is per-machine (on nwa,
-# home-manager writes its own fish functions there), so up.fish deploys from
+# On nwa, home-manager owns the functions directory, so up.fish deploys from
 # the mac module.
 "~/.config/fish/config.fish" = "fish/config.fish"
 
-# Prompt and terminal -- all machines.
 "~/.config/starship.toml" = { source = "starship.toml.tera", mode = "template" }
 "~/.config/ghostty/config" = "ghostty/config"
 # The nvim config is retired (the editor is now helix, a brew formula); the
