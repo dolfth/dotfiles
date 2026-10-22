@@ -1,4 +1,4 @@
-# mca: the laptop. The GUI machine. Select with env = ["mac", "mca"].
+# mca: the laptop. Select with env = ["mac", "mca"].
 
 [vars]
 host = "mca"
@@ -16,9 +16,6 @@ KIND = "laptop"
 [dotfiles]
 "~/.config/aerospace/aerospace.toml/pinned" = { source = "aerospace/aerospace.toml", merge = true }
 
-# The laptop's GUI software (casks, the two formulae, the App Store apps)
-# lives in Brewfile.mca, installed by the brew-bundle bootstrap task.
-
 # Background sync. Declared as a launchd agent, not a [bootstrap.services]
 # user service: mise 2026.10.15 does not render user-service values (the
 # `command` string reaches launchd verbatim -- an unrendered {{
@@ -35,5 +32,3 @@ working_directory = "{{ env.HOME }}"
 stdout_path = "{{ env.HOME }}/Library/Logs/syncthing.log"
 stderr_path = "{{ env.HOME }}/Library/Logs/syncthing.log"
 kickstart = true
-# The macOS-shared dotfiles (~/.zshrc, ~/.ssh/config, up.fish) deploy from
-# mise.mac.toml.

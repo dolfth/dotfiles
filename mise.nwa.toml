@@ -19,7 +19,6 @@ EDITOR = "nvim"
 VISUAL = "nvim"
 
 [dotfiles]
-# omp: the binary is installed by Nix; the config deploys here.
 "~/.omp/agent/config.yml" = "omp/agent/config.yml"
 "~/.omp/agent/models.yml" = { source = "omp/agent/models.yml.tera", mode = "template" }
 

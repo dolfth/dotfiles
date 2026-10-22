@@ -1,11 +1,5 @@
-# What both Macs (mca the laptop, gza the desktop) share. Select in
-# miserc.local.toml:  env = ["mac", "<host>"]
-#
-# The per-host bits (accent/icon, power profile, the desktop's local-LLM
-# servers) live in mise.mca.toml / mise.gza.toml.
-# The brew-ecosystem packages live in the Brewfiles (the brew-bundle
-# bootstrap task installs them); this module holds the declarative macOS
-# defaults, the editor ($EDITOR/$VISUAL) and the dotfiles both Macs get.
+# What both Macs share: the declarative macOS defaults, the editor, and the
+# dotfiles both get. Select in miserc.local.toml:  env = ["mac", "<host>"]
 
 [env]
 # The editor for both Macs (brew's helix formula; the binary is `hx`). mise
@@ -170,8 +164,6 @@ pared_version = "2.2.0"
 [bootstrap.macos.defaults."com.apple.commerce"]
 "AutoUpdate" = false
 
-# Dotfiles both Macs get; the laptop-only GUI software stays in Brewfile.mca
-# (the syncthing user service in mise.mca.toml).
 [dotfiles]
 "~/.zshrc" = "zshrc"
 # A real file at 0600: a symlink would expose the repo file's permissions to
