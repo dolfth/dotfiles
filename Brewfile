@@ -32,4 +32,7 @@ brew "uv"
 # the desktop runs headless but is still reached over mosh/Tailscale.
 cask "font-jetbrains-mono-nerd-font"
 cask "ghostty"
+# LinearMouse: pointer tuning and back/forward buttons (its config is seeded
+# from mise.mac.toml; first launch asks for Accessibility).
+cask "linearmouse"
 cask "tailscale-app"
