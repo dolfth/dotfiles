@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# LaunchAgent self-heal + port report. Runs from the bootstrap task slot on
-# every bootstrap.
+# LaunchAgent self-heal + port report.
 #
 # For each dev.mise.* agent this machine declared, the loop runs (both
 # branches verified against a throwaway agent on 2026-10-19):

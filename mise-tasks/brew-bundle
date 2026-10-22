@@ -1,10 +1,8 @@
 #!/usr/bin/env bash
-# Install the brew-ecosystem packages from the Brewfiles (Brewfile, both
-# Macs; Brewfile.<host>, the host's own). brew is a hard dependency of the
-# Mac flow -- the Homebrew install is bootstrap step 3 (see README, "Why
-# brew + mise") -- and the bootstrap installs mise from brew on a fresh
-# machine before it runs. Re-runs on every bootstrap; cheap when nothing is
-# missing.
+# brew is a hard dependency of the Mac flow -- the Homebrew install is
+# bootstrap step 3 (see README, "Why brew + mise") -- and the bootstrap
+# installs mise from brew on a fresh machine before it runs. Re-runs on
+# every bootstrap; cheap when nothing is missing.
 #
 # brew bundle --no-upgrade: current Homebrew's plain `brew bundle` also
 # upgrades installed entries; with the flag it installs what is missing and

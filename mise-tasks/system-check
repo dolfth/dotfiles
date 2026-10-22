@@ -1,10 +1,4 @@
 #!/usr/bin/env bash
-# macOS system settings: the FDA-gated app defaults, the AppleInterfaceStyle
-# delete, the nohidden ~/Library flag, the hostname, firewall, Touch ID,
-# power, software updates, the FileVault check, the GPU wired-limit daemon
-# (desktop: Screen Sharing and Remote Login), plus the Dock/Finder/...
-# restart when a defaults domain they read changed.
-#
 # Runs from the bootstrap final hook. The sandboxed-app defaults and the
 # restart apply without sudo (user-level); the system part is TTY-gated, so
 # an unattended bootstrap skips it instead of hanging on a password prompt.
@@ -54,7 +48,6 @@ if defaults read NSGlobalDomain AppleInterfaceStyle >/dev/null 2>&1; then
   defaults delete NSGlobalDomain AppleInterfaceStyle
 fi
 
-# Show ~/Library in Finder.
 chflags nohidden "${HOME}/Library" 2>/dev/null || true
 
 ##### UI restart (only when a domain they read changed) ######################
