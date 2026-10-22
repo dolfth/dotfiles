@@ -135,12 +135,6 @@ host = "current"
 key = "NSStatusItemSpacing"
 value = 4
 
-[[bootstrap.macos.defaults_entries]]
-domain = "NSGlobalDomain"
-host = "current"
-key = "com.apple.trackpad.trackpadCornerClickBehavior"
-value = 1
-
 [bootstrap.macos.defaults."com.apple.LaunchServices"]
 # No "downloaded from the internet" dialog; Gatekeeper still blocks unsigned
 # apps
@@ -177,9 +171,8 @@ value = 1
 "ShowDate" = 1
 
 [bootstrap.macos.defaults."com.apple.ActivityMonitor"]
-"SortColumn" = "CPUUsage"
-# Dock icon: 0 = app icon, 2 = network, 3 = disk, 5 = CPU, 6 = CPU history
-"IconType" = 5
+# Sort by the Memory column (real memory); the stock default is CPU.
+"SortColumn" = "ResidentSize"
 
 [bootstrap.macos.defaults."com.apple.ImageCapture"]
 "disableHotPlug" = true
