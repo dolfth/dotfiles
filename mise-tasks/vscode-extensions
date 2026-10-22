@@ -3,8 +3,7 @@
 # marketplace backend (checked in 2026.10.14: `vscode:` is not a valid
 # plugin name, and the mise registry has no such entry), so this list is
 # the manifest. Runs from a final hook on every bootstrap; installing an
-# already-present extension is a quick no-op, so that is acceptable. On
-# machines without vscodium the task no-ops.
+# already-present extension is a quick no-op, so that is acceptable.
 set -uo pipefail   # no -e: one failed extension shouldn't abort the bootstrap
 
 if ! command -v codium >/dev/null 2>&1; then

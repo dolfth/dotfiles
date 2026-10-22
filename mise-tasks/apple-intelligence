@@ -16,12 +16,7 @@
 # preferences + download blocks is the ceiling here.
 #
 # Runs from the bootstrap final hook on every bootstrap, so the policy and
-# the removal self-heal across OS upgrades. Steps:
-#   1. ensure the pinned release binary (checksum-verified)
-#   2. `pared disable all` (the policy + local preferences, Siri included)
-#   3. the profile: installed? done : open it in System Settings (the one
-#      manual step, once per machine)
-#   4. `pared models cleanup` (FDA-gated like system-check; warnings only)
+# the removal self-heal across OS upgrades.
 #
 # Guarded: Apple silicon + macOS 27 or newer (pared's floor); no-op
 # elsewhere, so it is safe in the base for all three machines.
@@ -53,7 +48,7 @@ ver="${PARED_VERSION:-2.2.0}"
 dir="${HOME}/.local/share/pared"
 pared="$dir/pared"
 if [ -x "$pared" ] && [ "$(cat "$dir/.version" 2>/dev/null)" = "$ver" ]; then
-  : # current
+  :
 else
   work=$(mktemp -d)
   trap 'rm -rf "${work:-}"' EXIT
