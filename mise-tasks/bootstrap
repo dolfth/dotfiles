@@ -13,7 +13,7 @@ if [ "$(uname -s)" != "Darwin" ]; then
 fi
 
 gui="gui/$(id -u)"
-for agent in dev.mise.omlx dev.mise.splash; do
+for agent in dev.mise.omlx dev.mise.splash dev.mise.splash-kat; do
   plist="${HOME}/Library/LaunchAgents/${agent}.plist"
   if [ ! -f "$plist" ]; then
     continue   # agents not declared on this machine (the gza module owns them)
@@ -25,7 +25,7 @@ done
 # Report without touching: a port still held by another process (an
 # interactive `splash serve` in a terminal, say) is left to its owner -- the
 # agent picks it up on its own under KeepAlive when that process exits.
-for pair in "omlx:8080" "splash:8000"; do
+for pair in "omlx:8080" "splash:8000" "splash-kat:8100"; do
   name="${pair%%:*}"
   port="${pair#*:}"
   pid=$(lsof -nP -iTCP:"$port" -sTCP:LISTEN -t 2>/dev/null | head -1)
@@ -41,4 +41,4 @@ for pair in "omlx:8080" "splash:8000"; do
   fi
 done
 
-echo "agent self-heal done (logs: ~/Library/Logs/omlx.log, ~/Library/Logs/splash.log)"
+echo "agent self-heal done (logs: ~/Library/Logs/omlx.log, ~/Library/Logs/splash.log, ~/Library/Logs/splash-kat.log)"

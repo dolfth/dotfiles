@@ -33,3 +33,8 @@ mnemopi:
   noEmbeddings: true
 providers:
   cacheWarming: "off"
+
+# Default model for new sessions and automatic scheduled tasks.
+# The dense 27B on splash is the default; KAT-Coder (35B MoE) is
+# available as splash-kat/bartowski/Kwaipilot_KAT-Coder-V2.5-Dev-GGUF:Q4_K_M.
+defaultModel: splash/mlx-community/Qwen3.8-27B-4bit
