@@ -1,15 +1,8 @@
 #!/usr/bin/env bash
-# brew is a hard dependency of the Mac flow -- the Homebrew install is
-# bootstrap step 3 (see README, "Why brew + mise") -- and the bootstrap
-# installs mise from brew on a fresh machine before it runs. Re-runs on
-# every bootstrap; cheap when nothing is missing.
-#
-# brew bundle --no-upgrade: current Homebrew's plain `brew bundle` also
-# upgrades installed entries; with the flag it installs what is missing and
-# does not touch what is present -- upgrades are `up`'s job. A failed entry
-# (a flaky download) does not abort the bootstrap: the dotfiles, agents and
-# defaults deploy anyway, and the server LaunchAgents retry their binary
-# under KeepAlive once a manual `brew bundle` finishes.
+# brew is a hard dependency of the Mac flow; bootstrap installs mise from
+# brew on a fresh machine before running. brew bundle --no-upgrade installs
+# what is missing without touching what is present (upgrades are up's job).
+# A failed entry warns and continues so dotfiles and agents still deploy.
 set -euo pipefail
 if [ "$(uname -s)" != "Darwin" ]; then
   exit 0

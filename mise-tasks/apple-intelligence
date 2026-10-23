@@ -1,25 +1,13 @@
 #!/usr/bin/env bash
-# Apple Intelligence removal via pared (https://github.com/4evy/pared) on
-# both Macs. Pared is the maintained catalog of Apple's feature flags; the
-# hand-rolled opt-outs it replaces (the CloudSubscriptionFeatures ID that
-# changes between releases, the assistant-support keys) are gone from
-# mise.mac.toml / system-check.
-#
-# How pared works: the policy (every feature off) applies the local
-# preferences and generates the managed profile; the profile installs the
-# forced preferences plus the model-download blocks (a loopback URL) into
-# /Library/Managed Preferences -- the only place mobileassetd reads them
-# from (its sandbox rejects ordinary `defaults` writes); the cleanup asks
-# Apple's own asset service to remove downloaded models, with SIP left on.
-# The strongest controls (the Intelligence/Siri declarations) need
-# supervised MDM enrollment, which these machines do not have, so forced
-# preferences + download blocks is the ceiling here.
-#
-# Runs from the bootstrap final hook on every bootstrap, so the policy and
-# the removal self-heal across OS upgrades.
-#
-# Guarded: Apple silicon + macOS 27 or newer (pared's floor); no-op
-# elsewhere, so it is safe in the base for all three machines.
+# Apple Intelligence removal via pared (https://github.com/4evy/pared).
+# The policy (every feature off) writes local prefs and generates a
+# managed profile that installs into /Library/Managed Preferences -- the
+# only place mobileassetd reads from (its sandbox rejects ordinary
+# defaults writes). The cleanup asks Apple's asset service to remove
+# downloaded models; SIP stays on.
+# Strongest controls (Intelligence/Siri declarations) need supervised MDM,
+# which these machines don't have, so forced prefs + download blocks is
+# the ceiling here. No-op off Apple silicon macOS 27+.
 
 set -uo pipefail   # no -e: one step failing must not abort the rest
 
