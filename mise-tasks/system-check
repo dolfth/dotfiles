@@ -60,7 +60,15 @@ chflags nohidden "${HOME}/Library" 2>/dev/null || true
 # what they read. The pre-packages hook (defaults-snapshot) saved the hash.
 snap() {
   for d in com.apple.dock com.apple.spaces com.apple.WindowManager \
-           com.apple.finder com.apple.menuextra.clock NSGlobalDomain; do
+           com.apple.finder com.apple.menuextra.clock NSGlobalDomain \
+           com.apple.NetworkBrowser com.apple.LaunchServices \
+           com.apple.print.PrintingPrefs com.apple.universalaccess \
+           com.apple.HIToolbox com.apple.driver.AppleBluetoothMultitouch.trackpad \
+           com.apple.desktopservices com.apple.screencapture \
+           com.apple.ActivityMonitor com.apple.ImageCapture \
+           com.apple.TimeMachine com.apple.commerce \
+           com.apple.mail com.apple.TextEdit \
+           com.apple.Displays-Settings.extension; do
     defaults export "$d" - 2>/dev/null || true
   done
   defaults -currentHost export com.apple.controlcenter - 2>/dev/null || true
