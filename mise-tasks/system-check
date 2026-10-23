@@ -3,7 +3,7 @@
 # restart apply without sudo (user-level); the system part is TTY-gated, so
 # an unattended bootstrap skips it instead of hanging on a password prompt.
 
-set -uo pipefail   # no -e: one failure shouldn't abort the rest
+set -uo pipefail   # no -e before sudo: some commands fail naturally (defaults, killall)
 
 if [ "$(uname -s)" != "Darwin" ]; then
   echo "system-check is macOS-only; skipping."
@@ -86,6 +86,7 @@ fi
 
 echo "==> System settings (sudo required)"
 sudo -v || { echo "No sudo; skipping."; exit 0; }
+set -eo pipefail   # after sudo succeeds: abort on real failures
 
 ##### Touch ID for sudo #######################################################
 #
@@ -194,7 +195,7 @@ EOF
   # vnc://gza.local or the tailnet name. Access: System Settings > General >
   # Sharing > Screen Sharing (admins by default). If it doesn't show as on
   # there, toggle it once by hand.
-  sudo launchctl enable system/com.apple.screensharing
+  sudo launchctl enable system/com.apple.screensharing >/dev/null || true
   sudo launchctl bootstrap system /System/Library/LaunchDaemons/com.apple.screensharing.plist 2>/dev/null || true
 
   ##### Remote Login (SSH) ####################################################
@@ -205,7 +206,7 @@ EOF
   # the Mac boots normally. See `man apple_ssh_and_filevault`. So password
   # auth must stay on. launchctl, as `systemsetup -setremotelogin on` needs
   # Full Disk Access.
-  sudo launchctl enable system/com.openssh.sshd
+  sudo launchctl enable system/com.openssh.sshd >/dev/null || true
   sudo launchctl bootstrap system /System/Library/LaunchDaemons/ssh.plist 2>/dev/null || true
 
 fi
