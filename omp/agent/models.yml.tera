@@ -87,3 +87,24 @@ providers:
       maxTokens: 32768
       name: Qwen3.8 27B (Splash)
       reasoning: true
+  splash-kat:
+    api: openai-completions
+    apiKey: local
+    baseUrl: http://{{ vars.omp_base }}:8100/v1
+    compat:
+      streamFirstEventTimeoutMs: 0
+      streamIdleTimeoutMs: 600000
+      thinkingFormat: qwen-chat-template
+    models:
+    - contextWindow: 188409
+      cost:
+        cacheRead: 0
+        cacheWrite: 0
+        input: 0
+        output: 0
+      id: bartowski/Kwaipilot_KAT-Coder-V2.5-Dev-GGUF:Q4_K_M
+      input:
+      - text
+      maxTokens: 32768
+      name: KAT-Coder 35B (Splash)
+      reasoning: true
