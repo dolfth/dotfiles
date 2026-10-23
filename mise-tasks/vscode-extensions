@@ -12,7 +12,10 @@ if ! command -v codium >/dev/null 2>&1; then
 fi
 
 echo "==> Installing VS Code extensions"
-codium --install-extension jeanp413.open-remote-ssh || echo "  open-remote-ssh: install failed"
-codium --install-extension ms-python.python || echo "  ms-python.python: install failed"
-codium --install-extension charliermarsh.ruff || echo "  ruff: install failed"
-codium --install-extension yzhang.markdown-all-in-one || echo "  markdown-all-in-one: install failed"
+for ext in \
+  jeanp413.open-remote-ssh \
+  ms-python.python \
+  charliermarsh.ruff \
+  yzhang.markdown-all-in-one; do
+  codium --install-extension "$ext" || echo "  ${ext}: install failed"
+done

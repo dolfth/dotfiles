@@ -1,24 +1,9 @@
 #!/usr/bin/env bash
-# LaunchAgent self-heal + port report.
-#
-# For each dev.mise.* agent this machine declared, the loop runs (both
-# branches verified against a throwaway agent on 2026-10-19):
-#
-#   launchctl bootstrap || true -- (re)loads a job whose plist exists but is
-#     not loaded (a bare kickstart cannot find it: "Could not find service");
-#     a suppressed no-op error when the job is already loaded. The plist
-#     itself is mise's: the macos-launchd-agents part (it runs before this
-#     task) re-writes and reloads the job when its definition changes.
-#
-#   launchctl kickstart         -- starts a loaded-but-dead agent, and is a
-#     no-op on a healthy one (same pid before and after; the same rule mise's
-#     own launchd code follows -- a killed-and-respawned process can wait out
-#     ThrottleInterval). So a bootstrap never kills a running server or drops
-#     a session talking to it. Version-driven restarts after a keg upgrade
-#     live in `up`, which compares the opt link and kicks with -k on purpose.
-#
-# Safe everywhere: no-op off macOS and wherever the agents are not declared
-# (mca, nwa) -- the plists are only written on gza.
+# LaunchAgent self-heal + port report. Runs after macos-launchd-agents
+# rewrites plists: bootstrap loads any not-yet-loaded job, kickstart
+# any loaded-but-dead one (no-op on a healthy agent; never kills a
+# running server). Port report shows which process owns each port.
+# No-op off macOS and wherever the agents are not declared.
 
 set -uo pipefail   # no -e: one agent failing must not abort the other
 
