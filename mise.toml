@@ -65,11 +65,18 @@ ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPNrEPG5Srx81xQTYTGqnZulXV4fWZQA/ooLJsUx856N
 # PATH before `mise run`; that also puts brew on PATH for brew-bundle.
 # Locally, mise is already on PATH and the prologue is a no-op.
 pre-packages = """
-if ! command -v mise >/dev/null 2>&1; then for d in /opt/homebrew/bin /run/current-system/sw/bin "$HOME"/.local/share/mise/bin "$HOME"/.local/bin "$HOME"/.cargo/bin /usr/local/bin; do [ -x "$d/mise" ] && PATH="$d:$PATH" && break; done; fi
+resolve_mise() {
+  if ! command -v mise >/dev/null 2>&1; then
+    for d in /opt/homebrew/bin /run/current-system/sw/bin "$HOME"/.local/share/mise/bin "$HOME"/.local/bin "$HOME"/.cargo/bin /usr/local/bin; do
+      [ -x "$d/mise" ] && PATH="$d:$PATH" && break
+    done
+  fi
+}
+resolve_mise
 mise run defaults-snapshot && mise run brew-bundle
 """
 final = """
-if ! command -v mise >/dev/null 2>&1; then for d in /opt/homebrew/bin /run/current-system/sw/bin "$HOME"/.local/share/mise/bin "$HOME"/.local/bin "$HOME"/.cargo/bin /usr/local/bin; do [ -x "$d/mise" ] && PATH="$d:$PATH" && break; done; fi
+resolve_mise
 mise run herdr-plugins && mise run vscode-extensions && mise run system-check && mise run apple-intelligence
 """
 
@@ -103,5 +110,5 @@ host = "nwa.foxhound-insen.ts.net"
 mise_env = ["nwa"]
 tags = ["nix"]
 # nwa runs Tailscale SSH: the first connection prints a one-off approval
-# URL (visit it; persistently approve the key in the Tailscale admin
-# console so unattended runs work).
+# URL that a headless box can't open. Pre-provision with an auth key
+# (README, "Bootstrap nwa") before the first unattended bootstrap.

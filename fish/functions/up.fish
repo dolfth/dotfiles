@@ -5,10 +5,12 @@ function up --description 'Upgrade macOS software: CLT, brew (the Brewfiles), Ap
         sudo softwareupdate -i $label
     end
 
-    # The version a running server was started with, from the opt link.
-    set -l omlx_before (string trim (readlink /opt/homebrew/opt/omlx 2>/dev/null))
-    set -l splash_before (string trim (readlink /opt/homebrew/opt/splash 2>/dev/null))
-    set -l syncthing_before (string trim (readlink /opt/homebrew/opt/syncthing 2>/dev/null))
+    set -l brew_prefix (brew --prefix 2>/dev/null)
+    if test -n "$brew_prefix"
+        set -l omlx_before (string trim (readlink $brew_prefix/opt/omlx 2>/dev/null))
+        set -l splash_before (string trim (readlink $brew_prefix/opt/splash 2>/dev/null))
+        set -l syncthing_before (string trim (readlink $brew_prefix/opt/syncthing 2>/dev/null))
+    end
 
     # brew owns the brew-ecosystem packages (the Brewfiles, see README "Why
     # brew + mise): one upgrade path for all of them -- the 14 shared
@@ -23,17 +25,23 @@ function up --description 'Upgrade macOS software: CLT, brew (the Brewfiles), Ap
 
     # A running omlx or splash keeps the old version until it is restarted:
     # kickstart the dev.mise.* agent whose keg changed.
-    set -l omlx_after (string trim (readlink /opt/homebrew/opt/omlx 2>/dev/null))
+    if test -n "$brew_prefix"
+        set -l omlx_after (string trim (readlink $brew_prefix/opt/omlx 2>/dev/null))
+    end
     if test "$omlx_before" != "$omlx_after"; and launchctl print gui/(id -u)/dev.mise.omlx >/dev/null 2>&1
         launchctl kickstart -k gui/(id -u)/dev.mise.omlx
     end
-    set -l splash_after (string trim (readlink /opt/homebrew/opt/splash 2>/dev/null))
+    if test -n "$brew_prefix"
+        set -l splash_after (string trim (readlink $brew_prefix/opt/splash 2>/dev/null))
+    end
     if test "$splash_before" != "$splash_after"; and launchctl print gui/(id -u)/dev.mise.splash >/dev/null 2>&1
         launchctl kickstart -k gui/(id -u)/dev.mise.splash
     end
     # Syncthing, laptop only: now a dev.mise launchd agent, so an upgraded
     # keg needs the same kick; the guard no-ops where it is not installed.
-    set -l syncthing_after (string trim (readlink /opt/homebrew/opt/syncthing 2>/dev/null))
+    if test -n "$brew_prefix"
+        set -l syncthing_after (string trim (readlink $brew_prefix/opt/syncthing 2>/dev/null))
+    end
     if test "$syncthing_before" != "$syncthing_after"; and launchctl print gui/(id -u)/dev.mise.syncthing >/dev/null 2>&1
         launchctl kickstart -k gui/(id -u)/dev.mise.syncthing
     end

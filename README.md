@@ -66,6 +66,19 @@ so `$SHELL` stays POSIX for software that runs `$SHELL -c '...'`.
 nwa's OS comes from its NixOS flake, which declares mise (reading this
 checkout with `env = ["nwa"]`); the first `mise bootstrap` deploys the omp
 config. After that, nwa follows this repo like the Macs.
+#
+# First-time Tailscale approval (headless nwa): the first SSH connection
+# prints a one-off approval URL that a headless box can't open. Pre-provision
+# with an auth key before the first bootstrap:
+#
+#   # on any machine already in the tailnet (gza or mca while awake):
+#   tailscale operator authkey --expiry=10m
+#
+#   # on nwa, before the first SSH / bootstrap remote:
+#   tailscale up --auth-key=<key>
+#
+# The 10-minute window covers the bootstrap sequence; generate a fresh one
+# per new box or key rotation.
 
 ## Layout
 
