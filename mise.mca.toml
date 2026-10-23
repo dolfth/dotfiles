@@ -3,7 +3,7 @@
 [vars]
 host = "mca"
 accent = "color_purple"
-icon = "\uF179"  # nf-fa-apple
+icon = "\U000F08C1"  # nf-md-laptop
 
 [env]
 HOST = "mca"

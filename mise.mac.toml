@@ -68,11 +68,9 @@ pared_version = "2.2.0"
 "FXEnableExtensionChangeWarning" = false
 # Search: SCcf = current folder, SCsp = previous, SCev = this Mac
 "FXDefaultSearchScope" = "SCcf"
-# New windows: PfHm = Home, PfDe = Desktop, PfDo = Documents. No template
-# rendering for defaults, so the account is hard-coded (it is dolf on every
-# machine).
+# New windows: PfHm = Home, PfDe = Desktop, PfDo = Documents. The path is
+# set in system-check with $USER so it works on any username.
 "NewWindowTarget" = "PfHm"
-"NewWindowTargetPath" = "file:///Users/dolf/"
 "QuitMenuItem" = true
 "FXRemoveOldTrashItems" = true
 "ShowMountedServersOnDesktop" = true

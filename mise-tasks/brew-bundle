@@ -31,3 +31,22 @@ else
   echo "Re-run in a terminal:" >&2
   echo "  cat ${files[*]} > /tmp/Brewfile.all && brew bundle --no-upgrade --file=/tmp/Brewfile.all" >&2
 fi
+# App Store apps (mas entries in Brewfile.<host>) are silent failures when
+# the user is not signed in or the app is missing from purchase history.
+# Diff the Brewfile against mas list and surface any gaps so the user can
+# act on them instead of wondering why the apps are missing.
+if [ -f "$REPO/Brewfile.mca" ]; then
+  expected="$(grep -E '^mas "' "$REPO/Brewfile.mca" | sed 's/^mas "\(.*\)" .*/\1/' | sort)"
+  if command -v mas >/dev/null 2>&1; then
+    installed="$(mas list 2>/dev/null | awk '{print $1}' | sort)"
+    missing=""
+    for id in $expected; do
+      [ -n "$(echo "$installed" | grep "^${id}$")" ] || missing="$missing  $id"
+    done
+    if [ -n "$missing" ]; then
+      echo "NOTE: these App Store apps could not be installed -- ensure you're" >&2
+      echo "signed in and they appear in your purchase history:" >&2
+      echo "$missing" >&2
+    fi
+  fi
+fi

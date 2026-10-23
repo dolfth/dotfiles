@@ -41,6 +41,9 @@ if [ -n "$fda" ]; then
   # Displays: show the display list in Displays settings
   defaults write com.apple.Displays-Settings.extension showListByDefault -int 2
 fi
+# Finder: open new windows to Home. Written here so $USER resolves correctly
+# regardless of the account name (declarative defaults cannot interpolate).
+defaults write com.apple.finder NewWindowTargetPath -string "file:///$USER/"
 
 # Manual light or dark mode conflicts with the automatic switch (declarative
 # in mise.mac.toml); `defaults delete` exits 1 when the key is already gone.
