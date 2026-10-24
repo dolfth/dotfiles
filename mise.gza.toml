@@ -45,12 +45,13 @@ stderr_path = "{{ env.HOME }}/Library/Logs/splash.log"
 kickstart = true
 
 [bootstrap.macos.launchd.agents.splash-kat]
-# KAT-Coder: the MoE model the user prefers. Served on its own port so
-# it never competes with the dense 27B model for memory or the port.
-# omp sees it as a separate provider (splash-kat) so the user can pick
-# either model explicitly; the dense 27B stays the default.
+# KAT-Coder: the MoE model the user prefers, served on its own port so omp
+# can pick either model explicitly; the dense 27B stays the default.
+# --language-only: bartowski's repo ships no unquantized (BF16/F32) mmproj
+# vision projector, which splash requires for vision -- text only, matching
+# the catalog entry (input: text).
 program = "{{ system_brew_prefix }}/opt/splash/bin/splash"
-args = ["serve", "--model", "bartowski/Kwaipilot_KAT-Coder-V2.5-Dev-GGUF:Q4_K_M", "--port", "8100"]
+args = ["serve", "--model", "bartowski/Kwaipilot_KAT-Coder-V2.5-Dev-GGUF:Q4_K_M", "--language-only", "--port", "8100"]
 run_at_load = true
 keep_alive = true
 process_type = "Interactive"
