@@ -34,7 +34,10 @@ mnemopi:
 providers:
   cacheWarming: "off"
 
-# Default model for new sessions and automatic scheduled tasks.
-# The dense 27B on splash is the default; KAT-Coder (35B MoE) is
-# available as splash-kat/bartowski/Kwaipilot_KAT-Coder-V2.5-Dev-GGUF:Q4_K_M.
-defaultModel: splash/mlx-community/Qwen3.8-27B-4bit
+# Default chat model for new sessions and scheduled tasks: the dense 27B on
+# splash. This is modelRoles.default -- the registered setting in omp v18;
+# a top-level `defaultModel` is an unregistered key omp silently ignores.
+# KAT-Coder (35B MoE) is the explicit choice:
+# splash-kat/bartowski/Kwaipilot_KAT-Coder-V2.5-Dev-GGUF:Q4_K_M
+modelRoles:
+  default: splash/mlx-community/Qwen3.8-27B-4bit
