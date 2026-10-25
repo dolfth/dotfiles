@@ -98,10 +98,16 @@ mise run herdr-plugins && mise run vscode-extensions && mise run system-check &&
 # so keep it in sync with each machine's local file.
 #
 # No `source`: run with `--adopt` (the tracked tree is transferred as a git
-# bundle -- untracked files never leave the repo). The Macs run under the
-# orchestrator's staged copy (same platform); nwa is cross-platform, and the
-# orchestrator's mise is a Homebrew build that mise will not replace with an
-# official release binary, so nwa runs under its own mise (`remote_mise`).
+# bundle -- untracked files never leave the repo). A later run reuses the
+# existing checkout as-is, so pass --update to fast-forward it first;
+# without it a host behind main silently re-applies its stale commit, and
+# the --update fetch runs under the host's GitHub key. The Macs run under
+# the orchestrator's staged copy (same platform); nwa is cross-platform,
+# and the orchestrator's mise is a Homebrew build that mise will not
+# replace with an official release binary, so nwa runs under its own mise;
+# orchestrators through 2026.10.19 ignore the `remote_mise` config field,
+# so the command line passes --remote-mise for nwa. The checkout must be
+# on main and clean.
 
 [bootstrap.remote.hosts.mca]
 host = "mca.foxhound-insen.ts.net"
