@@ -182,14 +182,16 @@ One command takes the whole fleet from this repo:
 
 ```bash
 cd ~/.config/mise   # the repo; run it here
-mise bootstrap remote --adopt 'git@github.com:dolfth/dotfiles.git?ref=main' --all
+mise bootstrap remote --adopt 'git@github.com:dolfth/dotfiles.git?ref=main' --tag mac --update
+mise bootstrap remote --adopt 'git@github.com:dolfth/dotfiles.git?ref=main' --host nwa --update --remote-mise /home/dolf/.local/bin/mise
 ```
 
 It connects to every machine in the `[bootstrap.remote.hosts]` inventory
 (`mise.toml`) over SSH and, on each, adopts this checkout as its
-`~/.config/mise` (an existing checkout is reused and fast-forwarded),
-stages the orchestrator's mise so the run parses with one version (except
-nwa, which is cross-platform and runs under its own mise -- see the notes),
+`~/.config/mise` (an existing checkout is reused as-is; `--update`
+fast-forwards it first, and without it a host behind main re-applies its
+stale commit), stages the orchestrator's mise so the run parses with one
+version (except nwa, which runs under its own mise -- see the notes),
 and
 runs the full `mise bootstrap` there -- hooks, packages, dotfiles,
 services, all of it. A host's own mise install and its running services
@@ -212,7 +214,11 @@ Three notes:
 - nwa is cross-platform and the orchestrator's mise is a Homebrew build:
   mise will not substitute an official release binary for a non-official
   local one, so nwa runs under its own mise (`remote_mise` in the
-  inventory).
+  inventory); the nwa command above passes it on the command line, because
+  orchestrators through 2026.10.19 ignore the config field and a
+  command-line `--remote-mise` applies to every selected host (the Macs
+  have no such path). When an orchestrator honors the field, the two
+  commands merge back into one `--all`.
 
 A brand-new machine lays its OS floor first (a Mac: the steps above; a
 NixOS box: its flake, plus a standalone mise install -- the flake does not
