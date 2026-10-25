@@ -63,22 +63,15 @@ so `$SHELL` stays POSIX for software that runs `$SHELL -c '...'`.
 
 ## Bootstrap nwa
 
-nwa's OS comes from its NixOS flake, which declares mise (reading this
-checkout with `env = ["nwa"]`); the first `mise bootstrap` deploys the omp
-config. After that, nwa follows this repo like the Macs.
-#
-# First-time Tailscale approval (headless nwa): the first SSH connection
-# prints a one-off approval URL that a headless box can't open. Pre-provision
-# with an auth key before the first bootstrap:
-#
-#   # on any machine already in the tailnet (gza or mca while awake):
-#   tailscale operator authkey --expiry=10m
-#
-#   # on nwa, before the first SSH / bootstrap remote:
-#   tailscale up --auth-key=<key>
-#
-# The 10-minute window covers the bootstrap sequence; generate a fresh one
-# per new box or key rotation.
+The OS comes from nwa's NixOS flake (its own repo). mise is a standalone
+install in `~/.local/bin` -- the flake does not carry it -- and it reads this
+checkout once the fleet-sync command below adopts it as `~/.config/mise`;
+the first bootstrap deploys the omp, pi, and herdr configs. After that, nwa
+follows this repo like the Macs.
+
+One gate: nwa runs Tailscale SSH. The first connection prints a one-off
+approval URL -- visit it once, then approve the key persistently in the
+Tailscale admin console so unattended fleet runs need no more URLs.
 
 ## Layout
 
@@ -195,7 +188,9 @@ mise bootstrap remote --adopt 'git@github.com:dolfth/dotfiles.git?ref=main' --al
 It connects to every machine in the `[bootstrap.remote.hosts]` inventory
 (`mise.toml`) over SSH and, on each, adopts this checkout as its
 `~/.config/mise` (an existing checkout is reused and fast-forwarded),
-stages the orchestrator's mise so the run parses with one version, and
+stages the orchestrator's mise so the run parses with one version (except
+nwa, which is cross-platform and runs under its own mise -- see the notes),
+and
 runs the full `mise bootstrap` there -- hooks, packages, dotfiles,
 services, all of it. A host's own mise install and its running services
 are left alone; a host that fails is reported at the end while the others
@@ -205,7 +200,7 @@ Any machine can orchestrate; gza is the default because it is always on
 and reachable, while mca (the laptop) is reachable only while awake on
 the tailnet. `--tag mac` targets just the Macs, `--tag nix` just nwa.
 
-Two notes:
+Three notes:
 
 - The inventory's `mise_env` is authoritative for the remote run: it
   replaces the host's own `miserc.local.toml` selection (a brand-new
@@ -214,8 +209,13 @@ Two notes:
 - nwa runs Tailscale SSH: the first connection prints a one-off approval
   URL -- visit it, then persistently approve the key in the Tailscale
   admin console so unattended runs work.
+- nwa is cross-platform and the orchestrator's mise is a Homebrew build:
+  mise will not substitute an official release binary for a non-official
+  local one, so nwa runs under its own mise (`remote_mise` in the
+  inventory).
 
 A brand-new machine lays its OS floor first (a Mac: the steps above; a
-NixOS box: its flake, which declares mise) -- then
+NixOS box: its flake, plus a standalone mise install -- the flake does not
+carry one, so give the host `remote_mise` in the inventory) -- then
 `mise bootstrap remote --adopt '…' --host newbox.ts.net` does the rest
 from anywhere, no session on the box needed.

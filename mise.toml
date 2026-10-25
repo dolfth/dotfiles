@@ -90,10 +90,11 @@ mise run herdr-plugins && mise run vscode-extensions && mise run system-check &&
 # host's own miserc.local.toml selection (a brand-new machine has none),
 # so keep it in sync with each machine's local file.
 #
-# No `source` or `remote_mise`: run with `--adopt` (the tracked tree is
-# transferred as a git bundle -- untracked files never leave the repo),
-# and the host's own mise stays installed; the bootstrap runs under the
-# orchestrator's staged copy, and LaunchAgent services persist in launchd.
+# No `source`: run with `--adopt` (the tracked tree is transferred as a git
+# bundle -- untracked files never leave the repo). The Macs run under the
+# orchestrator's staged copy (same platform); nwa is cross-platform, and the
+# orchestrator's mise is a Homebrew build that mise will not replace with an
+# official release binary, so nwa runs under its own mise (`remote_mise`).
 
 [bootstrap.remote.hosts.mca]
 host = "mca.foxhound-insen.ts.net"
@@ -108,7 +109,8 @@ tags = ["mac"]
 [bootstrap.remote.hosts.nwa]
 host = "nwa.foxhound-insen.ts.net"
 mise_env = ["nwa"]
+remote_mise = "/home/dolf/.local/bin/mise"
 tags = ["nix"]
-# nwa runs Tailscale SSH: the first connection prints a one-off approval
-# URL that a headless box can't open. Pre-provision with an auth key
-# (README, "Bootstrap nwa") before the first unattended bootstrap.
+# nwa runs Tailscale SSH: visit the one-off approval URL it prints for the
+# first connection, then approve the key persistently in the admin console
+# for unattended runs (README, "Bootstrap nwa").
