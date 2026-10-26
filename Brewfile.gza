@@ -4,11 +4,15 @@
 # the same port). The shared entries live in Brewfile (see it for the how
 # and the why).
 
-tap "jundot/omlx"
+# trusted: true -- Homebrew 6+ refuses to load formulae from untrusted
+# taps, and the trust state is per-machine (~/.homebrew/trust.json), never
+# in the Brewfile; bundle records it before installing, so a fresh machine
+# does not hit "Refusing to load formula ... from untrusted tap".
+tap "jundot/omlx", trusted: true
 # incoai/tap was renamed upstream to incoai/homebrew-tap (the old name 404s
 # since 2026-10-19); the formula and keg name are unchanged.
-tap "incoai/homebrew-tap"
-tap "can1357/homebrew-tap"
+tap "incoai/homebrew-tap", trusted: true
+tap "can1357/homebrew-tap", trusted: true
 
 brew "omlx"
 brew "splash"

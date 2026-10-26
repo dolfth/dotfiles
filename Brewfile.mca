@@ -2,10 +2,11 @@
 # are laptop only. The shared entries live in Brewfile (see it for the how
 # and the why).
 
-tap "chamburr/tap"
-tap "nikitabobko/tap"
+# trusted: true -- per-machine tap trust for Homebrew 6+ (why: Brewfile.gza).
+tap "chamburr/tap", trusted: true
+tap "nikitabobko/tap", trusted: true
 # Window borders for aerospace (its config is not in this repo).
-tap "FelixKratz/formulae"
+tap "FelixKratz/formulae", trusted: true
 
 cask "balenaetcher"
 cask "brave-browser"
