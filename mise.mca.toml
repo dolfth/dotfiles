@@ -16,6 +16,13 @@ KIND = "laptop"
 [dotfiles]
 "~/.config/aerospace/aerospace.toml/pinned" = { source = "aerospace/aerospace.toml", merge = true }
 
+# The omp agent config, deployed as on gza: the config is a symlink (local
+# edits flow back to the repo), the model catalog is a whole-file template --
+# vars.omp_base is "gza" in the base mise.toml, so the laptop reaches the
+# omlx/splash servers over Tailscale MagicDNS.
+"~/.omp/agent/config.yml" = "omp/agent/config.yml"
+"~/.omp/agent/models.yml" = { source = "omp/agent/models.yml.tera", mode = "template" }
+
 # Background sync. Declared as a launchd agent, not a [bootstrap.services]
 # user service: mise 2026.10.15 does not render user-service values (the
 # `command` string reaches launchd verbatim -- an unrendered {{

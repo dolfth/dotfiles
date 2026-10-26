@@ -13,6 +13,11 @@
 # mise itself is in the manifest so a fresh machine is complete (the
 # bootstrap installs Homebrew before it runs).
 
+# can1357/homebrew-tap: the tap for omp (the coding agent). trusted: true --
+# Homebrew 6+ refuses formulae from untrusted taps, and the trust state is
+# per-machine (~/.homebrew/trust.json); bundle records it (why: Brewfile.gza).
+tap "can1357/homebrew-tap", trusted: true
+
 brew "bat"
 brew "dust"
 brew "exiftool"
@@ -25,6 +30,9 @@ brew "mas"
 brew "mise"
 brew "mole"
 brew "mosh"
+# omp: the coding agent (its config deploys per host via the mise module;
+# the models run on gza, reached over Tailscale).
+brew "omp"
 brew "starship"
 brew "uv"
 
