@@ -128,6 +128,9 @@ and the task.
 | `ssh_config` | `~/.ssh/config` | both Macs, copied at 0600 (a symlink would expose the repo file's permissions to ssh); key passphrases in the Keychain |
 | `fish/config.fish` | `~/.config/fish/config.fish` | all machines; the mise activation block |
 | `fish/functions/up.fish` | `~/.config/fish/functions/up.fish` | both Macs; nwa's home-manager owns its own functions there |
+| `fish/functions/mkd.fish` | `~/.config/fish/functions/mkd.fish` | both Macs; mkdir + cd in one word |
+| `fish/functions/tstat.fish` | `~/.config/fish/functions/tstat.fish` | both Macs; the tailnet peers -- the app binary is the CLI (the cask ships no `tailscale` command) |
+| `fish/functions/port.fish` | `~/.config/fish/functions/port.fish` | both Macs; who is holding a port (lsof) |
 | `starship.toml.tera` | `~/.config/starship.toml` | per-host accent and icon from the vars |
 | `git/config` | `~/.config/git/config` | signs commits and tags with `~/.ssh/id_ed25519` |
 | `git/allowed_signers.tera` | `~/.config/git/allowed_signers` | every host's public key (the `sshKeys` var) |
