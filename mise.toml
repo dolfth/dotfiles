@@ -48,6 +48,19 @@ ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPNrEPG5Srx81xQTYTGqnZulXV4fWZQA/ooLJsUx856N
 # absent entry removes the file the old entry deployed.
 "~/.config/nvim/init.lua" = { mode = "absent" }
 
+[settings]
+# Trust for the `bootstrap` task gate. mise >= 2026.10.19 refuses to run the
+# `bootstrap` task (and every task it reaches) unless the config they come
+# from is trusted, and its trust store is per-machine state that a fresh
+# machine or a re-adopt does not have. `trusted_config_paths` is read from the
+# global config before any trust decision, and this directory is the global
+# config directory -- which is where mise-tasks/ lives -- so the entry travels
+# with the checkout and passes the gate on every machine that loads it.
+# (The error message's own suggestion, `mise trust ~/.config/mise`, is a
+# no-op in this layout: it normalizes to `~`, which is already trusted, and
+# records nothing for the checkout itself.)
+trusted_config_paths = ["~/.config/mise"]
+
 [bootstrap.hooks]
 # Both no-op off macOS (they guard on uname), so they are safe in the base
 # for all three machines. defaults-snapshot is taken before bootstrap writes
