@@ -5,10 +5,10 @@
 # The one host-specific bit is baseUrl. The omlx and splash servers run on
 # the desktop (gza), so:
 #   - on gza they are local      -> 127.0.0.1
-#   - on nwa (and any other box) -> gza, resolved by Tailscale MagicDNS
-# (gza.foxhound-insen.ts.net).
-# vars.omp_base carries that: "127.0.0.1" in the gza module, "gza" in the
-# base mise.toml.
+#   - on nwa (and any other box) -> the tailnet FQDN (MagicDNS does not
+# resolve the bare hostname).
+# vars.omp_base carries that: "127.0.0.1" in the gza module,
+# "gza.foxhound-insen.ts.net" in the base mise.toml.
 #
 # If you add or change a model through an omp UI, that edit is a local
 # change and the next `mise bootstrap` resets this file to the repo version

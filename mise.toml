@@ -14,8 +14,9 @@ icon = "\U000F033D"   # nf-md-linux
 tailnet = "foxhound-insen.ts.net"
 
 # omp's baseUrl for machines that are not the omlx host itself; the gza
-# module overrides with 127.0.0.1.
-omp_base = "gza"
+# module overrides with 127.0.0.1. The FQDN (the tailnet, above): MagicDNS
+# resolves <host>.<tailnet>, never the bare hostname.
+omp_base = "gza.foxhound-insen.ts.net"
 
 # Public SSH keys, mirrored from https://github.com/dolfth.keys (that page
 # is the canonical record: when a host rotates its key or a new machine
