@@ -31,6 +31,10 @@ end
 if status is-interactive
     alias ll "ls -alh"
 
+    # `..` as an abbreviation rather than a function: fish's parser rejects
+    # `..` as a function name, but an abbreviation expands `..` to `cd ..`.
+    abbr .. "cd .."
+
     # starship reads ~/.config/starship.toml by default, which this repo
     # manages, so there is no STARSHIP_CONFIG to set.
     if type -q starship
