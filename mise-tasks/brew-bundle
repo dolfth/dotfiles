@@ -29,7 +29,7 @@ fi
 # Diff the Brewfile against mas list and surface any gaps so the user can
 # act on them instead of wondering why the apps are missing.
 if [ -f "$REPO/Brewfile.mca" ]; then
-  expected="$(grep -E '^mas "' "$REPO/Brewfile.mca" | sed 's/^mas "\(.*\)" .*/\1/' | sort)"
+  expected="$(grep -E '^mas "' "$REPO/Brewfile.mca" | sed 's/^mas "\(.*\)", id: \([0-9]*\).*/\2/' | sort)"
   if command -v mas >/dev/null 2>&1; then
     installed="$(mas list 2>/dev/null | awk '{print $1}' | sort)"
     missing=""

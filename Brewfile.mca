@@ -29,13 +29,14 @@ cask "whatcable"
 # mise.mca.toml, so it runs under mise, not `brew services`).
 brew "syncthing"
 
-# App Store -- the IDs come from `mas list`, or the trailing digits of the
-# App Store URL. Requires being signed in, and the app must already be in
-# your purchase history.
-mas "1435127111"  # KeePassium
-mas "361285480"   # Keynote
-mas "361304891"   # Numbers
-mas "6720708363"  # Obsidian Web Clipper
-mas "361309726"   # Pages
-mas "1289583905"  # Pixelmator Pro
-mas "6745342698"  # uBlock Origin Lite
+# App Store -- mas installs by ID; the name is only a label. The explicit
+# `id:` form is required by current homebrew-bundle: a positional-ID line
+# ("mas 1435127111") aborts the whole bundle with "options[:id] should be
+# an Integer". The app must already be in your purchase history.
+mas "KeePassium", id: 1435127111
+mas "Keynote", id: 361285480
+mas "Numbers", id: 361304891
+mas "Obsidian Web Clipper", id: 6720708363
+mas "Pages", id: 361309726
+mas "Pixelmator Pro", id: 1289583905
+mas "uBlock Origin Lite", id: 6745342698
