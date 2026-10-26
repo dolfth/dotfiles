@@ -1,5 +1,6 @@
-# The fleet's connectivity is Tailscale: one word for its peers
-# (`tstat --short` for the one-line list).
+# The fleet's connectivity is Tailscale: one word for its peers. The macOS
+# app ships no `tailscale` command (and its status takes no --short), so
+# drive the app binary directly: `tstat --active` for the live peers only.
 function tstat --description 'Show the Tailscale peers'
-    tailscale status $argv
+    /Applications/Tailscale.app/Contents/MacOS/Tailscale status $argv
 end
