@@ -18,8 +18,8 @@ KIND = "laptop"
 
 # The omp agent config, deployed as on gza: the config is a symlink (local
 # edits flow back to the repo), the model catalog is a whole-file template --
-# vars.omp_base is "gza" in the base mise.toml, so the laptop reaches the
-# omlx/splash servers over Tailscale MagicDNS.
+# vars.omp_base is the gza tailnet FQDN in the base mise.toml, so the laptop
+# reaches the omlx/splash servers over Tailscale MagicDNS.
 "~/.omp/agent/config.yml" = "omp/agent/config.yml"
 "~/.omp/agent/models.yml" = { source = "omp/agent/models.yml.tera", mode = "template" }
 

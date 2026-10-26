@@ -30,6 +30,11 @@ chezmoi iteration lives on under `archive/chezmoi`.
 
 Selecting the environments in `miserc.local.toml` loads the module files
 (`mise.<env>.toml`); everything else in the config is environment-neutral.
+Mise reads that file only from the mise config directory
+(`~/.config/mise/`): a copy one level up, at `~/.config/miserc.local.toml`,
+is silently ignored -- the vars fall back to the base values and the host
+module's dotfiles never deploy (this bit nwa in 2026.10: its file sat there,
+so starship kept the base icon and the omp configs went stale).
 
 ## Bootstrap a Mac
 
@@ -191,7 +196,7 @@ One command takes the whole fleet from this repo:
 ```bash
 cd ~/.config/mise   # the repo; run it here
 mise bootstrap remote --adopt 'git@github.com:dolfth/dotfiles.git?ref=main' --tag mac --update
-mise bootstrap remote --adopt 'git@github.com:dolfth/dotfiles.git?ref=main' --host nwa --update --remote-mise /home/dolf/.local/bin/mise
+mise bootstrap remote --adopt 'git@github.com:dolfth/dotfiles.git?ref=main' --host nwa --update --remote-mise /home/dolf/.local/bin/mise --force-dotfiles
 ```
 
 It connects to every machine in the `[bootstrap.remote.hosts]` inventory
@@ -210,7 +215,7 @@ Any machine can orchestrate; gza is the default because it is always on
 and reachable, while mca (the laptop) is reachable only while awake on
 the tailnet. `--tag mac` targets just the Macs, `--tag nix` just nwa.
 
-Three notes:
+Four notes:
 
 - The inventory's `mise_env` is authoritative for the remote run: it
   replaces the host's own `miserc.local.toml` selection (a brand-new
@@ -227,6 +232,13 @@ Three notes:
   command-line `--remote-mise` applies to every selected host (the Macs
   have no such path). When an orchestrator honors the field, the two
   commands merge back into one `--all`.
+- The nwa command passes `--force-dotfiles`: the apps on nwa rewrite their
+  deployed configs themselves (herdr's is a copy, not a symlink), and the
+  dotfiles apply refuses to overwrite a whole-file entry that has drifted
+  from its source, aborting the whole phase. The flag resets them to the
+  repo version. The Macs need none: their omp config is a symlink into the
+  repo (a local write is a checkout edit that gets committed) and the pi
+  entry merges.
 
 A brand-new machine lays its OS floor first (a Mac: the steps above; a
 NixOS box: its flake, plus a standalone mise install -- the flake does not
