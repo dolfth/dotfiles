@@ -62,6 +62,9 @@ machine).
 
 The `-E mac,gza` lands in `~/.config/mise/miserc.local.toml`, and every later
 mise command on the machine uses it (select `-E mac,mca` on the laptop).
+Without `-E`, the pre-packages hook writes the `["mac"]` fallback itself (the
+laptop defaults) and says to re-run; add the host module when the machine
+gets one.
 
 Do **not** `chsh` to fish: `~/.zshrc` starts fish for interactive sessions,
 so `$SHELL` stays POSIX for software that runs `$SHELL -c '...'`.
@@ -154,7 +157,10 @@ ones the repo used to track. To delete a file the repo deployed, declare it
 | `apple-intelligence` | final | the Apple Intelligence removal via the pinned pared release (checksum-verified into `~/.local/share/pared`): disables every feature in its catalog (Siri included), keeps the managed profile installed (one System Settings click per machine), removes downloaded models. No-op off Apple-silicon macOS 27+ |
 
 They run on every `mise bootstrap` / `mise update` and no-op when there is
-nothing to do.
+nothing to do. The pre-packages hook opens with a config gate -- `mise env`
+over the loaded config, failing the run on a config that does not parse or
+on unknown fields (a typo'd key only warns and is ignored, and mise
+2026.10.x has no validate subcommand) -- so a typo dies in a second.
 
 ### Desktop services (gza)
 
@@ -245,3 +251,6 @@ NixOS box: its flake, plus a standalone mise install -- the flake does not
 carry one, so give the host `remote_mise` in the inventory) -- then
 `mise bootstrap remote --adopt '…' --host newbox.ts.net` does the rest
 from anywhere, no session on the box needed.
+On a Mac, that bootstrap also writes the box's missing `miserc.local.toml`
+(`["mac"]` + a nudge to add its host module) for the box's later local runs;
+the remote run itself follows the inventory's `mise_env` (above).

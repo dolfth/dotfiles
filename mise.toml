@@ -1,6 +1,7 @@
 # Base config: always loaded. Per-host vars (the fallback values) and the
 # dotfiles every machine gets; per-machine modules are selected in
-# miserc.local.toml (machine-local, never committed) with
+# miserc.local.toml (machine-local, never committed; the pre-packages hook
+# writes the mac fallback when a fresh checkout has none) with
 # env = ["mac", "gza"]  and so on. See README.md.
 
 [vars]
@@ -78,6 +79,15 @@ trusted_config_paths = ["~/.config/mise"]
 # prefix, the Nix store, the mise-run install) and put its directory on
 # PATH before `mise run`; that also puts brew on PATH for brew-bundle.
 # Locally, mise is already on PATH and the prologue is a no-op.
+
+# pre-packages additionally gates and seeds, in this order: it writes a
+# missing miserc.local.toml (the mac fallback -- a fresh checkout has none,
+# the file is uncommitted -- and the module loads on the *next* invocation:
+# mise read the config at startup), then it runs `mise env` over the loaded
+# config and fails the bootstrap on a config that does not parse or on
+# unknown fields: a typo'd key only warns and is ignored, so without the
+# gate the slow phases would run on a half-wrong config. (mise 2026.10.x has
+# no validate subcommand; `mise env` *is* the config load.)
 pre-packages = """
 resolve_mise() {
   if ! command -v mise >/dev/null 2>&1; then
@@ -87,6 +97,33 @@ resolve_mise() {
   fi
 }
 resolve_mise
+# Fresh checkout: write the missing miserc (README, "Config layout").
+if [ "$(uname -s)" = "Darwin" ]; then
+  repo=$(git rev-parse --show-toplevel 2>/dev/null) || repo=$PWD
+  if [ ! -f "$repo/miserc.local.toml" ]; then
+    {
+      echo '# Per-machine environment selection: which mise.<env>.toml modules to load.'
+      echo '# mac: the shared macOS module; then the host module (mise.<host>.toml).'
+      echo 'env = ["mac"]'
+    } > "$repo/miserc.local.toml"
+    mods=""
+    for f in "$repo"/mise.*.toml; do [ -e "$f" ] || continue; n=${f##*/mise.}; mods="$mods ${n%.toml}"; done
+    echo "Wrote $repo/miserc.local.toml with the mac fallback -- re-run 'mise bootstrap' to load it. If this box is a named machine, add its env name to the file -- available: ${mods# }"
+  fi
+fi
+# Config gate: the warning above is otherwise ignored by mise.
+tmp=$(mktemp)
+if ! mise env >/dev/null 2>"$tmp"; then
+  cat "$tmp" >&2; rm -f "$tmp"
+  echo "mise bootstrap: the mise config does not parse; fix it and re-run." >&2
+  exit 1
+fi
+if grep -qE 'unknown field|did you mean' "$tmp"; then
+  cat "$tmp" >&2; rm -f "$tmp"
+  echo "mise bootstrap: unknown fields in the mise config (above); fix them and re-run." >&2
+  exit 1
+fi
+rm -f "$tmp"
 mise run defaults-snapshot && mise run brew-bundle
 """
 final = """
