@@ -176,6 +176,14 @@ git commit -am "…"; git push
 Edit a template and run `mise dot apply` to re-render it; `mise dot diff`
 shows what would change first.
 
+If `mise bootstrap` refuses to run the `bootstrap` task as "not trusted",
+the machine's mise is new enough to gate task execution on config trust
+(the 2026.10.19 release hardened it) and its checkout predates the
+`trusted_config_paths` fix in `mise.toml`: `git pull` and re-run, or record
+the checkout locally with `mise trust mise-tasks/bootstrap` (a path into the
+checkout; `mise trust ~/.config/mise` normalizes to the already-trusted home
+and records nothing).
+
 ## Fleet sync (`mise bootstrap remote`)
 
 One command takes the whole fleet from this repo:
