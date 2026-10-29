@@ -139,10 +139,12 @@ fi
 case "${KIND:-laptop}" in
   desktop)
     # Desktop (omlx server): only the display sleeps. No standby, hibernation,
-    # Power Nap or Low Power Mode. Restart after a power cut; wake on LAN and
-    # TCP keepalive as backups.
+    # Power Nap or Low Power Mode. Restart after a power cut (autorestart),
+    # power on whenever the cable is connected even after a clean shutdown
+    # (autorestartatconnect); wake on LAN and TCP keepalive as backups.
     sudo pmset -a sleep 0 disksleep 0 standby 0 hibernatemode 0 \
-      powernap 0 lowpowermode 0 displaysleep 15 autorestart 1 womp 1 tcpkeepalive 1
+      powernap 0 lowpowermode 0 displaysleep 15 autorestart 1 autorestartatconnect 1 \
+      womp 1 tcpkeepalive 1
     ;;
   *)
     # Laptop: sleep when idle, sooner on battery than on AC.
