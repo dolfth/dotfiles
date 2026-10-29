@@ -36,8 +36,11 @@ kickstart = true
 # reaches splash over the tailnet by FQDN; the default bind is 127.0.0.1,
 # and a client that connects by name also needs --allowed-host.
 [bootstrap.macos.launchd.agents.splash]
+# unsloth's Dynamic 3.0 quant: 5.25 bits/param (17.9 GB), finer than the
+# mlx-community 4bit at the same size class. The repo ships the mmproj vision
+# projector, so no --language-only: vision stays.
 program = "{{ system_brew_prefix }}/opt/splash/bin/splash"
-args = ["serve", "--model", "mlx-community/Qwen3.8-27B-4bit", "--host", "0.0.0.0", "--allowed-host", "gza.foxhound-insen.ts.net"]
+args = ["serve", "--model", "unsloth/Qwen3.8-27B-GGUF:UD-Q4_K_XL", "--host", "0.0.0.0", "--allowed-host", "gza.foxhound-insen.ts.net"]
 run_at_load = true
 keep_alive = true
 process_type = "Interactive"
