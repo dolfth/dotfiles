@@ -113,6 +113,24 @@ sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setstealthmode on >/dev/n
 # Block ALL inbound (breaks file sharing, AirDrop, SSH):
 # sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setblockall on >/dev/null
 
+##### MagicDNS in /etc/resolv.conf ############################################
+#
+# Programs that read /etc/resolv.conf (bun, Go without cgo) never see the
+# Tailscale supplemental resolver that scutil and curl use, so MagicDNS
+# names come back ENOTFOUND for them -- omp (bun-compiled) is exactly that
+# class. Newer Tailscale clients rewrite the file at start (gza: since
+# 1.102.x); keep the content declared so an older client or an OS rewrite
+# can't strand file-reading resolvers. The tailnet resolver forwards public
+# names upstream, so it works as the sole nameserver here.
+if ! grep -q '^nameserver 100\.100\.100\.100' /etc/resolv.conf 2>/dev/null; then
+  sudo tee /etc/resolv.conf >/dev/null <<'EOF'
+search foxhound-insen.ts.net localdomain
+nameserver 100.100.100.100
+nameserver fd7a:115c:a1e0::53
+EOF
+  echo "  /etc/resolv.conf: added the tailnet resolvers (file-reading programs can see MagicDNS)"
+fi
+
 ##### Power management ########################################################
 #
 # By the host module's KIND (laptop | desktop); unknown hosts get the laptop

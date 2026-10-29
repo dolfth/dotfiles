@@ -156,7 +156,7 @@ ones the repo used to track. To delete a file the repo deployed, declare it
 | `bootstrap` | the bootstrap task slot | for each `dev.mise.*` LaunchAgent: a guarded `launchctl bootstrap` (only (re)loads a not-loaded job) + a bare `kickstart` (starts a dead agent, no-op on a healthy one -- never kills a running server); then reports who holds each port. No-op off gza |
 | `herdr-plugins` | final | the herdr plugins the keybindings rely on; no-op where herdr is absent |
 | `vscode-extensions` | final | the vscodium extensions; no-op where codium is absent |
-| `system-check` | final | the macOS system settings: FDA-gated app defaults, hostname, firewall, Touch ID, power, updates, FileVault check, the GPU wired-limit daemon; the desktop gets Screen Sharing + Remote Login. The sudo part is TTY-gated. Restarts Dock/Finder/… only when a domain they read changed |
+| `system-check` | final | the macOS system settings: FDA-gated app defaults, hostname, firewall, the resolv.conf MagicDNS entry, Touch ID, power, updates, FileVault check, the GPU wired-limit daemon; the desktop gets Screen Sharing + Remote Login. The sudo part is TTY-gated. Restarts Dock/Finder/… only when a domain they read changed |
 | `apple-intelligence` | final | the Apple Intelligence removal via the pinned pared release (checksum-verified into `~/.local/share/pared`): disables every feature in its catalog (Siri included), keeps the managed profile installed (one System Settings click per machine), removes downloaded models. No-op off Apple-silicon macOS 27+ |
 
 They run on every `mise bootstrap` / `mise update` and no-op when there is
