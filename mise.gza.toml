@@ -33,14 +33,16 @@ stderr_path = "{{ env.HOME }}/Library/Logs/omlx.log"
 kickstart = true
 
 # --host 0.0.0.0 + --allowed-host: omp on the other hosts (mca, nwa)
-# reaches splash over the tailnet by FQDN; the default bind is 127.0.0.1,
-# and a client that connects by name also needs --allowed-host.
+# reaches splash over the tailnet; the default bind is 127.0.0.1, and a
+# client that connects by name also needs --allowed-host. The catalog
+# uses the FQDN; the bare tailnet name gza is also accepted, for manual
+# clients (http://gza:8000).
 [bootstrap.macos.launchd.agents.splash]
 # unsloth's Dynamic 3.0 quant: 5.25 bits/param (17.9 GB), finer than the
 # mlx-community 4bit at the same size class. The repo ships the mmproj vision
 # projector, so no --language-only: vision stays.
 program = "{{ system_brew_prefix }}/opt/splash/bin/splash"
-args = ["serve", "--model", "unsloth/Qwen3.8-27B-GGUF:UD-Q4_K_XL", "--host", "0.0.0.0", "--allowed-host", "gza.foxhound-insen.ts.net"]
+args = ["serve", "--model", "unsloth/Qwen3.8-27B-GGUF:UD-Q4_K_XL", "--host", "0.0.0.0", "--allowed-host", "gza.foxhound-insen.ts.net", "--allowed-host", "gza"]
 run_at_load = true
 keep_alive = true
 process_type = "Interactive"
@@ -57,7 +59,7 @@ kickstart = true
 # vision projector, which splash requires for vision -- text only, matching
 # the catalog entry (input: text).
 program = "{{ system_brew_prefix }}/opt/splash/bin/splash"
-args = ["serve", "--model", "bartowski/Kwaipilot_KAT-Coder-V2.5-Dev-GGUF:Q4_K_M", "--language-only", "--port", "8100", "--host", "0.0.0.0", "--allowed-host", "gza.foxhound-insen.ts.net"]
+args = ["serve", "--model", "bartowski/Kwaipilot_KAT-Coder-V2.5-Dev-GGUF:Q4_K_M", "--language-only", "--port", "8100", "--host", "0.0.0.0", "--allowed-host", "gza.foxhound-insen.ts.net", "--allowed-host", "gza"]
 run_at_load = true
 keep_alive = true
 process_type = "Interactive"
