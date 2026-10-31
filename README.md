@@ -136,7 +136,7 @@ and the task.
 | `git/allowed_signers.tera` | `~/.config/git/allowed_signers` | every host's public key (the `sshKeys` var) |
 | `ghostty/config` | `~/.config/ghostty/config` | Nerd Font, so starship glyphs render |
 | `herdr/config.toml` | `~/.config/herdr/config.toml` | nwa only; copied -- herdr rewrites the file itself |
-| `linearmouse/linearmouse.json` | `~/.config/linearmouse/linearmouse.json` | both Macs; written only if absent, then LinearMouse owns it |
+| `linearmouse/linearmouse.json` | `~/.config/linearmouse/linearmouse.json` | both Macs; written only if absent, then LinearMouse owns it. "Start at Login" is a one-time UI toggle per machine (it lives in the private login-items store; see the `system-check` manual checklist) |
 | `pi/agent/settings.json` | `~/.pi/agent/settings.json` | gza + nwa; two pinned keys deep-merged into the file pi writes |
 | `omlx/*.json` | `~/.omlx/` | gza; the pinned settings, model settings and profiles deep-merged into the files omlx writes (auth keys stay omlx's), plus server aliases for the host's `.local` and Tailscale names |
 | `omp/agent/config.yml` | `~/.omp/agent/config.yml` | gza + nwa, symlinked: `/settings` changes flow back into the repo -- commit them |

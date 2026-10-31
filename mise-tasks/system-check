@@ -77,6 +77,20 @@ if [ -f "$before_file" ] && [ "$(snap | shasum | awk '{print $1}')" != "$(cat "$
   done
 fi
 
+##### LinearMouse login item (the one non-scriptable UI step) #################
+#
+# "Start at Login" lives in the private login-items (BTM) store, which only the
+# app's UI toggle writes -- not in linearmouse.json (its 0.12 schema accepts
+# only $schema + schemes) and not in defaults, so mise cannot declare it. The
+# item survives reboots/reinstalls (it points at /Applications), so this is a
+# one-time step per machine; unlike AeroSpace (start-at-login in its config
+# self-registers on first launch), merely launching LinearMouse registers
+# nothing. Only remind when the app is installed but the item is absent.
+if [ "$(uname -s)" = "Darwin" ] && [ -d /Applications/LinearMouse.app ] \
+  && ! sfltool dumpbtm 2>/dev/null | grep -q "com.lujjjh.LinearMouse"; then
+  echo "  LinearMouse is not set to start at login: open it and tick 'Start at Login'"
+fi
+
 ##### Sudo part (TTY-gated) ###################################################
 
 if [ ! -t 0 ]; then
@@ -227,5 +241,16 @@ fi
 #   - Accessibility for window managers and hotkey tools
 #   - Screen Recording for capture tools
 #   - iCloud sign-in and services
+#
+# LinearMouse "Start at Login" (one time per machine, in the app's UI):
+#   The setting lives in the private login-items (BTM) database that only the
+#   app's UI toggle writes -- not in linearmouse.json (its 0.12 schema accepts
+#   only $schema + schemes) and not in defaults, so no config file, dotfile or
+#   launchd can declare it. Ticking it once makes it persist (a BTM login item
+#   survives reboots and reinstalls, since it points at /Applications).
+#   Unlike AeroSpace (its config's start-at-login = true self-registers on first
+#   launch), merely launching LinearMouse registers nothing -- the checkbox must
+#   be ticked. Do it on each Mac so the mouse back/forward + pointer settings
+#   apply from login instead of the first manual launch.
 
 echo "==> System settings applied."
