@@ -138,12 +138,14 @@ fi
 
 case "${KIND:-laptop}" in
   desktop)
-    # Desktop (omlx server): only the display sleeps. No standby, hibernation,
-    # Power Nap or Low Power Mode. Restart after a power cut (autorestart),
-    # power on whenever the cable is connected even after a clean shutdown
-    # (autorestartatconnect); wake on LAN and TCP keepalive as backups.
+    # gza is a MacBook Pro used as a desktop (omlx server): only the display
+    # sleeps. No standby, hibernation, Power Nap or Low Power Mode. Restart
+    # after a power cut (autorestart); wake on LAN and TCP keepalive as backups.
+    # "Start up when power is connected" (macOS 26.5+, System Settings >
+    # Energy) is unavailable: Apple limits it to Mac mini 2024+, Mac Studio
+    # 2025+, iMac 2024+, and pmset here rejects the legacy autorestartatconnect.
     sudo pmset -a sleep 0 disksleep 0 standby 0 hibernatemode 0 \
-      powernap 0 lowpowermode 0 displaysleep 15 autorestart 1 autorestartatconnect 1 \
+      powernap 0 lowpowermode 0 displaysleep 15 autorestart 1 \
       womp 1 tcpkeepalive 1
     ;;
   *)
