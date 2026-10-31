@@ -226,10 +226,11 @@ the tailnet. `--tag mac` targets just the Macs, `--tag nix` just nwa.
 
 Four notes:
 
-- The inventory's `mise_env` is authoritative for the remote run: it
-  replaces the host's own `miserc.local.toml` selection (a brand-new
-  machine has none at all), so keep it in sync with each machine's local
-  file.
+- The remote run loads each host's own `miserc.local.toml` -- the same
+  file the local runs use, so there is one selection per machine and
+  nothing to keep in sync. A brand-new host has none at all: pass
+  `--remote-env mac` on the one-time onboarding command (mise >=
+  2026.10.22 has the flag).
 - nwa runs Tailscale SSH: the first connection prints a one-off approval
   URL -- visit it, then persistently approve the key in the Tailscale
   admin console so unattended runs work.
@@ -252,8 +253,9 @@ Four notes:
 A brand-new machine lays its OS floor first (a Mac: the steps above; a
 NixOS box: its flake, plus a standalone mise install -- the flake does not
 carry one, so give the host `remote_mise` in the inventory) -- then
-`mise bootstrap remote --adopt '…' --host newbox.ts.net` does the rest
-from anywhere, no session on the box needed.
+`mise bootstrap remote --adopt '…' --host newbox.ts.net --remote-env mac`
+does the rest from anywhere, no session on the box needed (the flag is the
+one-time env selection: the box has no miserc yet, and the remote run
+loads each host's own file otherwise).
 On a Mac, that bootstrap also writes the box's missing `miserc.local.toml`
-(`["mac"]` + a nudge to add its host module) for the box's later local runs;
-the remote run itself follows the inventory's `mise_env` (above).
+(`["mac"]` + a nudge to add its host module) for the box's later local runs.
