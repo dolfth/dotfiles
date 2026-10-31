@@ -87,9 +87,9 @@ Tailscale admin console so unattended fleet runs need no more URLs.
 
 | What | Where |
 |---|---|
-| 14 formulae (incl. mise) + 3 casks, both Macs | `Brewfile` |
-| 18 GUI casks + 2 formulae (aerospace borders, syncthing) + 7 App Store apps, laptop only | `Brewfile.mca` |
-| omlx + splash + omp, desktop only | `Brewfile.gza` |
+| 15 formulae (incl. mise) + 4 casks, both Macs | `Brewfile` |
+| 17 GUI casks + 2 formulae (aerospace borders, syncthing) + 7 App Store apps, laptop only | `Brewfile.mca` |
+| omlx + splash, desktop only | `Brewfile.gza` |
 
 `brew bundle` (the brew-bundle task) installs what is missing and never
 upgrades what is present -- daily upgrades go through `up`. App Store entries
@@ -139,8 +139,8 @@ and the task.
 | `linearmouse/linearmouse.json` | `~/.config/linearmouse/linearmouse.json` | both Macs; written only if absent, then LinearMouse owns it. "Start at Login" is a one-time UI toggle per machine (it lives in the private login-items store; see the `system-check` manual checklist) |
 | `pi/agent/settings.json` | `~/.pi/agent/settings.json` | gza + nwa; two pinned keys deep-merged into the file pi writes |
 | `omlx/*.json` | `~/.omlx/` | gza; the pinned settings, model settings and profiles deep-merged into the files omlx writes (auth keys stay omlx's), plus server aliases for the host's `.local` and Tailscale names |
-| `omp/agent/config.yml` | `~/.omp/agent/config.yml` | gza + nwa, symlinked: `/settings` changes flow back into the repo -- commit them |
-| `omp/agent/models.yml.tera` | `~/.omp/agent/models.yml` | gza + nwa; the omlx + splash providers; `baseUrl` is `127.0.0.1` on gza, `gza` (Tailscale) elsewhere |
+| `omp/agent/config.yml` | `~/.omp/agent/config.yml` | symlinked on every host: `/settings` changes flow back into the repo -- commit them |
+| `omp/agent/models.yml.tera` | `~/.omp/agent/models.yml` | the omlx + splash providers; `baseUrl` is `127.0.0.1` on gza, the gza tailnet FQDN elsewhere |
 
 Rows without a host apply to all machines. Files on disk that are not
 declared in the loaded modules are left alone; `mise dot prune` removes
@@ -156,7 +156,7 @@ ones the repo used to track. To delete a file the repo deployed, declare it
 | `bootstrap` | the bootstrap task slot | for each `dev.mise.*` LaunchAgent: a guarded `launchctl bootstrap` (only (re)loads a not-loaded job) + a bare `kickstart` (starts a dead agent, no-op on a healthy one -- never kills a running server); then reports who holds each port. No-op off gza |
 | `herdr-plugins` | final | the herdr plugins the keybindings rely on; no-op where herdr is absent |
 | `vscode-extensions` | final | the vscodium extensions; no-op where codium is absent |
-| `system-check` | final | the macOS system settings: FDA-gated app defaults, hostname, firewall, Touch ID, power, updates, FileVault check, the GPU wired-limit daemon; the desktop gets Screen Sharing + Remote Login. The sudo part is TTY-gated. Restarts Dock/Finder/… only when a domain they read changed |
+| `system-check` | final | the macOS system settings: FDA-gated app defaults, hostname, firewall, the resolv.conf MagicDNS entry, Touch ID, power, updates, FileVault check, the GPU wired-limit daemon; the desktop gets Screen Sharing + Remote Login. The sudo part is TTY-gated. Restarts Dock/Finder/… only when a domain they read changed |
 | `apple-intelligence` | final | the Apple Intelligence removal via the pinned pared release (checksum-verified into `~/.local/share/pared`): disables every feature in its catalog (Siri included), keeps the managed profile installed (one System Settings click per machine), removes downloaded models. No-op off Apple-silicon macOS 27+ |
 
 They run on every `mise bootstrap` / `mise update` and no-op when there is
@@ -226,10 +226,11 @@ the tailnet. `--tag mac` targets just the Macs, `--tag nix` just nwa.
 
 Four notes:
 
-- The inventory's `mise_env` is authoritative for the remote run: it
-  replaces the host's own `miserc.local.toml` selection (a brand-new
-  machine has none at all), so keep it in sync with each machine's local
-  file.
+- The remote run loads each host's own `miserc.local.toml` -- the same
+  file the local runs use, so there is one selection per machine and
+  nothing to keep in sync. A brand-new host has none at all: pass
+  `--remote-env mac` on the one-time onboarding command (mise >=
+  2026.10.22 has the flag).
 - nwa runs Tailscale SSH: the first connection prints a one-off approval
   URL -- visit it, then persistently approve the key in the Tailscale
   admin console so unattended runs work.
@@ -252,8 +253,9 @@ Four notes:
 A brand-new machine lays its OS floor first (a Mac: the steps above; a
 NixOS box: its flake, plus a standalone mise install -- the flake does not
 carry one, so give the host `remote_mise` in the inventory) -- then
-`mise bootstrap remote --adopt '…' --host newbox.ts.net` does the rest
-from anywhere, no session on the box needed.
+`mise bootstrap remote --adopt '…' --host newbox.ts.net --remote-env mac`
+does the rest from anywhere, no session on the box needed (the flag is the
+one-time env selection: the box has no miserc yet, and the remote run
+loads each host's own file otherwise).
 On a Mac, that bootstrap also writes the box's missing `miserc.local.toml`
-(`["mac"]` + a nudge to add its host module) for the box's later local runs;
-the remote run itself follows the inventory's `mise_env` (above).
+(`["mac"]` + a nudge to add its host module) for the box's later local runs.

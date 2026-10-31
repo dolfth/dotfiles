@@ -80,7 +80,7 @@ providers:
         cacheWrite: 0
         input: 0
         output: 0
-      id: mlx-community/Qwen3.8-27B-4bit
+      id: unsloth/Qwen3.8-27B-GGUF:UD-Q4_K_XL
       input:
       - text
       - image
