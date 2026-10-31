@@ -13,9 +13,9 @@ function up --description 'Upgrade macOS software: CLT, brew (the Brewfiles), Ap
     end
 
     # brew owns the brew-ecosystem packages (the Brewfiles, see README "Why
-    # brew + mise): one upgrade path for all of them -- the 14 shared
-    # formulae and 3 casks both Macs get, the laptop's GUI apps, the
-    # desktop's omlx, splash and omp -- including the three tap formulae the
+    # brew + mise): one upgrade path for all of them -- the 15 shared
+    # formulae and 4 casks both Macs get, the laptop's GUI apps, the
+    # desktop's omlx and splash -- including the three tap formulae the
     # current mise release cannot evaluate itself. `brew upgrade` covers
     # every installed formula, whether or not it is in the Brewfiles.
     brew update; and brew upgrade

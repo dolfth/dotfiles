@@ -87,9 +87,9 @@ Tailscale admin console so unattended fleet runs need no more URLs.
 
 | What | Where |
 |---|---|
-| 14 formulae (incl. mise) + 3 casks, both Macs | `Brewfile` |
-| 18 GUI casks + 2 formulae (aerospace borders, syncthing) + 7 App Store apps, laptop only | `Brewfile.mca` |
-| omlx + splash + omp, desktop only | `Brewfile.gza` |
+| 15 formulae (incl. mise) + 4 casks, both Macs | `Brewfile` |
+| 17 GUI casks + 2 formulae (aerospace borders, syncthing) + 7 App Store apps, laptop only | `Brewfile.mca` |
+| omlx + splash, desktop only | `Brewfile.gza` |
 
 `brew bundle` (the brew-bundle task) installs what is missing and never
 upgrades what is present -- daily upgrades go through `up`. App Store entries
@@ -139,8 +139,8 @@ and the task.
 | `linearmouse/linearmouse.json` | `~/.config/linearmouse/linearmouse.json` | both Macs; written only if absent, then LinearMouse owns it |
 | `pi/agent/settings.json` | `~/.pi/agent/settings.json` | gza + nwa; two pinned keys deep-merged into the file pi writes |
 | `omlx/*.json` | `~/.omlx/` | gza; the pinned settings, model settings and profiles deep-merged into the files omlx writes (auth keys stay omlx's), plus server aliases for the host's `.local` and Tailscale names |
-| `omp/agent/config.yml` | `~/.omp/agent/config.yml` | gza + nwa, symlinked: `/settings` changes flow back into the repo -- commit them |
-| `omp/agent/models.yml.tera` | `~/.omp/agent/models.yml` | gza + nwa; the omlx + splash providers; `baseUrl` is `127.0.0.1` on gza, `gza` (Tailscale) elsewhere |
+| `omp/agent/config.yml` | `~/.omp/agent/config.yml` | symlinked on every host: `/settings` changes flow back into the repo -- commit them |
+| `omp/agent/models.yml.tera` | `~/.omp/agent/models.yml` | the omlx + splash providers; `baseUrl` is `127.0.0.1` on gza, the gza tailnet FQDN elsewhere |
 
 Rows without a host apply to all machines. Files on disk that are not
 declared in the loaded modules are left alone; `mise dot prune` removes
