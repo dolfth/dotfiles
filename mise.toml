@@ -4,6 +4,16 @@
 # writes the mac fallback when a fresh checkout has none) with
 # env = ["mac", "gza"]  and so on. See README.md.
 
+# Floor for every machine that loads this config: mise < 2026.10.22 refuses
+# all commands with an upgrade hint (verified 2026.11.05: 2026.10.19 exits
+# 1 on every command, 2026.10.22 passes). It is read from the global config
+# too -- which is this directory -- so it is not a project-only feature.
+# The floor is what the repo's own comments and onboarding commands already
+# assume: the `remote_mise` field (orchestrators through 2026.10.19 ignore
+# it) and the one-time `--remote-env` flag (mise >= 2026.10.22). Raising it
+# here re-breaks anything below the new floor until that mise is upgraded.
+min_version = "2026.10.22"
+
 [vars]
 # Fallback for a host with no module yet: a new Mac selected with only
 # env = ["mac"] gets the laptop defaults.
@@ -80,15 +90,20 @@ trusted_config_paths = ["~/.config/mise"]
 # PATH before `mise run`; that also puts brew on PATH for brew-bundle.
 # Locally, mise is already on PATH and the prologue is a no-op.
 
-# pre-packages additionally gates and seeds, in this order: it writes a
-# missing miserc.local.toml (the mac fallback -- a fresh checkout has none,
-# the file is uncommitted -- and the module loads on the *next* invocation:
-# mise read the config at startup), then it runs `mise env` over the loaded
-# config and fails the bootstrap on a config that does not parse or on
-# unknown fields: a typo'd key only warns and is ignored, so without the
-# gate the slow phases would run on a half-wrong config. (mise 2026.10.x has
-# no validate subcommand; `mise env` *is* the config load.)
-pre-packages = """
+# Each hook in its own subtable: the table is where `description` lives
+# (mise >= 2026.10.22; it is what `mise bootstrap` prints instead of the
+# script's first line), so two keys cannot share one [bootstrap.hooks].
+[bootstrap.hooks.pre-packages]
+description = "Write the missing miserc (fresh Mac), gate the config parse, take the defaults snapshot, and bundle the Brewfiles"
+# Additionally gates and seeds, in this order: it writes a missing
+# miserc.local.toml (the mac fallback -- a fresh checkout has none, the file
+# is uncommitted -- and the module loads on the *next* invocation: mise read
+# the config at startup), then it runs `mise env` over the loaded config and
+# fails the bootstrap on a config that does not parse or on unknown fields:
+# a typo'd key only warns and is ignored, so without the gate the slow
+# phases would run on a half-wrong config. (mise 2026.10.x has no validate
+# subcommand; `mise env` *is* the config load.)
+run = """
 resolve_mise() {
   if ! command -v mise >/dev/null 2>&1; then
     for d in /opt/homebrew/bin /run/current-system/sw/bin "$HOME"/.local/share/mise/bin "$HOME"/.local/bin "$HOME"/.cargo/bin /usr/local/bin; do
@@ -126,7 +141,10 @@ fi
 rm -f "$tmp"
 mise run defaults-snapshot && mise run brew-bundle
 """
-final = """
+
+[bootstrap.hooks.final]
+description = "Deploy the herdr and vscodium extensions, run the system check, and remove Apple Intelligence"
+run = """
 resolve_mise() {
   if ! command -v mise >/dev/null 2>&1; then
     for d in /opt/homebrew/bin /run/current-system/sw/bin "$HOME"/.local/share/mise/bin "$HOME"/.local/bin "$HOME"/.cargo/bin /usr/local/bin; do

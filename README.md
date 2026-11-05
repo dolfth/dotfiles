@@ -77,6 +77,11 @@ checkout once the fleet-sync command below adopts it as `~/.config/mise`;
 the first bootstrap deploys the omp, pi, and herdr configs. After that, nwa
 follows this repo like the Macs.
 
+The repo carries a `min_version` floor (`mise.toml`, 2026.10.22): a mise
+below it refuses every command with an upgrade hint, so after a commit that
+raises it, this install gets `~/.local/bin/mise self-update` (or `nix
+build .#mise` for the flake's copy) before the next bootstrap.
+
 One gate: nwa runs Tailscale SSH. The first connection prints a one-off
 approval URL -- visit it once, then approve the key persistently in the
 Tailscale admin console so unattended fleet runs need no more URLs.
@@ -189,6 +194,16 @@ git commit -am "…"; git push
 
 Edit a template and run `mise dot apply` to re-render it; `mise dot diff`
 shows what would change first.
+
+Updating this checkout (a Mac): `mise bootstrap --update` (mise >=
+2026.11.0) fast-forwards `~/.config/mise` with `git pull --ff-only` and
+re-runs the whole bootstrap from the new commit -- the local half of the
+fleet-sync two-step below. It accepts only fast-forwards; a diverged
+checkout stops the run (`git pull` by hand, then re-run).
+
+Removing a module's effects (a machine leaves the fleet, or a module is
+retired): `mise bootstrap unapply` removes the dotfiles, packages and
+services the config declared (since 2026.9.13).
 
 If `mise bootstrap` refuses to run the `bootstrap` task as "not trusted",
 the machine's mise is new enough to gate task execution on config trust
