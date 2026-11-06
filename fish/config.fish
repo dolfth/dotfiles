@@ -16,6 +16,13 @@ end
 if test -d $HOME/.local/bin
     set -gx PATH $PATH $HOME/.local/bin
 end
+# On the nix box the standalone must win over the store's mise, which lags
+# releases and sits below the mise.toml floor (every command refused):
+# prepend ~/.local/bin when the nix system store is present. The Macs never
+# match the guard, so the append above stands there.
+if test -d /run/current-system/sw/bin
+    set -gx PATH $HOME/.local/bin $PATH
+end
 
 # mise: activation. mise comes from Homebrew on the Macs and from a
 # standalone install in ~/.local/bin on nwa, so it is already on PATH by
