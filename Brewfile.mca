@@ -1,6 +1,6 @@
-# mca: the laptop -- the GUI software. The desktop runs headless, so these
-# are laptop only. The shared entries live in Brewfile (see it for the how
-# and the why).
+# mca: the laptop -- the GUI software. These are laptop only (the desktop's
+# GUI list is the base Brewfile). The shared entries live in Brewfile (see it
+# for the how and the why).
 
 # trusted: true -- per-machine tap trust for Homebrew 6+ (why: Brewfile.gza).
 tap "chamburr/tap", trusted: true

@@ -43,14 +43,16 @@ xcode-select --install   # 1. Command Line Tools (a stub on a clean Mac); git an
 ssh-keygen -t ed25519 -a 100 -N "" -C gza -f ~/.ssh/id_ed25519   # 2. GitHub key; -C names the machine
 pbcopy < ~/.ssh/id_ed25519.pub   # add under GitHub → Settings → SSH and GPG keys
 ssh -T git@github.com
-curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh | bash   # 3. brew
+curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh | bash   # 3. brew (needs sudo)
+echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile   # 3b. put brew on PATH (Apple silicon has none by default)
+eval "$(/opt/homebrew/bin/brew shellenv)"
 brew install mise   # 4. mise itself
 mise bootstrap --adopt 'git@github.com:dolfth/dotfiles.git?ref=main' -E mac,gza   # 5. everything else
 ```
 
-Step 3 needs sudo, then follow the "shells" note it prints (on Apple silicon
-an `eval "$(/opt/homebrew/bin/brew shellenv)"` line in `~/.zprofile`) so brew
-is on PATH in new shells. Step 5 clones this repo into `~/.config/mise` (the
+Step 3 needs sudo; step 3b puts brew on PATH (on Apple silicon it is not on
+a fresh Mac's PATH, so `brew` is not found until the `~/.zprofile` line is
+there). Step 5 clones this repo into `~/.config/mise` (the
 global mise config) and runs bootstrap: the pre-packages hooks take the
 defaults snapshot and run `brew bundle` over the Brewfiles, the dotfiles
 deploy, the launchd agents register (the `bootstrap` task self-heals them),

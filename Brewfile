@@ -37,7 +37,7 @@ brew "starship"
 brew "uv"
 
 # Both Macs use the patched font (starship's prompt glyphs) and the terminal;
-# the desktop runs headless but is still reached over mosh/Tailscale.
+# the desktop has its own display but is also reached over mosh/Tailscale.
 cask "font-jetbrains-mono-nerd-font"
 cask "ghostty"
 # LinearMouse: pointer tuning and back/forward buttons (its config is seeded
