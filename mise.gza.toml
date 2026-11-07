@@ -56,13 +56,13 @@ stderr_path = "{{ env.HOME }}/Library/Logs/splash.log"
 kickstart = true
 
 [bootstrap.macos.launchd.agents.splash-kat]
-# KAT-Coder: the MoE model the user prefers, served on its own port so omp
-# can pick either model explicitly; the dense 27B stays the default.
-# --language-only: bartowski's repo ships no unquantized (BF16/F32) mmproj
-# vision projector, which splash requires for vision -- text only, matching
-# the catalog entry (input: text).
+# Qwen3.8-Flash-Next: 125B MoE (6B active) + 51B n-gram embeddings,
+# unsloth's Dynamic 3.0 quant: 5.25 bits/param (111 GB). Served on its own
+# port so omp can pick either model explicitly; the dense 27B stays the
+# default. No --language-only: the repo ships mmproj-BF16/F16, so vision
+# stays (catalog entry input: text + image).
 program = "{{ system_brew_prefix }}/opt/splash/bin/splash"
-args = ["serve", "--model", "bartowski/Kwaipilot_KAT-Coder-V2.5-Dev-GGUF:Q4_K_M", "--language-only", "--port", "8100", "--host", "0.0.0.0", "--allowed-host", "gza.foxhound-insen.ts.net", "--allowed-host", "gza"]
+args = ["serve", "--model", "unsloth/Qwen3.8-Flash-Next-GGUF:UD-Q4_K_XL", "--port", "8100", "--host", "0.0.0.0", "--allowed-host", "gza.foxhound-insen.ts.net", "--allowed-host", "gza"]
 run_at_load = true
 keep_alive = true
 process_type = "Interactive"
