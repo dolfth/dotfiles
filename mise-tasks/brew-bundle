@@ -17,11 +17,30 @@ fi
 manifest="$(mktemp)"
 trap 'rm -f "$manifest"' EXIT
 cat "${files[@]}" > "$manifest"
-if brew bundle --no-upgrade --file="$manifest"; then
+# Bound the call: brew bundle blocks with no output while a backend stalls
+# (a wedged `mas install` after a reboot, say), and the warning path below
+# only fires on a fast failure. The 30-minute cap still covers a slow
+# fresh-machine install (the big casks); a stalled backend takes the warning
+# path instead of hanging the bootstrap -- the same bound class as the
+# launchctl timeouts in the bootstrap task. The watchdog uses the kill
+# builtin only (pkill -P has hung indefinitely in subshells on this
+# machine); a stalled mas child is orphaned but harmless -- it either
+# finishes installing or dies at the next reboot.
+brew bundle --no-upgrade --file="$manifest" &
+bundle_pid=$!
+( sleep 1800; kill "$bundle_pid" 2>/dev/null ) &
+watchdog=$!
+set +e
+wait "$bundle_pid"
+rc=$?
+set -e
+kill "$watchdog" 2>/dev/null || true
+wait "$watchdog" 2>/dev/null || true
+if [ "$rc" -eq 0 ]; then
   echo "brew bundle: all Brewfile entries installed"
 else
-  echo "WARNING: brew bundle reported failures; the bootstrap continues (dotfiles and agents still deploy)." >&2
-  echo "Re-run in a terminal:" >&2
+  echo "WARNING: brew bundle failed or was cut off at 30 minutes (rc=$rc); the bootstrap continues (dotfiles and agents still deploy)." >&2
+  echo "If it stalled on an App Store app, sign in to the App Store (the missing ids are listed below), then re-run in a terminal:" >&2
   echo "  cat ${files[*]} > /tmp/Brewfile.all && brew bundle --no-upgrade --file=/tmp/Brewfile.all" >&2
 fi
 # App Store apps (the mas entries in the manifest) are silent failures when
