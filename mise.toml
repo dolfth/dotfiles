@@ -59,6 +59,19 @@ ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPNrEPG5Srx81xQTYTGqnZulXV4fWZQA/ooLJsUx856N
 # absent entry removes the file the old entry deployed.
 "~/.config/nvim/init.lua" = { mode = "absent" }
 
+# Window tiling (the cask lives in the shared Brewfile). AeroSpace rewrites
+# this file when the layout changes in-app, so it is a merge: the keys in
+# the source are ours, everything else AeroSpace or the user wrote stays,
+# and a missing file is created from the source.
+"~/.config/aerospace/aerospace.toml/pinned" = { source = "aerospace/aerospace.toml", merge = true }
+
+# omp's agent config, on every host: the config is a symlink (local edits
+# flow back into the repo instead of resetting), the model catalog is a
+# whole-file template -- vars.omp_base is 127.0.0.1 on gza (the servers are
+# local there) and the gza tailnet FQDN everywhere else.
+"~/.omp/agent/config.yml" = "omp/agent/config.yml"
+"~/.omp/agent/models.yml" = { source = "omp/agent/models.yml.tera", mode = "template" }
+
 [settings]
 # Trust for the `bootstrap` task gate. mise >= 2026.10.19 refuses to run the
 # `bootstrap` task (and every task it reaches) unless the config they come
@@ -155,6 +168,23 @@ resolve_mise() {
 resolve_mise
 mise run herdr-plugins && mise run vscode-extensions && mise run system-check && mise run apple-intelligence
 """
+
+# Background sync, both Macs. Declared as a launchd agent, not a
+# [bootstrap.services] user service: mise 2026.10.15 does not render
+# user-service values (the `command` string reaches launchd verbatim -- an
+# unrendered {{ system_brew_prefix }} became a job whose program was the
+# literal `{{`), while [bootstrap.macos.launchd.agents] does (see the gza
+# agents). Same label and plist as the old mca entry (dev.mise.syncthing),
+# so the first bootstrap after the move replaces the job in place.
+[bootstrap.macos.launchd.agents.syncthing]
+program = "{{ system_brew_prefix }}/opt/syncthing/bin/syncthing"
+args = ["serve", "--no-browser", "--no-restart"]
+run_at_load = true
+keep_alive_on_failure = true
+working_directory = "{{ env.HOME }}"
+stdout_path = "{{ env.HOME }}/Library/Logs/syncthing.log"
+stderr_path = "{{ env.HOME }}/Library/Logs/syncthing.log"
+kickstart = true
 
 [bootstrap.remote]
 # The fleet inventory for `mise bootstrap remote` (README, "Fleet sync").

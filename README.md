@@ -20,13 +20,13 @@ chezmoi iteration lives on under `archive/chezmoi`.
 
 | File | Loads when | Holds |
 |---|---|---|
-| `mise.toml` | always | per-host data in `[vars]` (accent/icon/tailnet/sshKeys), the shared dotfiles, the bootstrap hooks, the fleet inventory (`[bootstrap.remote]`) |
+| `mise.toml` | always | per-host data in `[vars]` (accent/icon/tailnet/sshKeys), the shared dotfiles (incl. the omp agent config and aerospace), the syncthing LaunchAgent (both Macs), the bootstrap hooks, the fleet inventory (`[bootstrap.remote]`) |
 | `mise.mac.toml` | `mac` selected | both Macs: the declarative macOS defaults, `$EDITOR`/`$VISUAL` (helix), `~/.zshrc`, `~/.ssh/config`, `up.fish`, linearmouse |
-| `mise.mca.toml` | `mca` selected | the laptop: the syncthing user service (its GUI software lives in `Brewfile.mca`) |
-| `mise.gza.toml` | `gza` selected | the desktop: the omlx + splash LaunchAgents, the agent self-heal, the omlx, omp and pi configs (its formulae live in `Brewfile.gza`) |
-| `mise.nwa.toml` | `nwa` selected | the omp, pi and herdr configs (mise on nwa comes from Nix, not a package list) |
+| `mise.mca.toml` | `mca` selected | the laptop: host identity vars (host/accent/icon, HOST/KIND) |
+| `mise.gza.toml` | `gza` selected | the desktop: the omlx + splash LaunchAgents, the agent self-heal, the omlx and pi configs (its formulae live in `Brewfile.gza`) |
+| `mise.nwa.toml` | `nwa` selected | the pi and herdr configs (mise on nwa comes from Nix, not a package list) |
 | `miserc.local.toml` | not committed | this machine: `env = ["mac", "<host>"]` |
-| `Brewfile`, `Brewfile.mca`, `Brewfile.gza` | the brew-bundle task (Macs) | the brew-ecosystem manifest per machine (see below) |
+| `Brewfile`, `Brewfile.gza` | the brew-bundle task (Macs) | the brew-ecosystem manifest: everything shared, plus the desktop's servers (see below) |
 
 Selecting the environments in `miserc.local.toml` loads the module files
 (`mise.<env>.toml`); everything else in the config is environment-neutral.
@@ -104,8 +104,7 @@ Tailscale admin console so unattended fleet runs need no more URLs.
 
 | What | Where |
 |---|---|
-| 15 formulae (incl. mise) + 4 casks, both Macs | `Brewfile` |
-| 17 GUI casks + 2 formulae (aerospace borders, syncthing) + 7 App Store apps, laptop only | `Brewfile.mca` |
+| 17 formulae (incl. mise) + 20 casks + 7 App Store apps, both Macs | `Brewfile` |
 | omlx + splash, desktop only | `Brewfile.gza` |
 
 `brew bundle` (the brew-bundle task) installs what is missing and never
@@ -152,6 +151,7 @@ and the task.
 | `git/config` | `~/.config/git/config` | signs commits and tags with `~/.ssh/id_ed25519` |
 | `git/allowed_signers.tera` | `~/.config/git/allowed_signers` | every host's public key (the `sshKeys` var) |
 | `ghostty/config` | `~/.config/ghostty/config` | Nerd Font, so starship glyphs render |
+| `aerospace/aerospace.toml` | `~/.config/aerospace/aerospace.toml` | both Macs; merged -- AeroSpace rewrites the file itself when the layout changes in-app |
 | `herdr/config.toml` | `~/.config/herdr/config.toml` | nwa only; copied -- herdr rewrites the file itself |
 | `linearmouse/linearmouse.json` | `~/.config/linearmouse/linearmouse.json` | both Macs; written only if absent, then LinearMouse owns it. "Start at Login" is a one-time UI toggle per machine (it lives in the private login-items store; see the `system-check` manual checklist) |
 | `pi/agent/settings.json` | `~/.pi/agent/settings.json` | gza + nwa; two pinned keys deep-merged into the file pi writes |
@@ -184,16 +184,19 @@ on unknown fields (a typo'd key only warns and is ignored, and mise
 
 ### Desktop services (gza)
 
-`omlx serve` (8080, `::`) and `splash serve` (8000, `127.0.0.1`) run as user
-LaunchAgents in `mise.gza.toml` (`dev.mise.*`, `ProcessType: Interactive`,
-unthrottled): KeepAlive keeps them alive, bootstrap reloads them when their
-definition changes, the `bootstrap` task self-heals a dead one on every
-bootstrap and reports who holds each port, and `up` restarts a server whose
-keg was upgraded. Logs: `~/Library/Logs/{omlx,splash}.log`.
+`omlx serve` (8080, `::`, API-key auth) and `splash serve` (8000 and 8100,
+`0.0.0.0` with `--allowed-host` for the tailnet and the bare hostname) run
+as user LaunchAgents in `mise.gza.toml` (`dev.mise.*`,
+`ProcessType: Interactive`, unthrottled): KeepAlive keeps them alive,
+bootstrap reloads them when their definition changes, the `bootstrap` task
+self-heals a dead one on every bootstrap and reports who holds each port,
+and `up` restarts a server whose keg was upgraded. Logs:
+`~/Library/Logs/{omlx,splash,splash-kat}.log`.
 
-splash is loopback only; for LAN or tailnet access serve with `--host
-0.0.0.0 --api-key KEY --allowed-origin '*'` (or `--allowed-host
-gza.<tailnet>`). The chat page is at <http://127.0.0.1:8000>.
+All three bind beyond loopback on purpose: the other hosts' omp reaches them
+over the tailnet (omlx 0.7.3+ enforces its API key on non-loopback binds --
+the catalog in `omp/agent/models.yml.tera` carries the key). The chat pages
+are at <http://127.0.0.1:8000> and <http://127.0.0.1:8100>.
 
 ## Day to day
 

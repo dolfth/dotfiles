@@ -17,9 +17,6 @@ EDITOR = "nvim"
 VISUAL = "nvim"
 
 [dotfiles]
-"~/.omp/agent/config.yml" = "omp/agent/config.yml"
-"~/.omp/agent/models.yml" = { source = "omp/agent/models.yml.tera", mode = "template" }
-
 # pi owns its settings file (pi install and /settings both write it), so a
 # merge entry re-asserts the two pinned keys; everything pi writes for
 # itself -- installed extensions, whatever /settings persists -- is kept.

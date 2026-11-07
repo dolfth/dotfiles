@@ -86,12 +86,6 @@ kickstart = true
 # entry keeps it there even if the file is (re)created at the repo mode.
 "~/.omlx/settings.json" = { permissions = "0600" }
 
-# omp: the config is a symlink (local edits flow back to the repo instead of
-# resetting); the model catalog is a whole-file template because it renders
-# the per-host baseUrl.
-"~/.omp/agent/config.yml" = "omp/agent/config.yml"
-"~/.omp/agent/models.yml" = { source = "omp/agent/models.yml.tera", mode = "template" }
-
 # pi owns its settings file (pi install and /settings both write it), so a
 # merge entry re-asserts the two pinned keys; everything pi writes for
 # itself -- installed extensions, whatever /settings persists -- is kept.
