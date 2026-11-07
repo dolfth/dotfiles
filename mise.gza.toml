@@ -55,7 +55,7 @@ stdout_path = "{{ env.HOME }}/Library/Logs/splash.log"
 stderr_path = "{{ env.HOME }}/Library/Logs/splash.log"
 kickstart = true
 
-[bootstrap.macos.launchd.agents.splash-kat]
+[bootstrap.macos.launchd.agents.splash-fn]
 # Qwen3.8-Flash-Next: 125B MoE (6B active) + 51B PLE n-gram table (28.8 GB),
 # unsloth's Dynamic 3.0 quant: 5.25 bits/param (111 GB image). Runs beside the
 # 27B server only because every memory knob is explicit -- splash's auto mode
@@ -75,8 +75,8 @@ keep_alive = true
 process_type = "Interactive"
 working_directory = "{{ env.HOME }}"
 environment = { "PATH" = "{{ system_brew_prefix }}/bin:{{ system_brew_prefix }}/sbin:/usr/bin:/bin:/usr/sbin:/sbin" }
-stdout_path = "{{ env.HOME }}/Library/Logs/splash-kat.log"
-stderr_path = "{{ env.HOME }}/Library/Logs/splash-kat.log"
+stdout_path = "{{ env.HOME }}/Library/Logs/splash-fn.log"
+stderr_path = "{{ env.HOME }}/Library/Logs/splash-fn.log"
 kickstart = true
 
 [dotfiles]
@@ -101,4 +101,7 @@ kickstart = true
 # The dev.mise.* agents above replace these plists; keep them deleted.
 "~/Library/LaunchAgents/com.dolfth.omlx.plist" = { mode = "absent" }
 "~/Library/LaunchAgents/com.dolfth.splash.plist" = { mode = "absent" }
+# Renamed 2026-11-07 from dev.mise.splash-kat (the model is Flash-Next, not
+# KAT-Coder); keep the old plist deleted.
+"~/Library/LaunchAgents/dev.mise.splash-kat.plist" = { mode = "absent" }
 

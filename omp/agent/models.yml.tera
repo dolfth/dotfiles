@@ -87,15 +87,15 @@ providers:
       maxTokens: 32768
       name: Qwen3.8 27B (Splash)
       reasoning: true
-splash-kat:
-  api: openai-completions
-  apiKey: local
-  baseUrl: http://{{ vars.omp_base }}:8100/v1
-  compat:
-    streamFirstEventTimeoutMs: 0
-    streamIdleTimeoutMs: 600000
-    thinkingFormat: qwen-chat-template
-  models:
+  splash-fn:
+    api: openai-completions
+    apiKey: local
+    baseUrl: http://{{ vars.omp_base }}:8100/v1
+    compat:
+      streamFirstEventTimeoutMs: 0
+      streamIdleTimeoutMs: 600000
+      thinkingFormat: qwen-chat-template
+    models:
     - contextWindow: 262144
       cost:
         cacheRead: 0
