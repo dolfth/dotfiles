@@ -1,15 +1,9 @@
-# omp's agent settings (theme, composer shape, thinking level, ...).
-# In the repo so a fresh box comes up configured.
-#
-# omp writes here too -- `/settings` and the model picker persist into it --
-# but this is a symlink into this repo, so local changes flow back to the
-# source and get committed with the rest of the dotfiles.
 composer:
   shape: pi
 theme:
   dark: titanium
   light: light
-setupVersion: 2
+setupVersion: 3
 symbolPreset: nerd
 defaultThinkingLevel: medium
 task:
@@ -33,11 +27,7 @@ mnemopi:
   noEmbeddings: true
 providers:
   cacheWarming: "off"
-
-# Default chat model for new sessions and scheduled tasks: the dense 27B on
-# splash. This is modelRoles.default -- the registered setting in omp v18;
-# a top-level `defaultModel` is an unregistered key omp silently ignores.
-# KAT-Coder (35B MoE) is the explicit choice:
-# splash-kat/bartowski/Kwaipilot_KAT-Coder-V2.5-Dev-GGUF:Q4_K_M
 modelRoles:
   default: splash/unsloth/Qwen3.8-27B-GGUF:UD-Q4_K_XL
+update:
+  auto: false
