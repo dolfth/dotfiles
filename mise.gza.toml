@@ -12,9 +12,12 @@ omp_base = "127.0.0.1"
 [env]
 HOST = "gza"
 KIND = "desktop"
-# iogpu.wired_limit_mb, the GPU wired-memory ceiling omlx reports; applied by
-# the system-check task's LaunchDaemon.
-WIRED_LIMIT_MB = "45056"
+# iogpu.wired_limit_mb, the GPU wired-memory ceiling; applied by the
+# system-check task's LaunchDaemon. 128 GB (M5 Max Studio) minus ~7 GB OS
+# headroom -- the same ratio omlx reported on the old 48 GB machine
+# (45056 of 49152). Verify against omlx's own report after its first start
+# here and correct if it differs.
+WIRED_LIMIT_MB = "124000"
 
 # The user LaunchAgents that run the local servers. When the definition
 # changes, bootstrap re-writes the plist and reloads the job; the `kickstart`

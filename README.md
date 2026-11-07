@@ -68,6 +68,16 @@ Without `-E`, the pre-packages hook writes the `["mac"]` fallback itself (the
 laptop defaults) and says to re-run; add the host module when the machine
 gets one.
 
+Replacing an existing host (same hostname): retire the old machine from the
+tailnet first (power it off or have it leave), **before** step 5 -- the
+system-check hook sets the hostname and the launchd agents register the host
+services under it, so a second live `gza` splits MagicDNS and tailnet
+clients land on the wrong box. After the old one is confirmed gone, swap the
+host key: the new `~/.ssh/id_ed25519.pub` goes into `vars.ssh_keys`
+(`mise.toml`) and on `dolfth.keys`, and the old host's line comes out of
+both -- commits signed by the new key fail verification on the other hosts
+until its key is listed.
+
 Do **not** `chsh` to fish: `~/.zshrc` starts fish for interactive sessions,
 so `$SHELL` stays POSIX for software that runs `$SHELL -c '...'`.
 
