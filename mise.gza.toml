@@ -55,6 +55,30 @@ stdout_path = "{{ env.HOME }}/Library/Logs/splash.log"
 stderr_path = "{{ env.HOME }}/Library/Logs/splash.log"
 kickstart = true
 
+[bootstrap.macos.launchd.agents.splash-kat]
+# Qwen3.8-Flash-Next: 125B MoE (6B active) + 51B PLE n-gram table (28.8 GB),
+# unsloth's Dynamic 3.0 quant: 5.25 bits/param (111 GB image). Runs beside the
+# 27B server only because every memory knob is explicit -- splash's auto mode
+# plans each server from the whole Mac, and an uncapped 111 GB image next to
+# the 27B panicked the box (2026-11-07). --max-memory 50G is the hard ceiling:
+# a plan that cannot fit refuses at startup (logged) instead of OOM-ing the
+# kernel, and the budget caps Metal allocations. --expert-memory 18G keeps a
+# fixed store of routed experts resident and streams the rest from the SSD as
+# each step routes them (18G is the documented M5 Max sizing); --ple-memory
+# 2G keeps a row cache of the n-gram table, streamed from the SSD. Weights
+# free after 10m idle (--idle-release default). Tune after a load test; the
+# serve plan lands in ~/Library/Application Support/Splash/runtime/serve-8100.json.
+program = "{{ system_brew_prefix }}/opt/splash/bin/splash"
+args = ["serve", "--model", "unsloth/Qwen3.8-Flash-Next-GGUF:UD-Q4_K_XL", "--port", "8100", "--host", "0.0.0.0", "--allowed-host", "gza.foxhound-insen.ts.net", "--allowed-host", "gza", "--max-memory", "50G", "--expert-memory", "18G", "--ple-memory", "2G"]
+run_at_load = true
+keep_alive = true
+process_type = "Interactive"
+working_directory = "{{ env.HOME }}"
+environment = { "PATH" = "{{ system_brew_prefix }}/bin:{{ system_brew_prefix }}/sbin:/usr/bin:/bin:/usr/sbin:/sbin" }
+stdout_path = "{{ env.HOME }}/Library/Logs/splash-kat.log"
+stderr_path = "{{ env.HOME }}/Library/Logs/splash-kat.log"
+kickstart = true
+
 [dotfiles]
 # omlx writes these files itself (UI). Each is a merge edit (the id segment
 # names the edit within the file) deep over the live file: objects merge,
@@ -77,8 +101,4 @@ kickstart = true
 # The dev.mise.* agents above replace these plists; keep them deleted.
 "~/Library/LaunchAgents/com.dolfth.omlx.plist" = { mode = "absent" }
 "~/Library/LaunchAgents/com.dolfth.splash.plist" = { mode = "absent" }
-# Retired 2026-11-07: the Flash-Next agent (111 GB) OOM-crashed the box when
-# it coexisted with the 27B server -- splash plans each server as if it ran
-# alone. If it returns, it needs a capped --max-memory (docs: server.md
-# "multiple ports"); its model stays in the Hub cache.
-"~/Library/LaunchAgents/dev.mise.splash-kat.plist" = { mode = "absent" }
+
