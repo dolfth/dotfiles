@@ -96,15 +96,16 @@ providers:
       streamIdleTimeoutMs: 600000
       thinkingFormat: qwen-chat-template
     models:
-    - contextWindow: 188409
+    - contextWindow: 262144
       cost:
         cacheRead: 0
         cacheWrite: 0
         input: 0
         output: 0
-      id: bartowski/Kwaipilot_KAT-Coder-V2.5-Dev-GGUF:Q4_K_M
+      id: unsloth/Qwen3.8-Flash-Next-GGUF:UD-Q4_K_XL
       input:
       - text
+      - image
       maxTokens: 32768
-      name: KAT-Coder 35B (Splash)
+      name: Qwen3.8 Flash-Next (Splash)
       reasoning: true
