@@ -13,13 +13,22 @@ if [ "$(uname -s)" != "Darwin" ]; then
 fi
 
 gui="gui/$(id -u)"
+# A job whose binary is missing can never reach the running state, and
+# launchctl blocks on its transitions -- a dead omlx once hung this task for
+# hours. Bound each call so one broken agent cannot wedge the bootstrap;
+# without `timeout` on the box, the call runs unbounded as before.
+if command -v timeout >/dev/null 2>&1; then
+  lc() { timeout 15 launchctl "$@"; }
+else
+  lc() { launchctl "$@"; }
+fi
 for agent in dev.mise.omlx dev.mise.splash dev.mise.splash-kat; do
   plist="${HOME}/Library/LaunchAgents/${agent}.plist"
   if [ ! -f "$plist" ]; then
     continue   # agents not declared on this machine (the gza module owns them)
   fi
-  launchctl bootstrap "$gui" "$plist" 2>/dev/null || true
-  launchctl kickstart "$gui/$agent" 2>/dev/null || true
+  lc bootstrap "$gui" "$plist" 2>/dev/null || true
+  lc kickstart "$gui/$agent" 2>/dev/null || echo "  ${agent}: kickstart failed or timed out (missing binary? check the brew-bundle warnings above)" >&2
 done
 
 # Report without touching: a port still held by another process (an

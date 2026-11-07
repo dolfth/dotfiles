@@ -8,7 +8,10 @@
 # taps, and the trust state is per-machine (~/.homebrew/trust.json), never
 # in the Brewfile; bundle records it before installing, so a fresh machine
 # does not hit "Refusing to load formula ... from untrusted tap".
-tap "jundot/omlx", trusted: true
+# url: -- the tap moved from the (now 404) homebrew-omlx repo into the main
+# omlx repo, which bare `brew tap jundot/omlx` does not clone by name, so
+# the URL is explicit (the formula reference stays plain `omlx`).
+tap "jundot/omlx", url: "https://github.com/jundot/omlx", trusted: true
 # incoai/tap was renamed upstream to incoai/homebrew-tap (the old name 404s
 # since 2026-10-19); the formula and keg name are unchanged.
 tap "incoai/homebrew-tap", trusted: true
