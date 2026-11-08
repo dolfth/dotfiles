@@ -56,20 +56,27 @@ stderr_path = "{{ env.HOME }}/Library/Logs/splash.log"
 kickstart = true
 
 [bootstrap.macos.launchd.agents.splash-fn]
-# Qwen3.8-Flash-Next: 125B MoE (6B active) + 51B PLE n-gram table (28.8 GB),
-# unsloth's Dynamic 3.0 quant: 5.25 bits/param (111 GB image). Runs beside the
-# 27B server only because every memory knob is explicit -- splash's auto mode
-# plans each server from the whole Mac, and an uncapped 111 GB image next to
-# the 27B panicked the box (2026-11-07). --max-memory 50G is the hard ceiling:
-# a plan that cannot fit refuses at startup (logged) instead of OOM-ing the
-# kernel, and the budget caps Metal allocations. --expert-memory 18G keeps a
-# fixed store of routed experts resident and streams the rest from the SSD as
-# each step routes them (18G is the documented M5 Max sizing); --ple-memory
-# 2G keeps a row cache of the n-gram table, streamed from the SSD. Weights
-# free after 10m idle (--idle-release default). Tune after a load test; the
-# serve plan lands in ~/Library/Application Support/Splash/runtime/serve-8100.json.
+# Qwen3.8-Flash-Next: 125B MoE (6B active) + 51B PLE n-gram table, unsloth's
+# Dynamic 3.0 quant: 111 GB image. It runs beside the 27B server only because
+# --max-memory caps it -- splash's auto mode plans each server from the whole
+# Mac, and an uncapped 111 GB image next to the 27B panicked the box
+# (2026-11-07). 78G is the co-residency ceiling: an auto plan at 92G loaded
+# all 71.7 GiB of experts resident (25 tok/s -> 81 tok/s at 92G) but left the
+# Mac at warning pressure with ~10G swapped and no room for the 27B's ~21G
+# restore; 78G charges ~66G of expert store (~89% of their 71.7 GiB, the rest
+# streamed with ARC recycling), and 78 + 21 + macOS + apps fits with headroom.
+# 50G was starved: it charged its whole budget, denied ~40G of host headroom
+# (/status memory_governor), held only 23% of the expert slots, and decoded at
+# ~25 tok/s with the GPU at 40%.
+# Expert store and PLE row cache stay on auto: the store is the throughput
+# lever (the docs price each extra GiB at 11-23% decode speed), and auto gives
+# the experts everything the plan leaves after the fixed runtime and the KV
+# allowance, while the explicit 2G PLE cache the first tune pinned was wasted
+# -- a 128K prompt touches ~1.1M rows and a 256 MiB row cache (auto's share)
+# hits as often as a 2 GiB one. Weights free after 10m idle.
+# The serve plan lands in ~/Library/Application Support/Splash/runtime/serve-8100.json.
 program = "{{ system_brew_prefix }}/opt/splash/bin/splash"
-args = ["serve", "--model", "unsloth/Qwen3.8-Flash-Next-GGUF:UD-Q4_K_XL", "--port", "8100", "--host", "0.0.0.0", "--allowed-host", "gza.foxhound-insen.ts.net", "--allowed-host", "gza", "--max-memory", "50G", "--expert-memory", "18G", "--ple-memory", "2G"]
+args = ["serve", "--model", "unsloth/Qwen3.8-Flash-Next-GGUF:UD-Q4_K_XL", "--port", "8100", "--host", "0.0.0.0", "--allowed-host", "gza.foxhound-insen.ts.net", "--allowed-host", "gza", "--max-memory", "78G"]
 run_at_load = true
 keep_alive = true
 process_type = "Interactive"
