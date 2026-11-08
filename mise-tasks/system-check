@@ -239,10 +239,18 @@ EOF
   ##### Screen Sharing ########################################################
   #
   # vnc://gza.local or the tailnet name. Access: System Settings > General >
-  # Sharing > Screen Sharing (admins by default). If it doesn't show as on
-  # there, toggle it once by hand.
+  # Sharing > Screen Sharing (admins by default).
+  #
+  # bootout before bootstrap: bootstrap on a job that is already loaded
+  # no-ops, so a job that has gone disabled (macOS updates reset launchd
+  # state) would never be cleared and every connection dies with
+  # "Screen Sharing is not permitted". If a client still gets denied,
+  # toggle it once by hand in System Settings: the UI click grants the
+  # authorization the launchctl path alone does not.
+  sudo launchctl bootout system/com.apple.screensharing 2>/dev/null || true
   sudo launchctl enable system/com.apple.screensharing >/dev/null || true
   sudo launchctl bootstrap system /System/Library/LaunchDaemons/com.apple.screensharing.plist 2>/dev/null || true
+  sudo defaults write /Library/Preferences/com.apple.screensharing Disabled -bool false
 
   ##### Remote Login (SSH) ####################################################
   #
