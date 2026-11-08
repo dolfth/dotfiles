@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
-# brew is a hard dependency of the Mac flow; bootstrap installs mise from
-# brew on a fresh machine before running. brew bundle --no-upgrade installs
-# what is missing without touching what is present (upgrades are up's job).
-# A failed entry warns and continues so dotfiles and agents still deploy.
+# brew bundle --no-upgrade installs what is missing without touching what is
+# present (upgrades are up's job). A failed entry warns and continues so the
+# bootstrap still deploys dotfiles and agents.
 set -euo pipefail
 if [ "$(uname -s)" != "Darwin" ]; then
   exit 0
@@ -19,13 +18,11 @@ trap 'rm -f "$manifest"' EXIT
 cat "${files[@]}" > "$manifest"
 # Bound the call: brew bundle blocks with no output while a backend stalls
 # (a wedged `mas install` after a reboot, say), and the warning path below
-# only fires on a fast failure. The 30-minute cap still covers a slow
-# fresh-machine install (the big casks); a stalled backend takes the warning
-# path instead of hanging the bootstrap -- the same bound class as the
-# launchctl timeouts in the bootstrap task. The watchdog uses the kill
-# builtin only (pkill -P has hung indefinitely in subshells on this
-# machine); a stalled mas child is orphaned but harmless -- it either
-# finishes installing or dies at the next reboot.
+# only fires on a fast failure. 30 minutes still covers a slow fresh-machine
+# install; a stalled backend now takes the warning path instead of hanging
+# the bootstrap. The watchdog uses the kill builtin only (pkill -P has hung
+# indefinitely in subshells on this machine); a stalled mas child is
+# orphaned but harmless.
 brew bundle --no-upgrade --file="$manifest" &
 bundle_pid=$!
 ( sleep 1800; kill "$bundle_pid" 2>/dev/null ) &
@@ -43,10 +40,9 @@ else
   echo "If it stalled on an App Store app, sign in to the App Store (the missing ids are listed below), then re-run in a terminal:" >&2
   echo "  cat ${files[*]} > /tmp/Brewfile.all && brew bundle --no-upgrade --file=/tmp/Brewfile.all" >&2
 fi
-# App Store apps (the mas entries in the manifest) are silent failures when
-# the user is not signed in or the app is missing from purchase history.
-# Diff the manifest against mas list and surface any gaps so the user can
-# act on them instead of wondering why the apps are missing.
+# mas entries fail silently when the user is not signed in or an app is
+# missing from purchase history. Diff the manifest against mas list so the
+# gaps get reported instead of staying mysterious.
 expected="$(grep -E '^mas "' "$manifest" | sed 's/^mas "\(.*\)", id: \([0-9]*\).*/\2/' | sort)"
 if [ -n "$expected" ] && command -v mas >/dev/null 2>&1; then
   installed="$(mas list 2>/dev/null | awk '{print $1}' | sort)"

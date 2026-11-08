@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
-# LaunchAgent self-heal + port report. Runs after macos-launchd-agents
-# rewrites plists: bootstrap loads any not-yet-loaded job, kickstart
-# any loaded-but-dead one (no-op on a healthy agent; never kills a
-# running server). Port report shows which process owns each port.
-# No-op off macOS and wherever the agents are not declared.
+# LaunchAgent self-heal. Runs after macos-launchd-agents rewrites plists:
+# bootstrap loads any not-yet-loaded job, kickstart any loaded-but-dead one
+# (no-op on a healthy agent; never kills a running server). No-op off macOS
+# and wherever the agents are not declared.
 
 set -uo pipefail   # no -e: one agent failing must not abort the other
 

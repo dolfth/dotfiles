@@ -1,18 +1,12 @@
-# omp's model catalog (the file omp reads for available providers/models).
-# This is a whole file: the repo is the source of truth for the provider
-# list.
-#
-# The one host-specific bit is baseUrl. The omlx and splash servers run on
-# the desktop (gza), so:
-#   - on gza they are local      -> 127.0.0.1
-#   - on nwa (and any other box) -> the tailnet FQDN (MagicDNS does not
-# resolve the bare hostname).
-# vars.omp_base carries that: "127.0.0.1" in the gza module,
-# "gza.foxhound-insen.ts.net" in the base mise.toml.
+# omp's model catalog: the provider list, rendered whole on every bootstrap.
+# The one host-specific bit is baseUrl: the servers run on gza, so
+# vars.omp_base is "127.0.0.1" there (the gza module) and the gza tailnet
+# FQDN elsewhere (the base -- MagicDNS resolves the FQDN, never the bare
+# hostname).
 #
 # If you add or change a model through an omp UI, that edit is a local
-# change and the next `mise bootstrap` resets this file to the repo version
-# -- edit this source instead.
+# change and the next `mise bootstrap` resets this file -- edit this source
+# instead.
 ---
 providers:
   omlx:

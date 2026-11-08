@@ -7,8 +7,8 @@
 # opt out up front.
 onboarding = false
 
-# prefix is ctrl+b. These commands run the sandboxed wrappers; `type =
-# "pane"` gives a real terminal pane that closes when the agent exits.
+# prefix is ctrl+b; `type = "pane"` gives a real terminal pane that closes
+# when the agent exits.
 [[keys.command]]
 key = "prefix+alt+c"
 type = "pane"
@@ -26,10 +26,9 @@ key = "prefix+alt+o"
 type = "pane"
 command = "omp"
 description = "sandboxed oh-my-pi"
-# `agent_panel_sort` is herdr's default, but its UI persists it to disk on
-# first use; pin the default here so the persisted file matches source and
-# `mise dot status` does not flag it as changed. "spaces" groups the agent
-# panel by workspace; the alternative, "priority", is an attention queue.
+# "spaces" is herdr's default, but its UI persists the value to disk on
+# first use; pinning it keeps the file matching the source so
+# `mise dot status` does not flag it as changed.
 [ui]
 agent_panel_sort = "spaces"
 

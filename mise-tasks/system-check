@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Runs from the bootstrap final hook. The sandboxed-app defaults and the
-# restart apply without sudo (user-level); the system part is TTY-gated, so
-# an unattended bootstrap skips it instead of hanging on a password prompt.
+# Runs from the bootstrap final hook. The user-level parts apply without
+# sudo; the system part is TTY-gated so an unattended bootstrap skips it
+# instead of hanging on a password prompt.
 
 set -uo pipefail   # no -e before sudo: some commands fail naturally (defaults, killall)
 
@@ -104,7 +104,8 @@ set -eo pipefail   # after sudo succeeds: abort on real failures
 
 ##### Touch ID for sudo #######################################################
 #
-# From Apple's template when macOS ships one.
+# Enable the line Apple ships in sudo_local.template; write it directly if
+# a future macOS has no template.
 
 if [ ! -f /etc/pam.d/sudo_local ]; then
   if [ -f /etc/pam.d/sudo_local.template ]; then
@@ -269,15 +270,7 @@ fi
 #   - Screen Recording for capture tools
 #   - iCloud sign-in and services
 #
-# LinearMouse "Start at Login" (one time per machine, in the app's UI):
-#   The setting lives in the private login-items (BTM) database that only the
-#   app's UI toggle writes -- not in linearmouse.json (its 0.12 schema accepts
-#   only $schema + schemes) and not in defaults, so no config file, dotfile or
-#   launchd can declare it. Ticking it once makes it persist (a BTM login item
-#   survives reboots and reinstalls, since it points at /Applications).
-#   Unlike AeroSpace (its config's start-at-login = true self-registers on first
-#   launch), merely launching LinearMouse registers nothing -- the checkbox must
-#   be ticked. Do it on each Mac so the mouse back/forward + pointer settings
-#   apply from login instead of the first manual launch.
+# Plus LinearMouse "Start at Login" -- see the check above for why only the
+# app's own UI toggle can set it.
 
 echo "==> System settings applied."
