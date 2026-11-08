@@ -1,24 +1,19 @@
-# The single source of truth for brew-ecosystem software on the Macs.
+# The manifest for brew-ecosystem software on the Macs. The brew-bundle task
+# concatenates this file with Brewfile.<host> (brew bundle reads a single
+# --file; the host file is Brewfile.gza) and runs `brew bundle --no-upgrade`:
+# current Homebrew's plain `brew bundle` also upgrades installed entries, so
+# the task installs what is missing and `up` (brew upgrade) does the
+# upgrading. Why brew and not mise: README, "Why brew + mise".
 #
-# Run by the bootstrap's brew-bundle task, which concatenates this file and
-# Brewfile.<host> into one manifest -- the host file is Brewfile.gza (the
-# desktop's local-LLM servers; the only per-host brew entries) -- because
-# brew bundle reads a single --file. --no-upgrade: current Homebrew's plain
-# `brew bundle` also upgrades installed entries; the task installs what is
-# missing, and daily upgrades go through `up` (brew upgrade).
-#
-# Why brew and not mise: README, "Why brew + mise".
-#
-# mise itself is in the manifest so a fresh machine is complete (the
-# bootstrap installs Homebrew before it runs).
+# mise itself is listed so a fresh machine is complete (the bootstrap
+# installs Homebrew before it runs).
 
-# can1357/homebrew-tap: the tap for omp (the coding agent). trusted: true --
-# Homebrew 6+ refuses formulae from untrusted taps, and the trust state is
-# per-machine (~/.homebrew/trust.json); bundle records it (why: Brewfile.gza).
+# omp's tap. trusted: true -- Homebrew 6+ refuses formulae from untrusted
+# taps, and the trust state is per-machine (~/.homebrew/trust.json), so
+# bundle records it (why: Brewfile.gza). The other taps carry the GUI apps
+# below: aerospace (window tiling; its config is in this repo), glance
+# (menu-bar dashboard), borders (window borders for aerospace).
 tap "can1357/homebrew-tap", trusted: true
-# Taps for the GUI apps below: aerospace (window tiling; its config is in
-# this repo), glance (menu-bar dashboard), and borders (window borders for
-# aerospace).
 tap "chamburr/tap", trusted: true
 tap "nikitabobko/tap", trusted: true
 tap "FelixKratz/formulae", trusted: true
@@ -36,17 +31,16 @@ brew "mas"
 brew "mise"
 brew "mole"
 brew "mosh"
-# omp: the coding agent (its config deploys to every host via the shared
-# mise dotfiles; the models run on gza, reached over Tailscale).
+# The coding agent; its config deploys to every host via the shared mise
+# dotfiles, its models run on gza over Tailscale.
 brew "omp"
 brew "starship"
-# Background sync (both Macs; its launchd agent lives in mise.toml, so it
-# runs under mise, not `brew services`).
+# Runs under the dev.mise.syncthing launchd agent (mise.toml), not
+# `brew services`.
 brew "syncthing"
 brew "uv"
 
-# Both Macs use the patched font (starship's prompt glyphs) and the terminal;
-# the desktop has its own display but is also reached over mosh/Tailscale.
+# aerospace needs borders (above); the font carries starship's prompt glyphs.
 cask "nikitabobko/tap/aerospace"
 cask "balenaetcher"
 cask "brave-browser"
@@ -68,10 +62,10 @@ cask "utm"
 cask "vscodium"
 cask "whatcable"
 
-# App Store -- mas installs by ID; the name is only a label. The explicit
-# `id:` form is required by current homebrew-bundle: a positional-ID line
-# ("mas 1435127111") aborts the whole bundle with "options[:id] should be
-# an Integer". The app must already be in your purchase history.
+# mas installs by ID; the name is only a label, and the app must already be
+# in the purchase history. The explicit `id:` form is required by current
+# homebrew-bundle: a positional-ID line ("mas 1435127111") aborts the whole
+# bundle with "options[:id] should be an Integer".
 mas "KeePassium", id: 1435127111
 mas "Keynote", id: 361285480
 mas "Numbers", id: 361304891

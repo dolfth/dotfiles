@@ -1,11 +1,9 @@
 # Managed by mise.
 #
-# Commit signing is set up the same way on every machine: sign with the
-# host's SSH key (user.signingkey below). It names the private key, not the
-# .pub: a .pub only works while the key is loaded in an ssh-agent, which nwa
-# may not run and a Mac only does after the first ssh since boot.
-# Verification uses allowed_signers, which lists all hosts' keys; see
-# vars.ssh_keys in mise.toml.
+# Sign with the host's SSH key. It names the private key, not the .pub: a
+# .pub only works while the key is loaded in an ssh-agent, which nwa may not
+# run and a Mac only does after the first ssh since boot. Verification uses
+# allowed_signers (all hosts' keys; see vars.ssh_keys in mise.toml).
 [user]
 name = Dolf van Horne
 email = 12677636+dolfth@users.noreply.github.com

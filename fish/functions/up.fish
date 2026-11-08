@@ -12,12 +12,9 @@ function up --description 'Upgrade macOS software: CLT, brew (the Brewfiles), Ap
         set -l syncthing_before (string trim (readlink $brew_prefix/opt/syncthing 2>/dev/null))
     end
 
-    # brew owns the brew-ecosystem packages (the Brewfiles, see README "Why
-    # brew + mise): one upgrade path for all of them -- the 15 shared
-    # formulae and 4 casks both Macs get, the laptop's GUI apps, the
-    # desktop's omlx and splash -- including the three tap formulae the
-    # current mise release cannot evaluate itself. `brew upgrade` covers
-    # every installed formula, whether or not it is in the Brewfiles.
+    # brew owns the brew-ecosystem packages (the Brewfiles, README "Why
+    # brew + mise"): one upgrade path for everything installed, including
+    # the tap formulae the current mise release cannot evaluate itself.
     brew update; and brew upgrade
 
     # App Store auto-updates are off (com.apple.commerce AutoUpdate).
@@ -37,8 +34,8 @@ function up --description 'Upgrade macOS software: CLT, brew (the Brewfiles), Ap
     if test "$splash_before" != "$splash_after"; and launchctl print gui/(id -u)/dev.mise.splash >/dev/null 2>&1
         launchctl kickstart -k gui/(id -u)/dev.mise.splash
     end
-    # Syncthing, laptop only: now a dev.mise launchd agent, so an upgraded
-    # keg needs the same kick; the guard no-ops where it is not installed.
+    # Syncthing is a dev.mise launchd agent too, so an upgraded keg needs
+    # the same kick; the guard no-ops where it is not installed.
     if test -n "$brew_prefix"
         set -l syncthing_after (string trim (readlink $brew_prefix/opt/syncthing 2>/dev/null))
     end

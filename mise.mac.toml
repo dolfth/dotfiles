@@ -1,18 +1,17 @@
-# What both Macs share: the declarative macOS defaults, the editor, and the
-# dotfiles both get. Select in miserc.local.toml:  env = ["mac", "<host>"]
+# Shared by both Macs: declarative macOS defaults, the editor, and their
+# dotfiles. Select in miserc.local.toml:  env = ["mac", "<host>"]
 
 [env]
-# The editor for both Macs (brew's helix formula; the binary is `hx`). mise
-# exports [env] into every activated shell -- both the interactive
-# activation and the --shims one -- so this reaches every fish; the zshrc
-# covers the POSIX login shell that skips the fish hand-off.
+# mise exports [env] into every activated shell (interactive and --shims),
+# so this reaches every fish; zshrc covers the POSIX login shell that skips
+# the fish hand-off.
 EDITOR = "hx"
 VISUAL = "hx"
 
 [vars]
-# The pared release the apple-intelligence task installs (the official
-# GitHub release -- no mainline brew formula, no mise backend). Bump to
-# upgrade; the task replaces the binary on a version change.
+# pared release for the apple-intelligence task (no mainline brew formula,
+# no mise backend). Bump to upgrade; the task replaces the binary when the
+# version changes.
 pared_version = "2.2.0"
 
 ##### macOS defaults #####
@@ -175,9 +174,6 @@ pared_version = "2.2.0"
 # On nwa, home-manager writes its own fish functions there, so this deploys
 # only on the Macs.
 "~/.config/fish/functions/up.fish" = "fish/functions/up.fish"
-# The navigation/debug helpers, one file per function as up; the `..`
-# abbreviation lives in config.fish (fish's parser rejects `..` as a
-# function name).
 "~/.config/fish/functions/mkd.fish" = "fish/functions/mkd.fish"
 "~/.config/fish/functions/tstat.fish" = "fish/functions/tstat.fish"
 "~/.config/fish/functions/port.fish" = "fish/functions/port.fish"
@@ -185,8 +181,7 @@ pared_version = "2.2.0"
 # herdr is nwa-only (the nwa module deploys it); keep it removed on the Macs.
 "~/.config/herdr/config.toml" = { mode = "absent" }
 
-# linearmouse creates the file on first run; an edit entry (the id segment
-# names the edit within the file) seeds it: written when missing, and only
-# missing keys are filled in afterwards -- once LinearMouse has written its
-# own values they are kept.
+# LinearMouse creates the file on first run and owns it afterwards, so the
+# edit entry only seeds it: written when missing, then only missing keys are
+# ever filled in.
 "~/.config/linearmouse/linearmouse.json/initial" = { source = "linearmouse.json", merge = "missing" }

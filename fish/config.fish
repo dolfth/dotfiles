@@ -42,8 +42,6 @@ if status is-interactive
     # `..` as a function name, but an abbreviation expands `..` to `cd ..`.
     abbr .. "cd .."
 
-    # starship reads ~/.config/starship.toml by default, which this repo
-    # manages, so there is no STARSHIP_CONFIG to set.
     if type -q starship
         starship init fish | source
     end

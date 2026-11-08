@@ -6,23 +6,20 @@
 host = "gza"
 accent = "color_red"
 icon = "\U000F01C4"  # nf-md-desktop-mac
-# omp's baseUrl: the servers below are local here (the base says "gza").
+# The servers below are local on this host; the base uses the tailnet FQDN.
 omp_base = "127.0.0.1"
 
 [env]
 HOST = "gza"
 KIND = "desktop"
-# iogpu.wired_limit_mb, the GPU wired-memory ceiling; applied by the
+# iogpu.wired_limit_mb, the GPU wired-memory ceiling, applied by the
 # system-check task's LaunchDaemon. 128 GB (M5 Max Studio) minus ~7 GB OS
-# headroom -- the same ratio omlx reported on the old 48 GB machine
-# (45056 of 49152). Verify against omlx's own report after its first start
-# here and correct if it differs.
+# headroom -- the same ratio omlx reported on the old 48 GB machine.
 WIRED_LIMIT_MB = "124000"
 
-# The user LaunchAgents that run the local servers. When the definition
-# changes, bootstrap re-writes the plist and reloads the job; the `kickstart`
-# there is a bare (no -k) no-op, since the reload already started the process.
-# The per-bootstrap self-heal of a dead agent lives in the `bootstrap` task.
+# The user LaunchAgents running the local servers. bootstrap re-writes the
+# plist and reloads a job when its definition changes; the per-bootstrap
+# self-heal of a dead agent lives in the `bootstrap` task.
 [bootstrap.macos.launchd.agents.omlx]
 program = "{{ system_brew_prefix }}/opt/omlx/bin/omlx"
 args = ["serve"]
@@ -87,22 +84,20 @@ stderr_path = "{{ env.HOME }}/Library/Logs/splash-fn.log"
 kickstart = true
 
 [dotfiles]
-# omlx writes these files itself (UI). Each is a merge edit (the id segment
-# names the edit within the file) deep over the live file: objects merge,
-# arrays and scalars replace, keys omlx wrote that we don't own are never
-# touched -- so the auth secrets in settings.json stay local, and the models
-# omlx has stay. A missing target is created from the source. Rendered as Tera
-# first ({{ vars.host }}, {{ vars.tailnet }}, {{ env.HOME }}).
+# omlx writes these files itself (UI), so each entry deep-merges over the
+# live file: objects merge, arrays and scalars replace, keys we don't own
+# survive -- the auth secrets in settings.json and the models omlx has stay
+# put. A missing target is created from the source. Rendered as Tera first
+# ({{ vars.host }}, {{ vars.tailnet }}, {{ env.HOME }}).
 "~/.omlx/settings.json/pinned" = { source = "omlx/settings.json", merge = true, template = "tera" }
 "~/.omlx/model_settings.json/pinned" = { source = "omlx/model_settings.json", merge = true, template = "tera" }
 "~/.omlx/model_profiles.json/pinned" = { source = "omlx/model_profiles.json", merge = true, template = "tera" }
-# omlx makes settings.json 0600 (it holds the auth keys); a permissions-only
-# entry keeps it there even if the file is (re)created at the repo mode.
+# omlx makes settings.json 0600 (it holds the auth keys); this keeps it at
+# 0600 even if the file is (re)created at the repo mode.
 "~/.omlx/settings.json" = { permissions = "0600" }
 
-# pi owns its settings file (pi install and /settings both write it), so a
-# merge entry re-asserts the two pinned keys; everything pi writes for
-# itself -- installed extensions, whatever /settings persists -- is kept.
+# pi owns its settings file; the merge re-asserts the two pinned keys and
+# keeps whatever pi wrote for itself.
 "~/.pi/agent/settings.json/pinned" = { source = "pi/agent/settings.json", merge = true }
 
 # The dev.mise.* agents above replace these plists; keep them deleted.

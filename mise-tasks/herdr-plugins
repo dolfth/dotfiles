@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
-# Herdr plugins the keybindings rely on:
-#   - lmilojevicc/herdr-tab-rename: names each tab after its focused pane's
-#     directory, leaving manual names alone; autostarts with Herdr
-# Runs from a final hook on every bootstrap; reinstalling replaces the
-# checkout, which is what we want.
+# The herdr plugins the keybindings rely on. Runs on every bootstrap;
+# reinstalling replaces the checkout, which is what we want.
+#   lmilojevicc/herdr-tab-rename: names each tab after its focused pane's
+#   directory, leaves manual names alone, autostarts with Herdr.
 set -uo pipefail   # no -e: one failed plugin shouldn't abort the bootstrap
 
 if ! command -v herdr >/dev/null 2>&1; then
