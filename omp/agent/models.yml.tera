@@ -7,6 +7,10 @@
 # If you add or change a model through an omp UI, that edit is a local
 # change and the next `mise bootstrap` resets this file -- edit this source
 # instead.
+#
+# gza's GPU pool serves ONE provider at a time (flash-fn by default; `mise
+# run gpupool 27|mlx` switches) -- the other providers' baseUrls refuse
+# connections until their server owns the pool again.
 ---
 providers:
   omlx:

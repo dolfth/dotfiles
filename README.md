@@ -170,6 +170,7 @@ in the module that used to own it.
 | `herdr-plugins` | final | the herdr plugins the keybindings rely on; no-op where herdr is absent |
 | `vscode-extensions` | final | the vscodium extensions; no-op where codium is absent |
 | `system-check` | final | the macOS system settings: FDA-gated app defaults, hostname, firewall, the tailnet resolvers in resolv.conf, Touch ID, power, updates, the FileVault check, the GPU wired-limit daemon; the desktop also gets Screen Sharing and Remote Login. The sudo part needs a TTY. Dock/Finder/… restart only when a domain they read changed |
+| `gpupool` | manual (gza) | the GPU pool is single-tenant -- pick its owner: `fn` flash-fn on :8100 (default), `27` the 27B splash server on :8000, `mlx` omlx on :8080 (it spawns its own engines on demand), `status` who answers. Two tenants would OOM-crash each other's Metal clients below the wired-limit fuse, so the rest stay unloaded |
 | `apple-intelligence` | final | the Apple Intelligence removal via the pinned pared release: disables every feature in its catalog (Siri included), keeps the managed profile installed (one System Settings click per machine), removes downloaded models. Runs only on Apple-silicon macOS 27+ |
 
 They run on every `mise bootstrap` / `mise update` and do nothing when

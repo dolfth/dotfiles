@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+# gza's GPU pool is single-tenant. The 96 GiB wired pool (system-check's
+# iogpu fuse) holds ONE model server: flash-fn (86G), the 27B (30G), or the
+# server omlx spawns for its own models (~30G per engine). Below the fuse the
+# kernel refuses no allocation, so two resident tenants do not queue -- their
+# Metal clients die (2026-11-08: watchdog panic, 27B OOM crashloops, the
+# Ghostty renderer). This task says who owns the pool; the agents for the
+# others stay unloaded. None is RunAtLoad except flash-fn, the default owner,
+# so the bootstrap self-heal and logins never resurrect a switched-out
+# tenant -- omlx loads its engine the moment a request arrives, so it must be
+# unloaded, not merely idle, while another server runs.
+#
+# usage: mise run gpupool fn|27|mlx|status
+#   fn    flash-fn on :8100, the default (drops 27B + omlx sessions)
+#   27    the 27B splash server on :8000
+#   mlx   omlx on :8080 -- it spawns its own splash engines on demand
+#   status who answers where
+
+set -uo pipefail
+
+gui="gui/$(id -u)"
+agents="${HOME}/Library/LaunchAgents"
+fn=dev.mise.splash-fn
+b27=dev.mise.splash
+mlx=dev.mise.omlx
+
+loaded() { launchctl print "$gui/$1" >/dev/null 2>&1; }
+
+take() { # take <job> <port> -- boot out the others, run the one, wait for it
+  local job=$1 port=$2 other
+  for other in "$fn" "$b27" "$mlx"; do
+    [ "$other" = "$job" ] && continue
+    launchctl bootout "$gui/$other" 2>/dev/null || true
+  done
+  sleep 3   # let the kernel reclaim the old tenant's wired pages first
+  loaded "$job" || launchctl bootstrap "$gui" "${agents}/${job}.plist" || true
+  launchctl kickstart "$gui/$job" 2>/dev/null || true
+  local i
+  for ((i = 0; i < 120; i++)); do
+    curl -fs --max-time 2 "http://127.0.0.1:${port}/v1/models" >/dev/null 2>&1 && { echo "${job} owns the pool (port ${port})"; return 0; }
+    sleep 1
+  done
+  # omlx answers 401 (API key) to an unauthenticated probe -- still ready.
+  if [ "$job" = "$mlx" ] && curl -s --max-time 2 "http://127.0.0.1:${port}/v1/models" | grep -q authentication_error; then
+    echo "${job} owns the pool (port ${port}, auth on) -- no model loaded until a request"
+    return 0
+  fi
+  echo "${job} did not answer on :${port} within 120 s; check ~/Library/Logs/${job#dev.mise.}.log" >&2
+  return 1
+}
+
+case "${1:-status}" in
+  fn)  take "$fn" 8100 ;;
+  27)  take "$b27" 8000 ;;
+  mlx) take "$mlx" 8080 ;;
+  status)
+    for pair in "$fn:8100" "$b27:8000" "$mlx:8080"; do
+      job=${pair%%:*}
+      port=${pair#*:}
+      if loaded "$job" && launchctl print "$gui/$job" 2>/dev/null | grep -qE '^[[:space:]]*pid = [0-9]'; then
+        echo "${job}: running (port ${port})"
+      elif loaded "$job"; then
+        echo "${job}: loaded, not running"
+      else
+        echo "${job}: unloaded"
+      fi
+    done
+    ;;
+  *)
+    echo "usage: mise run gpupool fn|27|mlx|status" >&2
+    exit 2
+    ;;
+esac
