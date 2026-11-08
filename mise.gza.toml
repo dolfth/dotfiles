@@ -28,12 +28,17 @@ WIRED_LIMIT_MB = "98304"
 
 # The user LaunchAgents running the local servers. bootstrap re-writes the
 # plist and reloads a job when its definition changes; the per-bootstrap
-# self-heal of a dead agent lives in the `bootstrap` task.
+# self-heal of a dead agent lives in the `bootstrap` task. The GPU wired pool
+# (96 GiB fuse) is single-tenant -- `mise run gpupool fn|27|mlx` picks who
+# owns it; only the default (flash-fn) is RunAtLoad so nothing resurrects a
+# switched-out tenant. omlx must be UNLOADED, not merely idle, beside another
+# server: it spawns its own splash engines the moment a request arrives
+# (2026-11-08: a UI test load added 29.5 GB on top of flash-next's plan).
 [bootstrap.macos.launchd.agents.omlx]
 program = "{{ system_brew_prefix }}/opt/omlx/bin/omlx"
 args = ["serve"]
-run_at_load = true
-keep_alive = true
+run_at_load = false
+keep_alive = false
 process_type = "Interactive"
 working_directory = "{{ env.HOME }}/.omlx"
 environment = { "PATH" = "{{ system_brew_prefix }}/bin:{{ system_brew_prefix }}/sbin:/usr/bin:/bin:/usr/sbin:/sbin" }
@@ -50,16 +55,17 @@ kickstart = true
 # unsloth's Dynamic 3.0 quant: 5.25 bits/param (17.9 GB), finer than the
 # mlx-community 4bit at the same size class. The repo ships the mmproj vision
 # projector, so no --language-only: vision stays.
-# --max-memory 30G caps this server's Metal plan: the 17.9 GB weights, state
-# and KV for ~128K in RAM, the overflow streaming through the SSD KV cache.
-# Uncapped, auto planned it from the whole Mac, so a restore while
-# splash-fn held its 78G grew the shared wired pool past what the host had
-# left (the 2026-11-08 panic). The two servers alternate through idle-release,
-# they never co-reside; 30G keeps the 27B's restore quick once it can start.
+# --max-memory 30G caps this server's Metal plan (weights + ~128K KV in RAM,
+# the rest over the SSD cache). ON DEMAND since 2026-11-08: the 96 GiB GPU
+# pool fits one splash plan at a time, and below the wired-limit fuse nothing
+# is refused -- Metal clients die instead of queueing (27B OOM crashloops and
+# the Ghostty renderer failures, after the morning's watchdog panic). Exactly
+# one server runs: `mise run gpupool 27|fn|mlx` swaps the pool's owner;
+# run_at_load/keep_alive stay off so bootstrap and logins never resurrect it.
 program = "{{ system_brew_prefix }}/opt/splash/bin/splash"
 args = ["serve", "--model", "unsloth/Qwen3.8-27B-GGUF:UD-Q4_K_XL", "--host", "0.0.0.0", "--allowed-host", "gza.foxhound-insen.ts.net", "--allowed-host", "gza", "--max-memory", "30G", "--idle-release", "3m"]
-run_at_load = true
-keep_alive = true
+run_at_load = false
+keep_alive = false
 process_type = "Interactive"
 working_directory = "{{ env.HOME }}"
 environment = { "PATH" = "{{ system_brew_prefix }}/bin:{{ system_brew_prefix }}/sbin:/usr/bin:/bin:/usr/sbin:/sbin" }
@@ -78,9 +84,11 @@ kickstart = true
 # restore; 78G charges ~66G of expert store (~89% of their 71.7 GiB, the rest
 # streamed with ARC recycling). The headroom claim was false: the 27B server
 # grew its own uncapped plan beside the 78G and the shared GPU pool wired
-# 126 of 128 GB -- watchdog panic 2026-11-08. The 96 GiB pool fuse plus the
-# 27B's --max-memory 30G make 78G survivable again; the servers alternate
-# through idle-release rather than co-reside.
+# 126 of 128 GB -- watchdog panic 2026-11-08. The pool is now serialized
+# (`mise run gpupool`; the 27B and omlx are on demand), so 86G charges the
+# expert store plus KV inside the 96 GiB fuse with ~6 GiB left for the GUI;
+# the 92G test swapped ~10 G only because the 27B's ~21 G restore stacked
+# onto it, not because 92 was too big for an exclusive pool.
 # 50G was starved: it charged its whole budget, denied ~40G of host headroom
 # (/status memory_governor), held only 23% of the expert slots, and decoded at
 # ~25 tok/s with the GPU at 40%.
@@ -89,11 +97,11 @@ kickstart = true
 # the experts everything the plan leaves after the fixed runtime and the KV
 # allowance, while the explicit 2G PLE cache the first tune pinned was wasted
 # -- a 128K prompt touches ~1.1M rows and a 256 MiB row cache (auto's share)
-# hits as often as a 2 GiB one. Weights free after 3m idle -- under pool
-# pressure this is what hands the pool to the 27B's restore; reload is ~5 s.
+# hits as often as a 2 GiB one. Weights free after 3m idle, so an idle
+# machine is not sitting on 86 G of wired memory the GUI could use.
 # The serve plan lands in ~/Library/Application Support/Splash/runtime/serve-8100.json.
 program = "{{ system_brew_prefix }}/opt/splash/bin/splash"
-args = ["serve", "--model", "unsloth/Qwen3.8-Flash-Next-GGUF:UD-Q4_K_XL", "--port", "8100", "--host", "0.0.0.0", "--allowed-host", "gza.foxhound-insen.ts.net", "--allowed-host", "gza", "--max-memory", "78G", "--idle-release", "3m"]
+args = ["serve", "--model", "unsloth/Qwen3.8-Flash-Next-GGUF:UD-Q4_K_XL", "--port", "8100", "--host", "0.0.0.0", "--allowed-host", "gza.foxhound-insen.ts.net", "--allowed-host", "gza", "--max-memory", "86G", "--idle-release", "3m"]
 run_at_load = true
 keep_alive = true
 process_type = "Interactive"

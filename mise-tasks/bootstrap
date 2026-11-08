@@ -26,6 +26,13 @@ for agent in dev.mise.omlx dev.mise.splash dev.mise.splash-fn; do
   if [ ! -f "$plist" ]; then
     continue   # agents not declared on this machine (the gza module owns them)
   fi
+  # An agent without RunAtLoad is on demand by design (the 27B and omlx: one
+  # GPU pool tenant at a time, switched by `mise run gpupool`); self-healing
+  # it would resurrect what the operator just took down.
+  if ! plutil -extract RunAtLoad raw "$plist" 2>/dev/null | grep -qx true; then
+    echo "  ${agent}: on demand; left alone (its own task starts it)"
+    continue
+  fi
   lc bootstrap "$gui" "$plist" 2>/dev/null || true
   lc kickstart "$gui/$agent" 2>/dev/null || echo "  ${agent}: kickstart failed or timed out (missing binary? check the brew-bundle warnings above)" >&2
 done
