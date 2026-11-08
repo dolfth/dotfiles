@@ -13,9 +13,18 @@ omp_base = "127.0.0.1"
 HOST = "gza"
 KIND = "desktop"
 # iogpu.wired_limit_mb, the GPU wired-memory ceiling, applied by the
-# system-check task's LaunchDaemon. 128 GB (M5 Max Studio) minus ~7 GB OS
-# headroom -- the same ratio omlx reported on the old 48 GB machine.
-WIRED_LIMIT_MB = "124000"
+# system-check task's LaunchDaemon. This is the pool every GPU user on the
+# Mac shares -- omlx, splash, splash-fn -- and the kernel refuses no
+# allocation below it, so it is the hard fuse against a wired-memory freeze:
+# the 124000 value (118 GiB, the old machine's ratio) let the two splash
+# servers plus KV growth wire 126 of 128 GB on 2026-11-08; watchdogd
+# starved and the box panicked with 14 MB free and memoryPressure still
+# False. 96 GiB = 75% of RAM leaves ~24 GB for the host even with the pool
+# full: splash's governor then pauses growth (the documented pending path)
+# instead of the kernel freezing, and omlx plans itself to this ceiling.
+# Running omlx beside both splash servers is out of contract: its model
+# would need the same pool the servers already hold.
+WIRED_LIMIT_MB = "98304"
 
 # The user LaunchAgents running the local servers. bootstrap re-writes the
 # plist and reloads a job when its definition changes; the per-bootstrap
@@ -41,8 +50,14 @@ kickstart = true
 # unsloth's Dynamic 3.0 quant: 5.25 bits/param (17.9 GB), finer than the
 # mlx-community 4bit at the same size class. The repo ships the mmproj vision
 # projector, so no --language-only: vision stays.
+# --max-memory 30G caps this server's Metal plan: the 17.9 GB weights, state
+# and KV for ~128K in RAM, the overflow streaming through the SSD KV cache.
+# Uncapped, auto planned it from the whole Mac, so a restore while
+# splash-fn held its 78G grew the shared wired pool past what the host had
+# left (the 2026-11-08 panic). The two servers alternate through idle-release,
+# they never co-reside; 30G keeps the 27B's restore quick once it can start.
 program = "{{ system_brew_prefix }}/opt/splash/bin/splash"
-args = ["serve", "--model", "unsloth/Qwen3.8-27B-GGUF:UD-Q4_K_XL", "--host", "0.0.0.0", "--allowed-host", "gza.foxhound-insen.ts.net", "--allowed-host", "gza"]
+args = ["serve", "--model", "unsloth/Qwen3.8-27B-GGUF:UD-Q4_K_XL", "--host", "0.0.0.0", "--allowed-host", "gza.foxhound-insen.ts.net", "--allowed-host", "gza", "--max-memory", "30G", "--idle-release", "3m"]
 run_at_load = true
 keep_alive = true
 process_type = "Interactive"
@@ -61,7 +76,11 @@ kickstart = true
 # all 71.7 GiB of experts resident (25 tok/s -> 81 tok/s at 92G) but left the
 # Mac at warning pressure with ~10G swapped and no room for the 27B's ~21G
 # restore; 78G charges ~66G of expert store (~89% of their 71.7 GiB, the rest
-# streamed with ARC recycling), and 78 + 21 + macOS + apps fits with headroom.
+# streamed with ARC recycling). The headroom claim was false: the 27B server
+# grew its own uncapped plan beside the 78G and the shared GPU pool wired
+# 126 of 128 GB -- watchdog panic 2026-11-08. The 96 GiB pool fuse plus the
+# 27B's --max-memory 30G make 78G survivable again; the servers alternate
+# through idle-release rather than co-reside.
 # 50G was starved: it charged its whole budget, denied ~40G of host headroom
 # (/status memory_governor), held only 23% of the expert slots, and decoded at
 # ~25 tok/s with the GPU at 40%.
@@ -70,10 +89,11 @@ kickstart = true
 # the experts everything the plan leaves after the fixed runtime and the KV
 # allowance, while the explicit 2G PLE cache the first tune pinned was wasted
 # -- a 128K prompt touches ~1.1M rows and a 256 MiB row cache (auto's share)
-# hits as often as a 2 GiB one. Weights free after 10m idle.
+# hits as often as a 2 GiB one. Weights free after 3m idle -- under pool
+# pressure this is what hands the pool to the 27B's restore; reload is ~5 s.
 # The serve plan lands in ~/Library/Application Support/Splash/runtime/serve-8100.json.
 program = "{{ system_brew_prefix }}/opt/splash/bin/splash"
-args = ["serve", "--model", "unsloth/Qwen3.8-Flash-Next-GGUF:UD-Q4_K_XL", "--port", "8100", "--host", "0.0.0.0", "--allowed-host", "gza.foxhound-insen.ts.net", "--allowed-host", "gza", "--max-memory", "78G"]
+args = ["serve", "--model", "unsloth/Qwen3.8-Flash-Next-GGUF:UD-Q4_K_XL", "--port", "8100", "--host", "0.0.0.0", "--allowed-host", "gza.foxhound-insen.ts.net", "--allowed-host", "gza", "--max-memory", "78G", "--idle-release", "3m"]
 run_at_load = true
 keep_alive = true
 process_type = "Interactive"
