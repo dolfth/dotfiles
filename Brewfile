@@ -49,6 +49,9 @@ cask "font-jetbrains-mono-nerd-font"
 cask "chamburr/tap/glance"
 cask "ghostty"
 cask "grandperspective"
+# Local dictation (push-to-talk on Option-Space); Parakeet runs on the CPU,
+# leaving the GPU for the inference servers.
+cask "handy"
 cask "iina"
 cask "imageoptim"
 cask "linearmouse"
