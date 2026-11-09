@@ -5,7 +5,7 @@
 # run and a Mac only does after the first ssh since boot. Verification uses
 # allowed_signers (all hosts' keys; see vars.ssh_keys in mise.toml).
 [user]
-name = Dolf van Horne
+name = Dolf ter Hofsté
 email = 12677636+dolfth@users.noreply.github.com
 signingkey = ~/.ssh/id_ed25519
 [init]
