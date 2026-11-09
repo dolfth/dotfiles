@@ -18,7 +18,7 @@ fi
 fda=1
 if ! head -c1 "/Library/Application Support/com.apple.TCC/TCC.db" >/dev/null 2>&1; then
   fda=
-  echo "==> No Full Disk Access (e.g. over SSH): skipping Mail, TextEdit and Displays defaults"
+  echo "==> No Full Disk Access (e.g. over SSH): skipping Mail, Safari, TextEdit and Displays defaults"
 fi
 
 if [ -n "$fda" ]; then
@@ -40,6 +40,11 @@ if [ -n "$fda" ]; then
   defaults write com.apple.TextEdit PlainTextEncodingForWrite -int 4
   # Displays: show the display list in Displays settings
   defaults write com.apple.Displays-Settings.extension showListByDefault -int 2
+  # Safari: keep its container-scoped engine id in step with the system
+  # preference (declared in mise.mac.toml), so Safari's own Settings >
+  # Search pane agrees. Not declarative: the container is FDA-gated like
+  # Mail's, and a failing defaults domain aborts the whole bootstrap.
+  defaults write com.apple.Safari DefaultBrowserSearchProviderIdentifier -string com.duckduckgo
 fi
 # Finder: open new windows to Home. Written here so $USER resolves correctly
 # regardless of the account name (declarative defaults cannot interpolate).

@@ -163,6 +163,20 @@ pared_version = "2.2.0"
 [bootstrap.macos.defaults."com.apple.commerce"]
 "AutoUpdate" = false
 
+# Safari's default search engine, per device: iCloud's Safari sync covers
+# bookmarks, history, Reading List and tabs, never this setting. macOS 14+
+# resolves the engine from this system-scoped preference (Safari migrates
+# its old per-app key here on launch and records the migration in
+# SearchProviderIdentifierMigratedToSystemPreference); the identifier is
+# the one DuckDuckGo's own Jamf deployment guide publishes. A path entry
+# keeps any other provider dictionaries NSPreferredWebServices may hold.
+# The engine is read at Safari launch, so a change applies next start.
+[[bootstrap.macos.defaults_entries]]
+domain = "NSGlobalDomain"
+key = "NSPreferredWebServices"
+path = ["NSWebServicesProviderWebSearch"]
+value = { "NSDefaultDisplayName" = "DuckDuckGo", "NSProviderIdentifier" = "com.duckduckgo" }
+
 [dotfiles]
 "~/.zshrc" = "zshrc"
 # A real file at 0600: a symlink would expose the repo file's permissions to
