@@ -65,10 +65,12 @@ cask "utm"
 cask "vscodium"
 cask "whatcable"
 
-# mas installs by ID; the name is only a label, and the app must already be
-# in the purchase history. The explicit `id:` form is required by current
-# homebrew-bundle: a positional-ID line ("mas 1435127111") aborts the whole
-# bundle with "options[:id] should be an Integer".
+# mas installs by ID; the name is only a label. The machine must be signed
+# in to the App Store before mas can download anything, and the app must
+# already be in the account's purchase history -- otherwise the entry
+# fails. The explicit `id:` form is required by current homebrew-bundle: a
+# positional-ID line ("mas 1435127111") aborts the whole bundle with
+# "options[:id] should be an Integer".
 mas "KeePassium", id: 1435127111
 mas "Keynote", id: 361285480
 mas "Numbers", id: 361304891

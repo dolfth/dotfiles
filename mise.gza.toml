@@ -13,33 +13,28 @@ omp_base = "127.0.0.1"
 HOST = "gza"
 KIND = "desktop"
 # iogpu.wired_limit_mb, the GPU wired-memory ceiling, applied by the
-# system-check task's LaunchDaemon. This is the pool every GPU user on the
-# Mac shares -- omlx, splash, splash-fn -- and the kernel refuses no
-# allocation below it, so it is the hard fuse against a wired-memory freeze:
-# the 124000 value (118 GiB, the old machine's ratio) let the two splash
-# servers plus KV growth wire 126 of 128 GB on 2026-11-08; watchdogd
-# starved and the box panicked with 14 MB free and memoryPressure still
-# False. 96 GiB = 75% of RAM leaves ~24 GB for the host even with the pool
-# full: splash's governor then pauses growth (the documented pending path)
-# instead of the kernel freezing, and omlx plans itself to this ceiling.
-# Running omlx beside both splash servers is out of contract: its model
-# would need the same pool the servers already hold.
+# system-check task's LaunchDaemon. Every GPU user on the Mac (omlx,
+# splash, splash-fn) allocates from this one pool, and the kernel refuses
+# no allocation below the ceiling: it is the hard fuse against a
+# wired-memory freeze (a ceiling near RAM froze watchdogd and panicked the
+# box). 96 GiB = 75% of RAM leaves ~24 GB for the host even with the pool
+# full: splash's governor then pauses growth (its documented pending path)
+# instead of the machine freezing, and omlx plans itself to this ceiling.
+# Running omlx beside a splash server is out of contract: its model would
+# need the same pool the server already holds.
 WIRED_LIMIT_MB = "98304"
 
 # The user LaunchAgents running the local servers. bootstrap re-writes the
 # plist and reloads a job when its definition changes; the per-bootstrap
-# self-heal of a dead agent lives in the `bootstrap` task. The GPU wired pool
-# (96 GiB fuse) is single-tenant -- `mise run gpupool fn|27|mlx` picks who
-# owns it; only the default (flash-fn) is RunAtLoad so nothing resurrects a
-# switched-out tenant. omlx must be UNLOADED, not merely idle, beside another
-# server: it spawns its own splash engines the moment a request arrives
-# (2026-11-08: a UI test load added 29.5 GB on top of flash-next's plan).
-# kickstart follows the same rule: a definition with kickstart = true is
-# STARTED by every launchd apply that touches it, RunAtLoad be damned --
-# 2026-11-09 an apply woke the 27B beside flash-next (86 + 30 over the 96
-# fuse) and the GUI's Metal clients died until the operator removed the job
-# 87 s later. On-demand tenants therefore keep kickstart = false; only
-# gpupool's own kickstart starts them.
+# self-heal of a dead agent lives in the `bootstrap` task. The GPU wired
+# pool (96 GiB fuse) is single-tenant -- `mise run gpupool fn|27|mlx`
+# picks who owns it; only the default (flash-fn) is RunAtLoad so nothing
+# resurrects a switched-out tenant. omlx must be UNLOADED, not merely
+# idle, beside another server: it spawns its own splash engines the moment
+# a request arrives. The same rule governs kickstart: a definition with
+# kickstart = true is STARTED by every launchd apply that touches it,
+# RunAtLoad be damned -- so on-demand tenants keep kickstart = false and
+# only gpupool's own kickstart starts them.
 [bootstrap.macos.launchd.agents.omlx]
 program = "{{ system_brew_prefix }}/opt/omlx/bin/omlx"
 args = ["serve"]
@@ -62,13 +57,12 @@ kickstart = false
 # mlx-community 4bit at the same size class. The repo ships the mmproj vision
 # projector, so no --language-only: vision stays.
 # --max-memory 30G caps this server's Metal plan (weights + ~128K KV in RAM,
-# the rest over the SSD cache). ON DEMAND since 2026-11-08: the 96 GiB GPU
-# pool fits one splash plan at a time, and below the wired-limit fuse nothing
-# is refused -- Metal clients die instead of queueing (27B OOM crashloops and
-# the Ghostty renderer failures, after the morning's watchdog panic). Exactly
-# one server runs: `mise run gpupool 27|fn|mlx` swaps the pool's owner;
-# run_at_load/keep_alive/kickstart stay off so bootstrap, logins and launchd
-# applies never resurrect it -- only gpupool kicks.
+# the rest over the SSD cache). ON DEMAND: the 96 GiB GPU pool fits one
+# splash plan at a time, and below the wired-limit fuse nothing is refused
+# -- Metal clients die instead of queueing. `mise run gpupool 27|fn|mlx`
+# swaps the pool's owner; run_at_load/keep_alive/kickstart stay off so
+# bootstrap, logins and launchd applies never resurrect it -- only gpupool
+# kicks.
 program = "{{ system_brew_prefix }}/opt/splash/bin/splash"
 args = ["serve", "--model", "unsloth/Qwen3.8-27B-GGUF:UD-Q4_K_XL", "--host", "0.0.0.0", "--allowed-host", "gza.foxhound-insen.ts.net", "--allowed-host", "gza", "--max-memory", "30G", "--idle-release", "3m"]
 run_at_load = false
@@ -82,34 +76,22 @@ kickstart = false
 
 [bootstrap.macos.launchd.agents.splash-fn]
 # Qwen3.8-Flash-Next: 125B MoE (6B active) + 51B PLE n-gram table, unsloth's
-# Dynamic 3.0 quant: 111 GB image. It runs beside the 27B server only because
-# --max-memory caps it -- splash's auto mode plans each server from the whole
-# Mac, and an uncapped 111 GB image next to the 27B panicked the box
-# (2026-11-07). 78G is the co-residency ceiling: an auto plan at 92G loaded
-# all 71.7 GiB of experts resident (25 tok/s -> 81 tok/s at 92G) but left the
-# Mac at warning pressure with ~10G swapped and no room for the 27B's ~21G
-# restore; 78G charges ~66G of expert store (~89% of their 71.7 GiB, the rest
-# streamed with ARC recycling). The headroom claim was false: the 27B server
-# grew its own uncapped plan beside the 78G and the shared GPU pool wired
-# 126 of 128 GB -- watchdog panic 2026-11-08. The pool is now serialized
-# (`mise run gpupool`; the 27B and omlx are on demand), so 86G charges the
-# expert store plus KV inside the 96 GiB fuse with ~6 GiB left for the GUI;
-# the 92G test swapped ~10 G only because the 27B's ~21 G restore stacked
-# onto it, not because 92 was too big for an exclusive pool.
-# 50G was starved: it charged its whole budget, denied ~40G of host headroom
-# (/status memory_governor), held only 23% of the expert slots, and decoded at
-# ~25 tok/s with the GPU at 40%.
+# Dynamic 3.0 quant: 111 GB image. splash's auto mode plans each server from
+# the whole Mac, so --max-memory is the mandatory single-tenant cap: 86G
+# charges the expert store (~89% of the 71.7 GiB experts; the rest streams
+# with ARC recycling) plus KV inside the 96 GiB fuse, leaving ~6 GiB for the
+# GUI's own Metal clients -- the GUI wires part of the same pool, and every
+# crash so far was exactly that contest, so the fuse stays closed (90G would
+# only double the KV pool). The starved end is 50G: it held 23% of the
+# expert slots and decoded at ~25 tok/s with the GPU at 40%.
 # Expert store and PLE row cache stay on auto: the store is the throughput
-# lever (the docs price each extra GiB at 11-23% decode speed), and auto gives
-# the experts everything the plan leaves after the fixed runtime and the KV
-# allowance, while the explicit 2G PLE cache the first tune pinned was wasted
-# -- a 128K prompt touches ~1.1M rows and a 256 MiB row cache (auto's share)
-# hits as often as a 2 GiB one. 90G was reconsidered 2026-11-09 (it would
-# double the KV pool) and declined: the GUI wires part of the same fuse, and
-# every crash so far was exactly that contest -- the fuse stays closed.
-# Weights free after 15m idle: 3m released and restored 19x during one day
-# of agent work, taxing each first request ~1.3 s plus a CPU ramp storm; the
-# GUI still gets the whole pool back on any real break.
+# lever (the docs price each extra GiB at 11-23% decode speed), and auto
+# gives the experts everything the plan leaves after the fixed runtime and
+# the KV allowance -- a 128K prompt touches ~1.1M rows, so even auto's 256
+# MiB PLE row cache hits as often as a pinned 2 GiB one.
+# --idle-release 15m: 3m released and restored 19x during one day of agent
+# work, taxing each first request ~1.3 s plus a CPU ramp storm; the GUI
+# still gets the whole pool back on any real break.
 # --max-cache-disk 64G: auto's 32 GiB quota ran to 100.00% full (demotions
 # refused, KV state restores p50 262 ms) while the volume kept 357 GB free.
 # --thinking-token-budget 8192 bounds requests that bring no thinking budget
@@ -146,7 +128,7 @@ kickstart = true
 # The dev.mise.* agents above replace these plists; keep them deleted.
 "~/Library/LaunchAgents/com.dolfth.omlx.plist" = { mode = "absent" }
 "~/Library/LaunchAgents/com.dolfth.splash.plist" = { mode = "absent" }
-# Renamed 2026-11-07 from dev.mise.splash-kat (the model is Flash-Next, not
-# KAT-Coder); keep the old plist deleted.
+# The retired splash-kat agent (the model became Flash-Next, the splash-fn
+# job below); keep its plist deleted.
 "~/Library/LaunchAgents/dev.mise.splash-kat.plist" = { mode = "absent" }
 

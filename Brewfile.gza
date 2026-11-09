@@ -11,8 +11,8 @@
 # omlx repo, which bare `brew tap jundot/omlx` does not clone by name, so
 # the URL is explicit (the formula reference stays plain `omlx`).
 tap "jundot/omlx", url: "https://github.com/jundot/omlx", trusted: true
-# Upstream renamed incoai/tap to incoai/homebrew-tap (old name 404s since
-# 2026-10-19); formula and keg names unchanged.
+# Upstream renamed incoai/tap to incoai/homebrew-tap (old name 404s);
+# formula and keg names unchanged.
 tap "incoai/homebrew-tap", trusted: true
 
 brew "omlx"

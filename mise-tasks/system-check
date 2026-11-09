@@ -207,11 +207,12 @@ if [ "${KIND:-laptop}" = "desktop" ]; then
   # macOS caps GPU-wired memory, and so the model size omlx can load. The
   # cap is the host's hard fuse: every GPU user (omlx, the splash servers)
   # allocates from this one pool, and below the limit nothing is refused --
-  # raise it near RAM and a full pool freezes the machine (watchdog panic
-  # 2026-11-08 at WIRED 96%). The gza module sets WIRED_LIMIT_MB to a value
-  # that leaves the host room when the pool is full; more than the pool can
-  # get omlx killed mid-load, stranding memory until a reboot. The sysctl
-  # resets at boot, so a LaunchDaemon reapplies it; it is also set now.
+  # raise it near RAM and a full pool freezes the machine (a starved
+  # watchdog panicked the box at 96%). The gza module sets WIRED_LIMIT_MB
+  # to a value that leaves the host room when the pool is full; more than
+  # the pool can get omlx killed mid-load, stranding memory until a reboot.
+  # The sysctl resets at boot, so a LaunchDaemon reapplies it; it is also
+  # set now.
   W="${WIRED_LIMIT_MB:?WIRED_LIMIT_MB is not set; add it to the gza module}"
   WIRED="sysctl -w iogpu.wired_limit_mb=${W}"
   sudo tee /Library/LaunchDaemons/dev.mise.wired-limit.plist >/dev/null <<EOF

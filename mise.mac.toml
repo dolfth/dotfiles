@@ -121,15 +121,12 @@ pared_version = "2.2.0"
 [bootstrap.macos.defaults."com.apple.print.PrintingPrefs"]
 "Quit When Finished" = true
 
-# com.apple.universalaccess (Accessibility) is NOT declared here, even though it
-# is a plain user domain: on macOS 14+/Tahoe the OS TCC-protects it, so a
-# non-privileged process (mise's CFPreferencesSynchronize, `defaults write`)
-# writes the plist but the commit is rejected, and mise aborts the whole
-# bootstrap on that one domain (verified on the M5 Max / Tahoe desktop). The
-# three toggles it used to set are cosmetic -- set them once in System
-# Settings > Accessibility (Reduce Transparency; Show window title bar icons;
-# Scroll with two fingers to close); they persist and mise no longer needs to
-# re-assert them.
+# com.apple.universalaccess is NOT declared here: macOS TCC-protects it, so
+# a non-privileged write (mise's CFPreferencesSynchronize, `defaults write`)
+# commits nothing and mise aborts the whole bootstrap on that one domain.
+# Its three old toggles are cosmetic -- set them once in System Settings >
+# Accessibility (Reduce Transparency; Show window title bar icons; Scroll
+# with two fingers to close); they persist.
 
 [bootstrap.macos.defaults."com.apple.HIToolbox"]
 # Fn/Globe alone: 0 = nothing, 1 = input source, 2 = emoji, 3 = dictation
