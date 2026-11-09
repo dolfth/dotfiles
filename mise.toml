@@ -44,8 +44,6 @@ ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKORTGA2F28t4VWxuvjVPnX9sfZOnNjmR5LoB8uvcwFU
 
 "~/.config/starship.toml" = { source = "starship.toml.tera", mode = "template" }
 "~/.config/ghostty/config" = "ghostty/config"
-# The editor is helix (brew); the absent entry removes the retired nvim config.
-"~/.config/nvim/init.lua" = { mode = "absent" }
 
 # AeroSpace rewrites this file when the layout changes in-app, so it is a
 # merge: our keys win, everything else AeroSpace or the user wrote stays.

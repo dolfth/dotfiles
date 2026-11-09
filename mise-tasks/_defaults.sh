@@ -4,7 +4,7 @@ _UI_DOMAINS=(
   com.apple.dock com.apple.spaces com.apple.WindowManager
   com.apple.finder com.apple.menuextra.clock NSGlobalDomain
   com.apple.NetworkBrowser com.apple.LaunchServices
-  com.apple.print.PrintingPrefs com.apple.universalaccess
+  com.apple.print.PrintingPrefs
   com.apple.HIToolbox com.apple.driver.AppleBluetoothMultitouch.trackpad
   com.apple.desktopservices com.apple.screencapture
   com.apple.ActivityMonitor com.apple.ImageCapture
