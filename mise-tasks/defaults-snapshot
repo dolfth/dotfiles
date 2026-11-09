@@ -10,12 +10,4 @@ if [ "$(uname -s)" != "Darwin" ]; then
 fi
 source "$(dirname "${BASH_SOURCE[0]}")/_defaults.sh"
 
-snap() {
-  for d in "${_UI_DOMAINS[@]}"; do
-    defaults export "$d" - 2>/dev/null || true
-  done
-  defaults -currentHost export com.apple.controlcenter - 2>/dev/null || true
-  defaults -currentHost export NSGlobalDomain - 2>/dev/null || true
-}
-
 snap | shasum | awk '{print $1}' > "${TMPDIR:-/tmp}/mise-defaults-snapshot"

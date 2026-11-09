@@ -59,13 +59,6 @@ chflags nohidden "${HOME}/Library" 2>/dev/null || true
 # so only restart them if the defaults bootstrap just wrote actually changed
 source "$(dirname "${BASH_SOURCE[0]}")/_defaults.sh"
 
-snap() {
-  for d in "${_UI_DOMAINS[@]}"; do
-    defaults export "$d" - 2>/dev/null || true
-  done
-  defaults -currentHost export com.apple.controlcenter - 2>/dev/null || true
-  defaults -currentHost export NSGlobalDomain - 2>/dev/null || true
-}
 before_file="${TMPDIR:-/tmp}/mise-defaults-snapshot"
 if [ -f "$before_file" ] && [ "$(snap | shasum | awk '{print $1}')" != "$(cat "$before_file" 2>/dev/null)" ]; then
   # Flush cfprefsd and reload settings, so most apply without a logout.

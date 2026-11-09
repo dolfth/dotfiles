@@ -12,3 +12,16 @@ _UI_DOMAINS=(
   com.apple.mail com.apple.TextEdit
   com.apple.Displays-Settings.extension
 )
+
+# Export the UI domains to stdout; defaults-snapshot hashes this BEFORE
+# bootstrap writes the declarative defaults and system-check hashes it AFTER:
+# equal hashes mean nothing bootstrap wrote changes what the UI reads, so no
+# Dock/Finder/... restart is warranted. controlcenter and the per-host
+# NSGlobalDomain live under -currentHost.
+snap() {
+  for d in "${_UI_DOMAINS[@]}"; do
+    defaults export "$d" - 2>/dev/null || true
+  done
+  defaults -currentHost export com.apple.controlcenter - 2>/dev/null || true
+  defaults -currentHost export NSGlobalDomain - 2>/dev/null || true
+}

@@ -141,8 +141,8 @@ just the Macs, `--tag nix` just nwa.
 - The remote run loads each host's own `miserc.local.toml` -- the same
   file local runs use, so there is one selection per machine. A
   brand-new host has none: pass `--remote-env mac` on the one-time
-  onboarding command; the bootstrap then writes the box's
-  `miserc.local.toml` for its later local runs.
+  onboarding command; on a Mac the bootstrap then writes `["mac"]`
+  plus a nudge to add the host module, for the box's later local runs.
 - nwa is cross-platform and the orchestrator's mise is a Homebrew build;
   mise will not substitute an official release binary for a non-official
   local one, so nwa runs under its own mise (`remote_mise` in the
@@ -190,17 +190,14 @@ and the app in the account's purchase history -- otherwise they fail and
 the task reports the missing IDs.
 
 Why brew owns the brew ecosystem: mise cannot install omlx, splash, and
-omp -- its formula-metadata shim lacks the brew DSL their taps use, its
-source-build shim rejects omp's `with_env`, and resolution is
-all-or-nothing per batch. brew evaluates its own formulas natively, so
-the Brewfile entries all work as-is. Everything else is mise's: dotfiles,
-tasks and hooks, launchd agents, the declarative macOS defaults,
-declared tool versions -- and mise itself, as a brew formula.
-
-One tool fits neither ecosystem: the Apple Intelligence removal, pared.
-No mainline brew formula and no mise backend, so the apple-intelligence
-task installs the pinned GitHub release, checksum-verified, into
-`~/.local/share/pared`.
+omp (its formula shim lacks their taps' brew DSL, and resolution is
+all-or-nothing per batch), while brew evaluates its own formulas
+natively. Everything else is mise's: dotfiles, tasks and hooks, launchd
+agents, the declarative macOS defaults, declared tool versions -- and
+mise itself, as a brew formula. One exception fits neither ecosystem:
+pared, the Apple Intelligence removal, has no formula and no mise
+backend, so its task installs the pinned, checksum-verified GitHub
+release itself.
 
 ## Files (`[dotfiles]`)
 
