@@ -21,9 +21,18 @@ pared_version = "2.2.0"
 # the old value).
 #
 # The sandboxed-app defaults Mail/TextEdit/Displays are NOT here: they
-# live in a container only Full Disk Access can write, which SSH sessions
+# lives in a container only Full Disk Access can write, which SSH sessions
 # lack, so the system-check task applies those (and skips them with a message
 # when the terminal lacks FDA).
+
+# No pinned Dock tiles: the empty apps list removes every app tile mise
+# recognises, leaving only running applications (and the Trash; folder and
+# other tiles in persistent-others are outside mise's apps feature).
+# Deliberately the named dock section, not a raw persistent-apps value --
+# mise keeps each tile's bookmark while managing the layout, and its status
+# reports the layout instead of the raw archive.
+[bootstrap.macos.dock]
+apps = []
 
 [bootstrap.macos.defaults."com.apple.dock"]
 "autohide" = true
