@@ -25,7 +25,11 @@ cat "${files[@]}" > "$manifest"
 # orphaned but harmless.
 brew bundle --no-upgrade --file="$manifest" &
 bundle_pid=$!
-( sleep 1800; kill "$bundle_pid" 2>/dev/null ) &
+# exec, so the subshell IS sleep: a plain ( sleep … ) & forks sleep as a
+# child, the cleanup below kills the subshell, and the surviving sleep keeps
+# the task's stdout open -- invisible in a terminal, but any consumer that
+# pipes or captures the task output waits the full 30 minutes for EOF.
+( exec sleep 1800 ) &
 watchdog=$!
 set +e
 wait "$bundle_pid"
