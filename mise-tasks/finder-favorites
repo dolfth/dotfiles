@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+# Finder sidebar Favorites := every visible $HOME directory plus whatever
+# is already pinned, sorted alphabetically. Not a defaults domain: Finder
+# stores favorites as the LSSharedFileList "FavoriteItems" sfl4 archive,
+# so this writes through the deprecated-but-alive LSSharedFileList API --
+# the same one mise uses for login_items. launchservicesd notifies Finder,
+# so the sidebar updates without a restart. Re-running is a no-op: missing
+# directories are appended with real bookmark data, and the sort pass only
+# moves a list that is out of order. Cosmetic: any failure (e.g. no GUI
+# session over SSH) warns and exits 0, so bootstrap never aborts.
+
+set -uo pipefail   # no -e: the swift guard below reports and passes
+
+if [ "$(uname -s)" != "Darwin" ]; then
+  echo "finder-favorites is macOS-only; skipping."
+  exit 0
+fi
+
+# macOS 27 SDK signatures: Insert(list, afterItem, displayName?, iconRef?,
+# url, properties?, moreToFollow?) and Move(list, item, afterItem). The old
+# Top/Bottom/Last anchor constants no longer exist as symbols, so every
+# move and insert anchors to a real item.
+swift -suppress-warnings - <<'EOF' || echo "  favorites: LSSharedFileList failed (headless session?); rerun at the keyboard"
+import Foundation
+import CoreServices
+
+let home = FileManager.default.homeDirectoryForCurrentUser.standardizedFileURL
+let homeDirs = ((try? FileManager.default.contentsOfDirectory(
+    at: home, includingPropertiesForKeys: [.isDirectoryKey],
+    options: [.skipsHiddenFiles])) ?? [])
+    .filter { ((try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false) }
+
+let list = LSSharedFileListCreate(kCFAllocatorDefault,
+    "com.apple.LSSharedFileList.FavoriteItems" as CFString, nil)!.takeRetainedValue()
+
+func snapshot() -> [LSSharedFileListItem] {
+    var token: UInt32 = 0
+    return (LSSharedFileListCopySnapshot(list, &token)?.takeRetainedValue()
+        as? [LSSharedFileListItem]) ?? []
+}
+func resolved(_ item: LSSharedFileListItem) -> URL? {
+    var err: Unmanaged<CFError>?
+    return (LSSharedFileListItemCopyResolvedURL(item, 0, &err)?
+        .takeRetainedValue() as URL?)?.standardizedFileURL
+}
+func name(_ item: LSSharedFileListItem) -> String { resolved(item)?.lastPathComponent ?? "" }
+
+var items = snapshot()
+if items.isEmpty {
+    // insertItemURL's afterItem is non-optional and the sentinel anchors
+    // are gone; a real macOS install always ships four default favorites,
+    // so refusing beats guessing an anchor.
+    print("  favorites: list is empty; refusing (no insert anchor without items)")
+    exit(0)
+}
+
+let pinned = Set(items.compactMap(resolved).map(\.path))
+for dir in homeDirs where !pinned.contains(dir.path) {
+    if LSSharedFileListInsertItemURL(list, items[items.count - 1], nil, nil,
+                                     dir as CFURL, nil, nil) == nil {
+        print("  favorites: insert failed: \(dir.path)")
+        exit(1)
+    }
+    print("  favorites: + \(dir.lastPathComponent)")
+    items = snapshot()   // appended items land last; keep the anchor fresh
+}
+
+let sorted = items.sorted {
+    name($0).localizedCaseInsensitiveCompare(name($1)) == .orderedAscending
+}
+if zip(items, sorted).contains(where: { $0 !== $1 }) {
+    let first = sorted[0]
+    for item in sorted.dropFirst().reversed() where item !== first {
+        _ = LSSharedFileListItemMove(list, item, first)
+    }
+    print("  favorites: reordered alphabetically")
+}
+EOF

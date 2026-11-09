@@ -235,6 +235,7 @@ used to track. To delete a file the repo deployed, declare it
 | `vscode-extensions` | final | the vscodium extensions; no-op where codium is absent |
 | `system-check` | final | the macOS system settings: FDA-gated app defaults, hostname, firewall, the tailnet resolvers in resolv.conf, Touch ID, power, updates, the FileVault check, the GPU wired-limit daemon; the desktop also gets Screen Sharing and Remote Login. The sudo part needs a TTY. Dock/Finder/… restart only when a domain they read changed |
 | `apple-intelligence` | final | the Apple Intelligence removal via the pinned pared release: disables every feature in its catalog (Siri included), keeps the managed profile installed (one System Settings click per machine), removes downloaded models. Runs only on Apple-silicon macOS 27+ |
+| `finder-favorites` | final | Finder sidebar Favorites = every visible `$HOME` directory plus what is already pinned, alphabetically. Favorites are an LSSharedFileList archive, not a defaults domain, so the task writes through that (deprecated, alive) API; Finder updates live and a converged list is a no-op. No-op off macOS |
 | `gpupool` | manual (gza) | the GPU pool is single-tenant -- pick its owner: `fn` flash-fn on :8100 (default), `27` the 27B splash server on :8000, `mlx` omlx on :8080, `status` who answers. Two tenants would OOM-crash each other's Metal clients, so the rest stay unloaded |
 
 They run on every `mise bootstrap` / `mise update` and do nothing when

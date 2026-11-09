@@ -130,7 +130,7 @@ mise run defaults-snapshot && mise run brew-bundle
 """
 
 [bootstrap.hooks.final]
-description = "Deploy the herdr and vscodium extensions, run the system check, and remove Apple Intelligence"
+description = "Deploy the herdr and vscodium extensions, run the system check, remove Apple Intelligence, and pin the Finder sidebar"
 run = """
 resolve_mise() {
   if ! command -v mise >/dev/null 2>&1; then
@@ -140,7 +140,7 @@ resolve_mise() {
   fi
 }
 resolve_mise
-mise run herdr-plugins && mise run vscode-extensions && mise run system-check && mise run apple-intelligence
+mise run herdr-plugins && mise run vscode-extensions && mise run system-check && mise run apple-intelligence && mise run finder-favorites
 """
 
 # Background sync, both Macs. A launchd agent, not a [bootstrap.services]
