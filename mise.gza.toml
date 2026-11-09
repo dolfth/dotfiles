@@ -34,6 +34,12 @@ WIRED_LIMIT_MB = "98304"
 # switched-out tenant. omlx must be UNLOADED, not merely idle, beside another
 # server: it spawns its own splash engines the moment a request arrives
 # (2026-11-08: a UI test load added 29.5 GB on top of flash-next's plan).
+# kickstart follows the same rule: a definition with kickstart = true is
+# STARTED by every launchd apply that touches it, RunAtLoad be damned --
+# 2026-11-09 an apply woke the 27B beside flash-next (86 + 30 over the 96
+# fuse) and the GUI's Metal clients died until the operator removed the job
+# 87 s later. On-demand tenants therefore keep kickstart = false; only
+# gpupool's own kickstart starts them.
 [bootstrap.macos.launchd.agents.omlx]
 program = "{{ system_brew_prefix }}/opt/omlx/bin/omlx"
 args = ["serve"]
@@ -44,7 +50,7 @@ working_directory = "{{ env.HOME }}/.omlx"
 environment = { "PATH" = "{{ system_brew_prefix }}/bin:{{ system_brew_prefix }}/sbin:/usr/bin:/bin:/usr/sbin:/sbin" }
 stdout_path = "{{ env.HOME }}/Library/Logs/omlx.log"
 stderr_path = "{{ env.HOME }}/Library/Logs/omlx.log"
-kickstart = true
+kickstart = false
 
 # --host 0.0.0.0 + --allowed-host: omp on the other hosts (mca, nwa)
 # reaches splash over the tailnet; the default bind is 127.0.0.1, and a
@@ -61,7 +67,8 @@ kickstart = true
 # is refused -- Metal clients die instead of queueing (27B OOM crashloops and
 # the Ghostty renderer failures, after the morning's watchdog panic). Exactly
 # one server runs: `mise run gpupool 27|fn|mlx` swaps the pool's owner;
-# run_at_load/keep_alive stay off so bootstrap and logins never resurrect it.
+# run_at_load/keep_alive/kickstart stay off so bootstrap, logins and launchd
+# applies never resurrect it -- only gpupool kicks.
 program = "{{ system_brew_prefix }}/opt/splash/bin/splash"
 args = ["serve", "--model", "unsloth/Qwen3.8-27B-GGUF:UD-Q4_K_XL", "--host", "0.0.0.0", "--allowed-host", "gza.foxhound-insen.ts.net", "--allowed-host", "gza", "--max-memory", "30G", "--idle-release", "3m"]
 run_at_load = false
@@ -71,7 +78,7 @@ working_directory = "{{ env.HOME }}"
 environment = { "PATH" = "{{ system_brew_prefix }}/bin:{{ system_brew_prefix }}/sbin:/usr/bin:/bin:/usr/sbin:/sbin" }
 stdout_path = "{{ env.HOME }}/Library/Logs/splash.log"
 stderr_path = "{{ env.HOME }}/Library/Logs/splash.log"
-kickstart = true
+kickstart = false
 
 [bootstrap.macos.launchd.agents.splash-fn]
 # Qwen3.8-Flash-Next: 125B MoE (6B active) + 51B PLE n-gram table, unsloth's
@@ -97,11 +104,19 @@ kickstart = true
 # the experts everything the plan leaves after the fixed runtime and the KV
 # allowance, while the explicit 2G PLE cache the first tune pinned was wasted
 # -- a 128K prompt touches ~1.1M rows and a 256 MiB row cache (auto's share)
-# hits as often as a 2 GiB one. Weights free after 3m idle, so an idle
-# machine is not sitting on 86 G of wired memory the GUI could use.
+# hits as often as a 2 GiB one. 90G was reconsidered 2026-11-09 (it would
+# double the KV pool) and declined: the GUI wires part of the same fuse, and
+# every crash so far was exactly that contest -- the fuse stays closed.
+# Weights free after 15m idle: 3m released and restored 19x during one day
+# of agent work, taxing each first request ~1.3 s plus a CPU ramp storm; the
+# GUI still gets the whole pool back on any real break.
+# --max-cache-disk 64G: auto's 32 GiB quota ran to 100.00% full (demotions
+# refused, KV state restores p50 262 ms) while the volume kept 357 GB free.
+# --thinking-token-budget 8192 bounds requests that bring no thinking budget
+# of their own, after one wrote 26,856 thinking tokens (~22 min at 20 tok/s).
 # The serve plan lands in ~/Library/Application Support/Splash/runtime/serve-8100.json.
 program = "{{ system_brew_prefix }}/opt/splash/bin/splash"
-args = ["serve", "--model", "unsloth/Qwen3.8-Flash-Next-GGUF:UD-Q4_K_XL", "--port", "8100", "--host", "0.0.0.0", "--allowed-host", "gza.foxhound-insen.ts.net", "--allowed-host", "gza", "--max-memory", "86G", "--idle-release", "3m"]
+args = ["serve", "--model", "unsloth/Qwen3.8-Flash-Next-GGUF:UD-Q4_K_XL", "--port", "8100", "--host", "0.0.0.0", "--allowed-host", "gza.foxhound-insen.ts.net", "--allowed-host", "gza", "--max-memory", "86G", "--idle-release", "15m", "--max-cache-disk", "64G", "--thinking-token-budget", "8192"]
 run_at_load = true
 keep_alive = true
 process_type = "Interactive"

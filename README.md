@@ -186,9 +186,13 @@ gate a typo'd key would let the slow phases run on a half-wrong config.
 -- the 27B model on 8000, Flash-Next on 8100, both on `0.0.0.0` with
 `--allowed-host` for the tailnet names -- run as user LaunchAgents in
 `mise.gza.toml` (`dev.mise.*`, `ProcessType: Interactive`, unthrottled).
-KeepAlive keeps them alive. Bootstrap reloads them when their definition
-changes, the `bootstrap` task restarts a dead one on every run, and `up`
-restarts a server whose keg was upgraded. Logs:
+Only flash-fn runs on its own (RunAtLoad + KeepAlive + kickstart); the 27B
+and omlx start exclusively when `mise run gpupool` kicks them, because any
+of the three switches set to true makes the next launchd apply start both
+tenants on top of each other and the fuse kills the Metal clients
+(2026-11-09). Bootstrap rewrites plists when definitions change, the
+`bootstrap` task restarts a dead flash-fn on every run, and `up` restarts a
+server whose keg was upgraded. Logs:
 `~/Library/Logs/{omlx,splash,splash-fn}.log`.
 
 All three bind beyond loopback on purpose: the other hosts' omp reaches

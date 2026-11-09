@@ -5,10 +5,13 @@
 # kernel refuses no allocation, so two resident tenants do not queue -- their
 # Metal clients die (2026-11-08: watchdog panic, 27B OOM crashloops, the
 # Ghostty renderer). This task says who owns the pool; the agents for the
-# others stay unloaded. None is RunAtLoad except flash-fn, the default owner,
-# so the bootstrap self-heal and logins never resurrect a switched-out
-# tenant -- omlx loads its engine the moment a request arrives, so it must be
-# unloaded, not merely idle, while another server runs.
+# others stay unloaded -- or loaded-idle, which mise's launchd apply may
+# leave behind, harmless: no RunAtLoad, no KeepAlive and no kickstart, so no
+# process ever spawns except when this task kicks the job it selects. None is
+# RunAtLoad except flash-fn, the default owner, so the bootstrap self-heal
+# and logins never resurrect a switched-out tenant -- omlx loads its engine
+# the moment a request arrives, so it must be unloaded, not merely idle,
+# while another server runs.
 #
 # usage: mise run gpupool fn|27|mlx|status
 #   fn    flash-fn on :8100, the default (drops 27B + omlx sessions)
