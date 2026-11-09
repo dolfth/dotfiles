@@ -8,9 +8,9 @@ symbolPreset: nerd
 defaultThinkingLevel: medium
 task:
   maxRecursionDepth: 0
-  maxConcurrency: 1
+  maxConcurrency: 4
 compaction:
-  asyncEnabled: false
+  asyncEnabled: true
 bash:
   gitGuard: true
 checkpoint:
@@ -23,11 +23,16 @@ tui:
 memory:
   backend: mnemopi
 mnemopi:
-  llmMode: none
+  llmMode: smol
   noEmbeddings: true
 providers:
   cacheWarming: "off"
 modelRoles:
-  default: splash/unsloth/Qwen3.8-27B-GGUF:UD-Q4_K_XL
+  default: splash-fn/unsloth/Qwen3.8-Flash-Next-GGUF:UD-Q4_K_XL
+  tiny: local/lfm2.5-230m
+  memory: local/lfm2-1.2b
+  judge: local/lfm2-1.2b
+title:
+  generator: tiny
 update:
   auto: false
