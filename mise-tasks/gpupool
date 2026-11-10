@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+#MISE tags=["gza"]
 # gza's GPU pool is single-tenant. The 96 GiB wired pool (system-check's
 # iogpu fuse) holds ONE model server: flash-fn (86G), the 27B (30G), or the
 # server omlx spawns for its own models (~30G per engine). Below the fuse the

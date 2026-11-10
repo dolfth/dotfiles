@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+#MISE tags=["macos"]
 # Apple Intelligence removal via pared (https://github.com/4evy/pared).
 # The policy (every feature off) writes local prefs and generates a
 # managed profile that installs into /Library/Managed Preferences -- the

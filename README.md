@@ -100,7 +100,9 @@ git commit -am "…"; git push
 ```
 
 Edit a template: preview with `mise dot diff`, re-render with
-`mise dot apply`.
+`mise dot apply`. To audit coverage, `mise dot files <path>` (mise >=
+2026.11.5) shows per-file state -- `tracked`/`excluded`/`omitted`/
+`untracked`/`partial` -- and names the rule behind each.
 
 `mise bootstrap --update` (mise >= 2026.11.0) fast-forwards
 `~/.config/mise` with `git pull --ff-only` and re-runs the whole
@@ -239,7 +241,13 @@ used to track. To delete a file the repo deployed, declare it
 | `gpupool` | manual (gza) | the GPU pool is single-tenant -- pick its owner: `fn` flash-fn on :8100 (default), `27` the 27B splash server on :8000, `mlx` omlx on :8080, `status` who answers. Two tenants would OOM-crash each other's Metal clients, so the rest stay unloaded |
 
 They run on every `mise bootstrap` / `mise update` and do nothing when
-there is nothing to do. The pre-packages hook opens with a config gate:
+there is nothing to do. The macOS-only tasks carry the `macos` tag and
+`gpupool` carries `gza` (mise >= 2026.11.2), so a group can be selected
+explicitly -- `mise run --tag macos`, `mise tasks ls --tag gza` -- instead
+of relying on the uname guards. `--output summary` collapses a multi-task
+run to one line per pass; with `task.logs = true` (mise >= 2026.11.3) a
+failed task's full output is kept for `mise tasks log NAME`. The
+pre-packages hook opens with a config gate:
 `mise env` over the loaded config, failing the run when the config does
 not parse or contains unknown fields -- normally a typo'd key only warns,
 and the slow phases would then run on a half-wrong config.

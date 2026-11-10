@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+#MISE tags=["macos"]
 # brew bundle --no-upgrade installs what is missing without touching what is
 # present (upgrades are up's job). A failed entry warns and continues so the
 # bootstrap still deploys dotfiles and agents.

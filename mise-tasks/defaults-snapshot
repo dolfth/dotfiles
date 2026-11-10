@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+#MISE tags=["macos"]
 # Saves a hash of the defaults domains the UI reads, taken BEFORE bootstrap
 # writes the declarative defaults. system-check (final hook) compares against
 # it: re-writing a value leaves the export unchanged, so a match means the

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+#MISE tags=["macos"]
 # Finder sidebar Favorites := every visible $HOME directory plus whatever
 # is already pinned, sorted alphabetically. Not a defaults domain: Finder
 # stores favorites as the LSSharedFileList "FavoriteItems" sfl4 archive,

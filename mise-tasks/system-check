@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+#MISE tags=["macos"]
 # Runs from the bootstrap final hook. The user-level parts apply without
 # sudo; the system part is TTY-gated so an unattended bootstrap skips it
 # instead of hanging on a password prompt.

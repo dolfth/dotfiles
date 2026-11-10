@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+#MISE tags=["macos"]
 # LaunchAgent self-heal. Runs after macos-launchd-agents rewrites plists:
 # bootstrap loads any not-yet-loaded job, kickstart any loaded-but-dead one
 # (no-op on a healthy agent; never kills a running server). No-op off macOS

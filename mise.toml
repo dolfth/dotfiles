@@ -6,8 +6,9 @@
 # mise below this refuses every command with an upgrade hint. It is honored
 # in the global config too (this directory), not just project configs. The
 # floor covers what onboarding and `remote_mise` need; raising it re-breaks
-# every machine below the new floor until its mise is upgraded.
-min_version = "2026.10.22"
+# every machine below the new floor until its mise is upgraded. 2026.11.2
+# brings task tags, 2026.11.3 the task.logs setting used below.
+min_version = "2026.11.3"
 
 [vars]
 # Fallback for a host with no module yet: a new Mac selected with only
@@ -64,6 +65,12 @@ ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKORTGA2F28t4VWxuvjVPnX9sfZOnNjmR5LoB8uvcwFU
 # checkout. (The error's own advice, `mise trust ~/.config/mise`, normalizes
 # to `~` -- already trusted -- and records nothing here.)
 trusted_config_paths = ["~/.config/mise"]
+
+# Keep the full output of each task's last run (mise >= 2026.11.3) so a
+# failed bootstrap hook can be read back with `mise tasks log NAME` even
+# though the default output style hides passing tasks' lines. Stored under
+# ~/.local/state/mise/task-logs/ with owner-only permissions, 4 MiB each.
+task.logs = true
 
 [bootstrap.hooks]
 # Both tasks no-op off macOS (they guard on uname), so they are safe in the
