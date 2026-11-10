@@ -1,14 +1,19 @@
 #!/usr/bin/env bash
 #MISE tags=["macos"]
-# Finder sidebar Favorites := every visible $HOME directory plus whatever
-# is already pinned, sorted alphabetically. Not a defaults domain: Finder
-# stores favorites as the LSSharedFileList "FavoriteItems" sfl4 archive,
-# so this writes through the deprecated-but-alive LSSharedFileList API --
-# the same one mise uses for login_items. launchservicesd notifies Finder,
-# so the sidebar updates without a restart. Re-running is a no-op: missing
-# directories are appended with real bookmark data, and the sort pass only
-# moves a list that is out of order. Cosmetic: any failure (e.g. no GUI
-# session over SSH) warns and exits 0, so bootstrap never aborts.
+# Finder sidebar Favorites := exactly the visible $HOME directories, sorted
+# alphabetically -- declarative like the Dock rule: hand-pinned tiles (and
+# the stock /Applications one) are removed, matching every other declared
+# surface here. Not a defaults domain: Finder stores favorites as the
+# LSSharedFileList "FavoriteItems" sfl4 archive, so this writes through the
+# deprecated-but-alive LSSharedFileList API -- the same one mise uses for
+# login_items. launchservicesd notifies Finder, so the sidebar updates
+# without a restart. Re-running is a no-op: classification resolves each
+# bookmark with NoUserInteraction|DoNotMountVolumes (the SDK's only two
+# resolution flags), because a full resolve is the one call that can block
+# on a stale or network item -- connecting, mounting, or prompting. An
+# unresolvable item is therefore stale by definition here and gets removed.
+# A 90 s watchdog kills even a wedged call so bootstrap never hangs.
+# Cosmetic: any failure (e.g. no GUI session over SSH) warns and exits 0.
 
 set -uo pipefail   # no -e: the swift guard below reports and passes
 
@@ -18,18 +23,20 @@ if [ "$(uname -s)" != "Darwin" ]; then
 fi
 
 # macOS 27 SDK signatures: Insert(list, afterItem, displayName?, iconRef?,
-# url, properties?, moreToFollow?) and Move(list, item, afterItem). The old
-# Top/Bottom/Last anchor constants no longer exist as symbols, so every
-# move and insert anchors to a real item.
-swift -suppress-warnings - <<'EOF' || echo "  favorites: LSSharedFileList failed (headless session?); rerun at the keyboard"
+# url, properties?, moreToFollow?), Move(list, item, afterItem) and
+# Remove(list, item). The old Top/Bottom/Last anchor constants no longer
+# exist as symbols, so every move and insert anchors to a real item.
+timeout 90 swift -suppress-warnings - <<'EOF' || echo "  favorites: LSSharedFileList failed (headless session? or 90s watchdog); rerun at the keyboard"
 import Foundation
 import CoreServices
 
 let home = FileManager.default.homeDirectoryForCurrentUser.standardizedFileURL
-let homeDirs = ((try? FileManager.default.contentsOfDirectory(
+let declared = ((try? FileManager.default.contentsOfDirectory(
     at: home, includingPropertiesForKeys: [.isDirectoryKey],
     options: [.skipsHiddenFiles])) ?? [])
     .filter { ((try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false) }
+    .map { ($0.standardizedFileURL.path, $0.lastPathComponent) }
+let declaredPaths = Set(declared.map(\.0))
 
 let list = LSSharedFileListCreate(kCFAllocatorDefault,
     "com.apple.LSSharedFileList.FavoriteItems" as CFString, nil)!.takeRetainedValue()
@@ -39,12 +46,16 @@ func snapshot() -> [LSSharedFileListItem] {
     return (LSSharedFileListCopySnapshot(list, &token)?.takeRetainedValue()
         as? [LSSharedFileListItem]) ?? []
 }
-func resolved(_ item: LSSharedFileListItem) -> URL? {
+// Safe resolution: never connects/mounts/prompt, so it cannot block on a
+// stale volume or network item. An item that fails it is stale here by
+// definition (every declared dir is local and present), so nil -> remove.
+let safeFlags = UInt32(kLSSharedFileListNoUserInteraction |
+                       kLSSharedFileListDoNotMountVolumes)
+func safeURL(_ item: LSSharedFileListItem) -> URL? {
     var err: Unmanaged<CFError>?
-    return (LSSharedFileListItemCopyResolvedURL(item, 0, &err)?
+    return (LSSharedFileListItemCopyResolvedURL(item, safeFlags, &err)?
         .takeRetainedValue() as URL?)?.standardizedFileURL
 }
-func name(_ item: LSSharedFileListItem) -> String { resolved(item)?.lastPathComponent ?? "" }
 
 var items = snapshot()
 if items.isEmpty {
@@ -55,19 +66,33 @@ if items.isEmpty {
     exit(0)
 }
 
-let pinned = Set(items.compactMap(resolved).map(\.path))
-for dir in homeDirs where !pinned.contains(dir.path) {
+// Insert the missing declared dirs first: the list can never be emptied
+// before the insert pass, so a sidebar with zero declared dirs still works.
+let pinned = Set(items.compactMap(safeURL).map(\.path))
+for dir in declared where !pinned.contains(dir.0) {
     if LSSharedFileListInsertItemURL(list, items[items.count - 1], nil, nil,
-                                     dir as CFURL, nil, nil) == nil {
-        print("  favorites: insert failed: \(dir.path)")
+                                     URL(fileURLWithPath: dir.0) as CFURL, nil, nil) == nil {
+        print("  favorites: insert failed: \(dir.0)")
         exit(1)
     }
-    print("  favorites: + \(dir.lastPathComponent)")
+    print("  favorites: + \(dir.1)")
     items = snapshot()   // appended items land last; keep the anchor fresh
 }
 
+// Remove everything not declared -- stale bookmarks included.
+for item in items {
+    if let url = safeURL(item), declaredPaths.contains(url.path) { continue }
+    let label = safeURL(item)?.lastPathComponent
+        ?? (LSSharedFileListItemCopyDisplayName(item).takeRetainedValue() as String?) ?? "?"
+    LSSharedFileListItemRemove(list, item)
+    print("  favorites: - \(label)")
+}
+
+// Sort pass on stored lastPathComponent; names resolved once up front.
+items = snapshot()
 let sorted = items.sorted {
-    name($0).localizedCaseInsensitiveCompare(name($1)) == .orderedAscending
+    (safeURL($0)?.lastPathComponent ?? "").localizedCaseInsensitiveCompare(
+        safeURL($1)?.lastPathComponent ?? "") == .orderedAscending
 }
 if zip(items, sorted).contains(where: { $0 !== $1 }) {
     let first = sorted[0]
