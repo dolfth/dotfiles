@@ -191,6 +191,10 @@ value = { "NSDefaultDisplayName" = "DuckDuckGo", "NSProviderIdentifier" = "com.d
 # A real file at 0600: a symlink would expose the repo file's permissions to
 # ssh's checks.
 "~/.ssh/config" = { source = "ssh_config", mode = "copy", permissions = "0600" }
+# The fleet's login keys, from the ssh_keys var. mise owns the file:
+# hand-added keys are overwritten. Not on nwa -- its flake writes
+# authorized_keys.
+"~/.ssh/authorized_keys" = { source = "ssh/authorized_keys.tera", mode = "template", permissions = "0600" }
 # On nwa, home-manager writes its own fish functions there, so this deploys
 # only on the Macs.
 "~/.config/fish/functions/up.fish" = "fish/functions/up.fish"

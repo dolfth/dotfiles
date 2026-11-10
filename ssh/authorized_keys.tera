@@ -1,0 +1,5 @@
+# Which keys may log in: the ssh_keys var, the same list allowed_signers
+# uses (canonical: https://github.com/dolfth.keys). mise owns the
+# rendered file; a key added by hand is overwritten -- put it in the var.
+{% for key in vars.ssh_keys | trim | split(pat="\n") %}{{ key }}
+{% endfor %}

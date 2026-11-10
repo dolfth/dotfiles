@@ -90,6 +90,23 @@ Two gates:
   `~/.local/bin/mise self-update` (or `nix build .#mise` for the flake's
   copy) before bootstrapping again.
 
+## SSH between hosts
+
+The mac module renders the `sshKeys` var to `~/.ssh/authorized_keys` on
+both Macs, so any fleet machine can `ssh <host>.<tailnet>` without a
+password. The var is the list at <https://github.com/dolfth.keys>; to
+retire a machine, drop its key from both and bootstrap. Keys added by
+hand on a host do not survive the next bootstrap.
+
+nwa is different: it runs Tailscale SSH ("Bootstrap nwa") and its flake
+owns authorized_keys. The Macs stay on the Tailscale app variant: it
+cannot serve Tailscale SSH (variant matrix), and keys cover the paths
+where that would matter, LAN included. gza keeps password auth for one
+case only: the pre-unlock FileVault login window
+(`man apple_ssh_and_filevault`) takes a password, no keys -- after a
+power cut that is the way back in. Keep the Tailscale app current: the
+TS-2026-014..017 fixes are in 1.104.4.
+
 ## Day to day
 
 ```bash
@@ -207,6 +224,7 @@ release itself.
 |---|---|---|
 | `zshrc` | `~/.zshrc` | both Macs; starts fish |
 | `ssh_config` | `~/.ssh/config` | copied at 0600 -- a symlink would expose the repo file's permissions to ssh; key passphrases live in the Keychain |
+| `ssh/authorized_keys.tera` | `~/.ssh/authorized_keys` | the Macs; the `sshKeys` var rendered, 0600. The file is mise's: hand-added keys need to go into the var. Not on nwa -- its flake writes it |
 | `fish/config.fish` | `~/.config/fish/config.fish` | all machines; the mise activation block |
 | `fish/functions/*.fish` | `~/.config/fish/functions/` | Macs; nwa's home-manager owns its own functions. `up` upgrades everything, `mkd` makes and enters a directory, `tstat` lists the tailnet peers, `port` shows who holds a port |
 | `starship.toml.tera` | `~/.config/starship.toml` | per-host accent and icon from the vars |
@@ -239,6 +257,7 @@ used to track. To delete a file the repo deployed, declare it
 | `apple-intelligence` | final | the Apple Intelligence removal via the pinned pared release: disables every feature in its catalog (Siri included), keeps the managed profile installed (one System Settings click per machine), removes downloaded models. Runs only on Apple-silicon macOS 27+ |
 | `finder-favorites` | final | Finder sidebar Favorites := exactly the visible `$HOME` directories, alphabetically -- hand-pinned tiles (the stock Applications one included) and stale bookmarks are removed, like the Dock rule. Favorites are an LSSharedFileList archive, not a defaults domain, so the task writes through that (deprecated, alive) API; Finder updates live and a converged list is a no-op. Bookmarks are only ever resolved with no-interaction/no-mount flags and the run has a 90 s watchdog, so a stale item can never block the bootstrap. No-op off macOS |
 | `gpupool` | manual (gza) | the GPU pool is single-tenant -- pick its owner: `fn` flash-fn on :8100 (default), `27` the 27B splash server on :8000, `mlx` omlx on :8080, `status` who answers. Two tenants would OOM-crash each other's Metal clients, so the rest stay unloaded |
+| `tailscale-ssh` | manual (Macs) | advertise Tailscale SSH on the CLI tailscaled (`tailscale set --ssh`) and report; refuses from a tailnet SSH session (interception would hang it) and while the app variant is installed. Variant cutover itself is the README's manual sequence |
 
 They run on every `mise bootstrap` / `mise update` and do nothing when
 there is nothing to do. The macOS-only tasks carry the `macos` tag and
