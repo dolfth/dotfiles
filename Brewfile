@@ -25,15 +25,17 @@ brew "ffmpeg"
 brew "FelixKratz/formulae/borders"
 brew "fish"
 brew "helix"
-brew "git"
+brew "herdr"
 brew "jq"
 brew "mas"
 brew "mise"
 brew "mole"
 brew "mosh"
-# The coding agent; its config deploys to every host via the shared mise
-# dotfiles, its models run on gza over Tailscale.
-brew "omp"
+# The sandbox for the coding agents. On the Macs `omp` on PATH is a
+# root-owned nono wrapper installed by the dev-agents task (herdr launches
+# agents by PATH name, so every launch is sandboxed); the raw binary is
+# omp-unsandboxed. The Brewfile carries the tool, the task the policy.
+brew "nono"
 brew "starship"
 # Runs under the dev.mise.syncthing launchd agent (mise.toml), not
 # `brew services`.

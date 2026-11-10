@@ -1,0 +1,44 @@
+{
+  "meta": { "name": "omp", "version": "1.0.0" },
+  "extends": "default",
+  "groups": {
+    "include": [
+      "git_config",
+      "bun_runtime",
+      "node_runtime",
+      "mise_manager",
+      "python_runtime",
+      "user_caches_macos"
+    ]
+  },
+  "workdir": { "access": "readwrite" },
+  "filesystem": {
+    "allow": [
+      "$HOME/.omp",
+      "$HOME/.local/bin",
+      "$HOME/.local/share/uv"
+    ],
+    "read_file": [
+      "$HOME/.config/git/sign.pub",
+      "$HOME/.config/git/known_hosts"
+    ],
+    "allow_file": ["$HOME/.config/mise/omp/agent/config.yml"],
+    "deny": [
+      "$HOME/.config/herdr",
+      "$HOME/.local/share/fish",
+      "$HOME/Documents",
+      "$HOME/Downloads",
+      "$HOME/Desktop",
+      "$HOME/Pictures",
+      "$HOME/Movies",
+      "$HOME/Music",
+      "$HOME/Library/Application Support",
+      "$HOME/Library/Containers",
+      "$HOME/Library/Group Containers",
+      "$HOME/Library/Private Documents"
+    ]
+  },
+  "environment": {
+    "deny_vars": ["HERDR_ENV", "HERDR_SOCKET_PATH", "HERDR_CLIENT_SOCKET_PATH"]
+  }
+}

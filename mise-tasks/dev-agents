@@ -1,0 +1,185 @@
+#!/usr/bin/env bash
+#MISE tags=["macos"]
+# The Mac omp sandbox: the port of nwa's dev-agents.nix (NixOS, Landlock) to
+# macOS (nono, Seatbelt). Installs the root-owned sandbox under /usr/local and
+# checks the invariants it relies on. See nono/omp.json (profile) and
+# nono/omp-wrapper.sh (wrapper) for the pieces installed.
+#
+#   mise run dev-agents          verify, then install (install needs sudo)
+#   mise run dev-agents check    static checks only, no sudo
+#
+# The invariants, and why the sandbox dies without them:
+#
+# 1. The herdr control socket (~/.config/herdr/sessions/<name>/herdr.sock)
+#    must be unreachable from inside the sandbox: `herdr pane run` executes
+#    commands in UNSANDBOXED panes, so reaching the socket is an escape.
+#    Seatbelt blocks connect() on sockets under a filesystem.deny path
+#    (proven on gza 2026-11-10: EPERM inside, OK outside, and sockets in
+#    allowed paths still connect, so the block is path-specific). The check
+#    below re-asserts it statically via `nono why`.
+# 2. HERDR_ENV, HERDR_SOCKET_PATH and HERDR_CLIENT_SOCKET_PATH are stripped
+#    (environment.deny_vars) so an agent concludes "not under herdr" instead
+#    of failing on the socket; HERDR_AGENT is KEPT (the wrapper exports it --
+#    herdr reads it from the pane's foreground process to name the agent).
+# 3. `nono wrap`, not `nono run`: run's non-dumpable supervisor becomes the
+#    foreground process and herdr panes show "unknown".
+# 4. --profile takes a full path, never a name: names resolve at run time and
+#    a registry pack can claim one (nwa watched `nono pull` replace a profile
+#    with one granting ~/.claude and the network).
+# 5. The profile and the wrapper are root:wheel and outside $HOME -- the
+#    agent runs as this user and must not be able to edit its own sandbox.
+#    They are installed by copy, never symlinked from this repo.
+# 6. No grants of $HOME itself, ~/.ssh, or sops/age key paths.
+
+set -euo pipefail
+
+if [ "$(uname -s)" != "Darwin" ]; then
+  echo "dev-agents is macOS-only; skipping."
+  exit 0
+fi
+
+root="$(cd "$(dirname "$0")/.." && pwd)"
+profile_src="$root/nono/omp.json"
+wrapper_src="$root/nono/omp-wrapper.sh"
+agents_md_src="$root/nono/AGENTS-sandbox.md"
+
+profile_dst=/usr/local/etc/nono/omp.json
+wrapper_dst=/usr/local/bin/omp
+raw_dst=/usr/local/bin/omp-unsandboxed
+
+# Pinned like nwa's ompPkg (a versioned release binary with a checksum, not a
+# brew formula: the wrapper must point at a stable path brew never touches).
+omp_version="18.18.6"
+omp_sha256="ed2e63eb43888eb76cb1409b245b1db4557c94dfad52dc545c9aaca01ebce82d"  # omp-darwin-arm64
+
+fail() { echo "dev-agents check: $*" >&2; exit 1; }
+
+##### check -- the invariants, machine-checked ################################
+
+check() {
+  command -v nono >/dev/null || fail "nono not installed (Brewfile entry; run the bootstrap or brew install nono)"
+  command -v jq >/dev/null || fail "jq not installed"
+
+  nono profile validate "$profile_src" >/dev/null || fail "profile does not validate"
+
+  # R2: exactly the three herdr control vars denied.
+  local vars
+  vars=$(jq -r '.environment.deny_vars | sort | join(",")' "$profile_src")
+  [ "$vars" = "HERDR_CLIENT_SOCKET_PATH,HERDR_ENV,HERDR_SOCKET_PATH" ] \
+    || fail "environment.deny_vars is '$vars', want the three herdr control vars"
+
+  # R1: the herdr socket dir is denied, and the engine says a socket under it
+  # is denied (the runtime EPERM proof lives in the header).
+  jq -e '.filesystem.deny | index("$HOME/.config/herdr")' "$profile_src" >/dev/null \
+    || fail "profile does not deny \$HOME/.config/herdr"
+  local why
+  why=$(nono why --profile "$profile_src" --unix-socket "$HOME/.config/herdr/sessions/check/herdr.sock" 2>/dev/null | head -1)
+  [ "$why" = "DENIED" ] || fail "nono why: herdr socket not denied ($why)"
+
+  # R4 + R3 + R2-keep: wrapper pins the profile by path, wraps (not runs),
+  # exports HERDR_AGENT, and references nothing under \$HOME for the sandbox
+  # authority itself.
+  grep -q -- "--profile $profile_dst" "$wrapper_src" \
+    || fail "wrapper does not pass --profile $profile_dst (a full path)"
+  grep -q "nono wrap " "$wrapper_src" || fail "wrapper does not use 'nono wrap'"
+  grep -q "export HERDR_AGENT=omp" "$wrapper_src" || fail "wrapper does not export HERDR_AGENT"
+
+  # R6: no grants of $HOME itself, ~/.ssh, or secret-manager key paths.
+  local grants
+  grants=$(jq -r '[.filesystem | (.allow // [])[], (.allow_file // [])[], (.read // [])[], (.read_file // [])[]] | join(" ")' "$profile_src")
+  for bad in '"$HOME"' '$HOME/.ssh' sops age/ '$HOME/.gnupg' '$HOME/.aws'; do
+    case " $grants " in *" $bad "*) fail "profile grants a protected path: $bad" ;; esac
+  done
+
+  # R5 on the installed copies: present, current, root:wheel.
+  local p
+  for f in "$profile_dst" "$wrapper_dst" "$raw_dst"; do
+    [ -e "$f" ] || { echo "  (not installed yet: $f)"; continue; }
+    p=$(stat -f '%Su:%Sg' "$f")
+    [ "$p" = "root:wheel" ] || fail "$f is owned by $p, want root:wheel (the agent could edit its own sandbox)"
+  done
+  if [ -e "$profile_dst" ]; then
+    cmp -s "$profile_src" "$profile_dst" || fail "$profile_dst is stale; re-run mise run dev-agents"
+  fi
+
+  # PATH: the wrapper must win. A brew omp would shadow it (/opt/homebrew/bin
+  # sorts first) -- dev-agents removes the formula on install.
+  command -v omp 2>/dev/null | grep -qx "$wrapper_dst" || true  # informational
+  if [ -x /opt/homebrew/bin/omp ] || [ -x "$(brew --prefix 2>/dev/null)/bin/omp" ]; then
+    echo "  warning: a brew-managed omp still shadows the wrapper on PATH"
+  fi
+
+  echo "dev-agents check: OK"
+}
+
+##### install -- root-owned files, sudo, TTY-gated like system-check ##########
+
+install() {
+  # TTY gate: an unattended bootstrap (ssh, no prompt possible) skips the
+  # sudo part instead of hanging.
+  if ! sudo -n true 2>/dev/null && [ ! -t 0 ]; then
+    echo "==> dev-agents: the /usr/local install needs sudo and no TTY is attached; run 'mise run dev-agents' from a terminal."
+    return 0
+  fi
+
+  brew_prefix="$(brew --prefix)"
+  [ -x "$brew_prefix/bin/nono" ] || fail "nono missing at $brew_prefix/bin/nono (brew bundle first)"
+
+  echo "==> Installing the sandbox (root:wheel, outside \$HOME, never symlinked)"
+  sudo mkdir -p /usr/local/etc/nono
+  sudo install -o root -g wheel -m 644 "$profile_src" "$profile_dst"
+
+  tmp_wrapper="$(mktemp)"
+  sed "s|__BREW_PREFIX__|$brew_prefix|g" "$wrapper_src" > "$tmp_wrapper"
+  sudo install -o root -g wheel -m 755 "$tmp_wrapper" "$wrapper_dst"
+  rm -f "$tmp_wrapper"
+
+  # The pinned raw binary, mirroring nwa's ompPkg.
+  if ! "$raw_dst" --version 2>/dev/null | grep -q "$omp_version"; then
+    echo "==> Fetching omp $omp_version (pinned, checksum-verified)"
+    tmp_bin="$(mktemp)"
+    curl -fL --retry 3 -o "$tmp_bin" \
+      "https://github.com/can1357/oh-my-pi/releases/download/v$omp_version/omp-darwin-arm64"
+    echo "$omp_sha256  $tmp_bin" | shasum -a 256 -c - \
+      || fail "omp binary checksum mismatch -- refusing to install"
+    sudo install -o root -g wheel -m 755 "$tmp_bin" "$raw_dst"
+    rm -f "$tmp_bin"
+  fi
+
+  # The brew formula would shadow the wrapper on PATH: clean cutover, the
+  # pinned release is the raw binary now.
+  if brew list --formula 2>/dev/null | grep -qx omp; then
+    echo "==> Removing brew omp (superseded by $raw_dst)"
+    brew uninstall omp
+  fi
+
+  # The dirs the profile grants. Creating them first mirrors nwa's tmpfiles
+  # rules (Landlock needed the path to exist; Seatbelt does not care, but one
+  # shape on both hosts is easier to reason about).
+  mkdir -p "$HOME/.config/herdr" "$HOME/.omp/agent" "$HOME/.cache/nono-tmp/omp" \
+           "$HOME/.local/share/uv" "$HOME/.local/bin" "$HOME/.config/git"
+
+  # The agent's git pieces with ~/.ssh denied: the PUBLIC signing key and the
+  # known hosts copy the wrapper points git at.
+  if [ -f "$HOME/.ssh/id_ed25519.pub" ]; then
+    cmp -s "$HOME/.ssh/id_ed25519.pub" "$HOME/.config/git/sign.pub" \
+      || install -m 644 "$HOME/.ssh/id_ed25519.pub" "$HOME/.config/git/sign.pub"
+  fi
+  if [ -f "$HOME/.ssh/known_hosts" ]; then
+    cmp -s "$HOME/.ssh/known_hosts" "$HOME/.config/git/known_hosts" \
+      || install -m 644 "$HOME/.ssh/known_hosts" "$HOME/.config/git/known_hosts"
+  fi
+
+  # The sandbox note omp loads into every session, so denials cost one line
+  # instead of a token-spending investigation.
+  cmp -s "$agents_md_src" "$HOME/.omp/agent/AGENTS.md" \
+    || install -m 644 "$agents_md_src" "$HOME/.omp/agent/AGENTS.md"
+
+  echo "==> Installed: $(/usr/local/bin/omp-unsandboxed --version), wrapped by $wrapper_dst"
+}
+
+case "${1:-all}" in
+  check) check ;;
+  all)   check; install ;;
+  *)     echo "usage: mise run dev-agents [check|all]"; exit 2 ;;
+esac

@@ -39,13 +39,13 @@ mise bootstrap --adopt 'git@github.com:dolfth/dotfiles.git?ref=main' -E mac,gza 
 
 Step 5 clones the repo into `~/.config/mise` and runs the bootstrap:
 packages (`brew bundle` over the Brewfiles), dotfiles, the launchd
-agents, the system settings, the herdr and vscodium extensions, and the
-Apple Intelligence removal.
+agents, the system settings, the herdr and vscodium extensions, the omp
+sandbox, and the Apple Intelligence removal.
 
 Three things need a terminal at the machine afterwards (ssh is skipped
 for the first):
 
-- `mise run system-check` -- its sudo part needs a TTY.
+- `mise run dev-agents && mise run system-check` -- their sudo parts need a TTY.
 - The Apple Intelligence task opens a profile in System Settings; click
   Install. One manual click per machine.
 - Tick "Start at Login" in LinearMouse -- a UI-only toggle; the system
@@ -238,6 +238,9 @@ release itself.
 | `omlx/*.json` | `~/.omlx/` | gza; the pinned settings deep-merged into the files omlx writes (auth keys stay omlx's), plus server aliases for the host's `.local` and Tailscale names |
 | `omp/agent/config.yml` | `~/.omp/agent/config.yml` | symlinked on every host: `/settings` changes flow back into the repo -- commit them |
 | `omp/agent/models.yml.tera` | `~/.omp/agent/models.yml` | the omlx + splash providers; `baseUrl` is `127.0.0.1` on gza, the gza tailnet FQDN elsewhere |
+| `nono/omp.json` | `/usr/local/etc/nono/omp.json` | Macs; the Seatbelt profile for omp, installed root:wheel by the `dev-agents` task -- by copy, never a repo symlink: the sandboxed agent must not be able to edit its own sandbox |
+| `nono/omp-wrapper.sh` | `/usr/local/bin/omp` | Macs; root:wheel, so `omp` on PATH -- and every launch by name, `herdr agent start` included -- is sandboxed. Raw binary: `omp-unsandboxed`. The port of nwa's `dev-agents.nix`; requirements in the task's header |
+| `nono/AGENTS-sandbox.md` | `~/.omp/agent/AGENTS.md` | Macs; the note omp loads into every session, so a sandbox denial costs one line, not a token-spending investigation |
 
 Rows without a host apply to every machine. Files on disk that no loaded
 module declares are left alone; `mise dot prune` removes ones the repo
@@ -253,6 +256,7 @@ used to track. To delete a file the repo deployed, declare it
 | `bootstrap` | the `bootstrap` task slot | for each `dev.mise.*` LaunchAgent: a guarded `launchctl bootstrap` (loads only a not-yet-loaded job) plus a bare `kickstart` (starts a dead agent, no-op on a healthy one -- never kills a running server); then reports who holds each port. No-op off gza |
 | `herdr-plugins` | final | the herdr plugins the keybindings rely on; no-op where herdr is absent |
 | `vscode-extensions` | final | the vscodium extensions; no-op where codium is absent |
+| `dev-agents` | final | the Mac omp sandbox (nwa's dev-agents.nix ported to Seatbelt): checks the profile's invariants (herdr socket denied, HERDR control vars stripped, profile by path, root-owned, no `$HOME`/`~/.ssh` grants), installs the pinned raw binary plus the root:wheel profile and wrapper under `/usr/local`, removes the brew omp that would shadow it, seeds the agent's `sign.pub`/`known_hosts` copies. `dev-agents check` is the sudo-free static half. The sudo part needs a TTY |
 | `system-check` | final | the macOS system settings: FDA-gated app defaults, hostname, firewall, the tailnet resolvers in resolv.conf, Touch ID, power, updates, the FileVault check, the GPU wired-limit daemon; the desktop also gets Screen Sharing and Remote Login. The sudo part needs a TTY. Dock/Finder/… restart only when a domain they read changed |
 | `apple-intelligence` | final | the Apple Intelligence removal via the pinned pared release: disables every feature in its catalog (Siri included), keeps the managed profile installed (one System Settings click per machine), removes downloaded models. Runs only on Apple-silicon macOS 27+ |
 | `finder-favorites` | final | Finder sidebar Favorites := exactly the visible `$HOME` directories, alphabetically -- hand-pinned tiles (the stock Applications one included) and stale bookmarks are removed, like the Dock rule. Favorites are an LSSharedFileList archive, not a defaults domain, so the task writes through that (deprecated, alive) API; Finder updates live and a converged list is a no-op. Bookmarks are only ever resolved with no-interaction/no-mount flags and the run has a 90 s watchdog, so a stale item can never block the bootstrap. No-op off macOS |
