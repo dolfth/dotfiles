@@ -132,7 +132,12 @@ check() {
 
 ##### install -- root-owned files, sudo, TTY-gated like system-check ##########
 
-install() {
+# NOT called `install`: bash resolves functions before binaries, so a function
+# named install turns the seeding `install -m 644 ...` below into infinite
+# recursion (hit live: the first seed whose cmp-skipped equality check missed
+# -- an edited AGENTS.md -- spammed the header line until Ctrl-C). The seeds
+# additionally call `command install` so no future rename can re-arm it.
+install_stack() {
   # TTY gate: an unattended bootstrap (ssh, no prompt possible) skips the
   # sudo part instead of hanging.
   if ! sudo -n true 2>/dev/null && [ ! -t 0 ]; then
@@ -183,23 +188,23 @@ install() {
   # known hosts copy the wrapper points git at.
   if [ -f "$HOME/.ssh/id_ed25519.pub" ]; then
     cmp -s "$HOME/.ssh/id_ed25519.pub" "$HOME/.config/git/sign.pub" \
-      || install -m 644 "$HOME/.ssh/id_ed25519.pub" "$HOME/.config/git/sign.pub"
+      || command install -m 644 "$HOME/.ssh/id_ed25519.pub" "$HOME/.config/git/sign.pub"
   fi
   if [ -f "$HOME/.ssh/known_hosts" ]; then
     cmp -s "$HOME/.ssh/known_hosts" "$HOME/.config/git/known_hosts" \
-      || install -m 644 "$HOME/.ssh/known_hosts" "$HOME/.config/git/known_hosts"
+      || command install -m 644 "$HOME/.ssh/known_hosts" "$HOME/.config/git/known_hosts"
   fi
 
   # The sandbox note omp loads into every session, so denials cost one line
   # instead of a token-spending investigation.
   cmp -s "$agents_md_src" "$HOME/.omp/agent/AGENTS.md" \
-    || install -m 644 "$agents_md_src" "$HOME/.omp/agent/AGENTS.md"
+    || command install -m 644 "$agents_md_src" "$HOME/.omp/agent/AGENTS.md"
 
   echo "==> Installed: $(/usr/local/bin/omp-unsandboxed --version), wrapped by $wrapper_dst"
 }
 
 case "${1:-all}" in
   check) check strict ;;
-  all)   check lenient; install ;;
+  all)   check lenient; install_stack ;;
   *)     echo "usage: mise run dev-agents [check|all]"; exit 2 ;;
 esac
