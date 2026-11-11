@@ -16,6 +16,7 @@
     "allow": [
       "$HOME/.omp",
       "$HOME/.local/bin",
+      "$HOME/.local/state",
       "$HOME/.local/share/uv"
     ],
     "read_file": [

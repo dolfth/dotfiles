@@ -20,7 +20,10 @@ export TMPDIR
 
 # The sandbox denies ~/.config/fish (deny_shell_configs), so the shells this
 # agent spawns never run brew's shellenv. Carry the tool paths through env.
-PATH="$HOME/.local/bin:__BREW_PREFIX__/bin:__BREW_PREFIX__/sbin:$PATH"
+# Deduped: nono counts each entry once when it warns about sandbox-writable
+# PATH dirs, and a login PATH already carrying ~/.local/bin would double-count
+# it (two warnings for the one intentional grant).
+PATH="$(printf '%s' "$HOME/.local/bin:__BREW_PREFIX__/bin:__BREW_PREFIX__/sbin:$PATH" | awk -v RS=: -v ORS=: '!seen[$0]++' | sed 's/:$//')"
 export PATH
 
 # ~/.ssh is denied, but git must still sign and push: ssh-keygen signs through

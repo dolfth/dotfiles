@@ -57,6 +57,10 @@ fail() { echo "dev-agents check: $*" >&2; exit 1; }
 ##### check -- the invariants, machine-checked ################################
 
 check() {
+  # Inside a sandbox, /usr/local/etc/nono is invisible by design, and an
+  # unreadable install would masquerade as "not installed yet" below. Refuse
+  # rather than certify what cannot be seen (NONO_CAP_FILE is set by nono).
+  [ -z "${NONO_CAP_FILE:-}" ] || fail "running inside a nono sandbox; the check must run unsandboxed (omp-unsandboxed -- mise run dev-agents check)"
   command -v nono >/dev/null || fail "nono not installed (Brewfile entry; run the bootstrap or brew install nono)"
   command -v jq >/dev/null || fail "jq not installed"
 
