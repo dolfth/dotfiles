@@ -18,6 +18,11 @@ TMPDIR="$XDG_CACHE_HOME/nono-tmp/omp"
 mkdir -p "$TMPDIR"
 export TMPDIR
 
+# mnemopi-embed prepares its fastembed runtime with `bun install` (omp
+# re-execs as bun via BUN_BE_BUN, env inherited); the default cache ~/.bun
+# is denied, so point it into the granted ~/.omp instead.
+export BUN_INSTALL_CACHE_DIR="$HOME/.omp/cache/bun-install"
+
 # The sandbox denies ~/.config/fish (deny_shell_configs), so the shells this
 # agent spawns never run brew's shellenv. Carry the tool paths through env.
 # Deduped: nono warns per PATH entry, and a login PATH already carrying

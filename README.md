@@ -239,7 +239,7 @@ release itself.
 | `omp/agent/config.yml` | `~/.omp/agent/config.yml` | symlinked on every host: `/settings` changes flow back into the repo -- commit them |
 | `omp/agent/models.yml.tera` | `~/.omp/agent/models.yml` | the omlx + splash providers; `baseUrl` is `127.0.0.1` on gza, the gza tailnet FQDN elsewhere |
 | `nono/omp.json` | `/usr/local/etc/nono/omp.json` | Macs; the Seatbelt profile for omp, installed root:wheel by the `dev-agents` task -- by copy, never a repo symlink: the sandboxed agent must not be able to edit its own sandbox |
-| `nono/omp-wrapper.sh` | `/usr/local/bin/omp` | Macs; root:wheel, so `omp` on PATH -- and every launch by name, `herdr agent start` included -- is sandboxed. Raw binary: `omp-unsandboxed`. The port of nwa's `dev-agents.nix`; requirements in the task's header |
+| `nono/omp-wrapper.sh` | `/usr/local/bin/omp` | Macs; root:wheel, so `omp` on PATH -- and every launch by name, `herdr agent start` included -- is sandboxed. Raw binary: `omp-unsandboxed`. Redirects Bun's install cache to `~/.omp/cache/bun-install` (`~/.bun` is denied; the memory embedder installs its runtime with Bun). The port of nwa's `dev-agents.nix`; requirements in the task's header |
 | `nono/AGENTS-sandbox.md` | `~/.omp/agent/AGENTS.md` | Macs; the note omp loads into every session, so a sandbox denial costs one line, not a token-spending investigation |
 
 Rows without a host apply to every machine. Files on disk that no loaded

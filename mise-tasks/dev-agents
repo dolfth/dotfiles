@@ -105,6 +105,8 @@ check() {
     || fail "wrapper does not pass --profile $profile_dst (a full path)"
   grep -q "nono wrap " "$wrapper_src" || fail "wrapper does not use 'nono wrap'"
   grep -q "export HERDR_AGENT=omp" "$wrapper_src" || fail "wrapper does not export HERDR_AGENT"
+  grep -q "export BUN_INSTALL_CACHE_DIR=" "$wrapper_src" \
+    || fail "wrapper does not redirect the Bun install cache (~/.bun is denied; the memory embedder dies)"
 
   # R6: no grants of $HOME itself, ~/.ssh, or secret-manager key paths.
   local grants
