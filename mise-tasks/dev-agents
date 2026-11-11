@@ -57,6 +57,11 @@ fail() { echo "dev-agents check: $*" >&2; exit 1; }
 ##### check -- the invariants, machine-checked ################################
 
 check() {
+  # strict (standalone `check`): an installed copy differing from the repo is
+  # a failure. lenient (pre-install in `all`): expected mid-flight -- refusing
+  # there is a deadlock, the run that fixes staleness would trip on it
+  # ("is stale; re-run" -- re-running fails identically forever).
+  local strict="${1:-strict}"
   # Inside a sandbox, /usr/local/etc/nono is invisible by design, and an
   # unreadable install would masquerade as "not installed yet" below. Refuse
   # rather than certify what cannot be seen (NONO_CAP_FILE is set by nono).
@@ -106,8 +111,11 @@ check() {
     p=$(stat -f '%Su:%Sg' "$f")
     [ "$p" = "root:wheel" ] || fail "$f is owned by $p, want root:wheel (the agent could edit its own sandbox)"
   done
-  if [ -e "$profile_dst" ]; then
-    cmp -s "$profile_src" "$profile_dst" || fail "$profile_dst is stale; re-run mise run dev-agents"
+  if [ -e "$profile_dst" ] && ! cmp -s "$profile_src" "$profile_dst"; then
+    if [ "$strict" = strict ]; then
+      fail "$profile_dst is stale; re-run mise run dev-agents"
+    fi
+    echo "  (stale: $profile_dst -- the install below refreshes it)"
   fi
 
   # PATH: the wrapper must win. A brew omp would shadow it (/opt/homebrew/bin
@@ -191,7 +199,7 @@ install() {
 }
 
 case "${1:-all}" in
-  check) check ;;
-  all)   check; install ;;
+  check) check strict ;;
+  all)   check lenient; install ;;
   *)     echo "usage: mise run dev-agents [check|all]"; exit 2 ;;
 esac
