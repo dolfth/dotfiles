@@ -126,7 +126,9 @@ install() {
   [ -x "$brew_prefix/bin/nono" ] || fail "nono missing at $brew_prefix/bin/nono (brew bundle first)"
 
   echo "==> Installing the sandbox (root:wheel, outside \$HOME, never symlinked)"
-  sudo mkdir -p /usr/local/etc/nono
+  # /usr/local/bin may not exist at all on a fresh Apple Silicon Mac; install
+  # stages its INS@tmp file inside the target dir, so mkdir first.
+  sudo mkdir -p /usr/local/etc/nono /usr/local/bin
   sudo install -o root -g wheel -m 644 "$profile_src" "$profile_dst"
 
   tmp_wrapper="$(mktemp)"
