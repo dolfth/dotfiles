@@ -29,6 +29,11 @@
 #    agent runs as this user and must not be able to edit its own sandbox.
 #    They are installed by copy, never symlinked from this repo.
 # 6. No grants of $HOME itself, ~/.ssh, or sops/age key paths.
+# 7. Personal documents stay unreachable with NO filesystem.deny entry for
+#    $HOME/Documents: a deny outranks every allow, including the workdir
+#    grant, so denying Documents forbade launching sandboxed omp from a
+#    workdir under it (EPERM on getcwd, Bun dies at startup). Default-deny
+#    keeps it shut; the check re-asserts that from a neutral workdir.
 
 set -euo pipefail
 
@@ -84,6 +89,14 @@ check() {
   local why
   why=$(nono why --profile "$profile_src" --unix-socket "$HOME/.config/herdr/sessions/check/herdr.sock" 2>&1 || true)
   case "$why" in DENIED*) ;; *) fail "nono why: herdr socket not denied (${why:-no output})" ;; esac
+
+  # R7: personal documents are unreachable by default-deny alone (no deny
+  # line; a deny would outrank the workdir grant -- header). $root is the
+  # neutral workdir: workdir readwrite would otherwise open any queried
+  # path under it, so a repo moved under Documents fails here, correctly.
+  local docs_why
+  docs_why=$(nono why --profile "$profile_src" --workdir "$root" --path "$HOME/Documents" 2>&1 || true)
+  case "$docs_why" in DENIED*) ;; *) fail "nono why: \$HOME/Documents not denied (${docs_why:-no output})" ;; esac
 
   # R4 + R3 + R2-keep: wrapper pins the profile by path, wraps (not runs),
   # exports HERDR_AGENT, and references nothing under \$HOME for the sandbox

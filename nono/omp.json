@@ -27,7 +27,6 @@
     "deny": [
       "$HOME/.config/herdr",
       "$HOME/.local/share/fish",
-      "$HOME/Documents",
       "$HOME/Downloads",
       "$HOME/Desktop",
       "$HOME/Pictures",
