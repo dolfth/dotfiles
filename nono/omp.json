@@ -21,7 +21,8 @@
     ],
     "read_file": [
       "$HOME/.config/git/sign.pub",
-      "$HOME/.config/git/known_hosts"
+      "$HOME/.config/git/known_hosts",
+      "$HOME/.config/git/allowed_signers"
     ],
     "allow_file": ["$HOME/.config/mise/omp/agent/config.yml"],
     "deny": [

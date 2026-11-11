@@ -187,7 +187,11 @@ path = ["NSWebServicesProviderWebSearch"]
 value = { "NSDefaultDisplayName" = "DuckDuckGo", "NSProviderIdentifier" = "com.duckduckgo" }
 
 [dotfiles]
-"~/.zshrc" = "zshrc"
+# A copy, not a symlink: the omp sandbox denies ~/.zshrc (extends: default's
+# shell-config rules), nono canonicalizes a deny through a symlink, and the
+# rule would therefore deny the repo's own zshrc from the agent that manages
+# it. The live rc stays denied either way -- the agent edits the repo copy.
+"~/.zshrc" = { source = "zshrc", mode = "copy" }
 # A real file at 0600: a symlink would expose the repo file's permissions to
 # ssh's checks.
 "~/.ssh/config" = { source = "ssh_config", mode = "copy", permissions = "0600" }

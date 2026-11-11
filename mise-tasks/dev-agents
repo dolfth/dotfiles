@@ -98,6 +98,14 @@ check() {
   docs_why=$(nono why --profile "$profile_src" --workdir "$root" --path "$HOME/Documents" 2>&1 || true)
   case "$docs_why" in DENIED*) ;; *) fail "nono why: \$HOME/Documents not denied (${docs_why:-no output})" ;; esac
 
+  # R6 as the engine sees it, not only as this file's text: the static scan
+  # below reads the profile's own lists, while extends/groups can grant more
+  # -- so the private key gets the same runtime re-assertion as the socket
+  # and the documents.
+  local key_why
+  key_why=$(nono why --profile "$profile_src" --path "$HOME/.ssh/id_ed25519" 2>&1 || true)
+  case "$key_why" in DENIED*) ;; *) fail "nono why: \$HOME/.ssh/id_ed25519 not denied (${key_why:-no output})" ;; esac
+
   # R4 + R3 + R2-keep: wrapper pins the profile by path, wraps (not runs),
   # exports HERDR_AGENT, and references nothing under \$HOME for the sandbox
   # authority itself.
@@ -122,11 +130,27 @@ check() {
     p=$(stat -f '%Su:%Sg' "$f")
     [ "$p" = "root:wheel" ] || fail "$f is owned by $p, want root:wheel (the agent could edit its own sandbox)"
   done
+
+  # Staleness of every installed piece. The wrapper is installed with the
+  # brew prefix substituted, so it compares through the same substitution;
+  # the raw binary carries its pin in --version, not a byte copy.
+  local stale="" brew_prefix
+  brew_prefix="$(brew --prefix 2>/dev/null || true)"
   if [ -e "$profile_dst" ] && ! cmp -s "$profile_src" "$profile_dst"; then
+    stale="$profile_dst"
+  fi
+  if [ -n "$brew_prefix" ] && [ -e "$wrapper_dst" ] \
+     && ! cmp -s <(sed "s|__BREW_PREFIX__|$brew_prefix|g" "$wrapper_src") "$wrapper_dst"; then
+    stale="${stale:+$stale, }$wrapper_dst"
+  fi
+  if [ -e "$raw_dst" ] && ! "$raw_dst" --version 2>/dev/null | grep "$omp_version" >/dev/null; then
+    stale="${stale:+$stale, }$raw_dst"
+  fi
+  if [ -n "$stale" ]; then
     if [ "$strict" = strict ]; then
-      fail "$profile_dst is stale; re-run mise run dev-agents"
+      fail "$stale is stale; re-run mise run dev-agents"
     fi
-    echo "  (stale: $profile_dst -- the install below refreshes it)"
+    echo "  (stale: $stale -- the install below refreshes)"
   fi
 
   # PATH: the wrapper must win; a brew omp would shadow it (/opt/homebrew/bin

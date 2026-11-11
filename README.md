@@ -222,7 +222,7 @@ release itself.
 
 | Source | Target | Notes |
 |---|---|---|
-| `zshrc` | `~/.zshrc` | both Macs; starts fish |
+| `zshrc` | `~/.zshrc` | both Macs; starts fish. Copied -- the omp sandbox's `~/.zshrc` deny follows a symlink into the repo, which would deny the repo's own copy from the sandboxed agent |
 | `ssh_config` | `~/.ssh/config` | copied at 0600 -- a symlink would expose the repo file's permissions to ssh; key passphrases live in the Keychain |
 | `ssh/authorized_keys.tera` | `~/.ssh/authorized_keys` | the Macs; the `sshKeys` var rendered, 0600. The file is mise's: hand-added keys need to go into the var. Not on nwa -- its flake writes it |
 | `fish/config.fish` | `~/.config/fish/config.fish` | all machines; the mise activation block |
