@@ -81,7 +81,7 @@ check() {
   # output -- a silent, race-prone failure (hit live: two clean check runs,
   # then two silent failures).
   local why
-  why=$(nono why --profile "$profile_src" --unix-socket "$HOME/.config/herdr/sessions/check/herdr.sock" 2>/dev/null || true)
+  why=$(nono why --profile "$profile_src" --unix-socket "$HOME/.config/herdr/sessions/check/herdr.sock" 2>&1 || true)
   case "$why" in DENIED*) ;; *) fail "nono why: herdr socket not denied (${why:-no output})" ;; esac
 
   # R4 + R3 + R2-keep: wrapper pins the profile by path, wraps (not runs),
