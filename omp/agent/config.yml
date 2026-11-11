@@ -30,7 +30,7 @@ providers:
 modelRoles:
   default: splash-fn/unsloth/Qwen3.8-Flash-Next-GGUF:UD-Q4_K_XL
   tiny: local/lfm2.5-230m
-  memory: local/lfm2-1.2b
+  memory: splash-fn/unsloth/Qwen3.8-Flash-Next-GGUF:UD-Q4_K_XL
   judge: local/lfm2-1.2b
 title:
   generator: tiny
