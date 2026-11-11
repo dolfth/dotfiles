@@ -14,9 +14,8 @@
 #    must be unreachable from inside the sandbox: `herdr pane run` executes
 #    commands in UNSANDBOXED panes, so reaching the socket is an escape.
 #    Seatbelt blocks connect() on sockets under a filesystem.deny path
-#    (proven on gza 2026-11-10: EPERM inside, OK outside, and sockets in
-#    allowed paths still connect, so the block is path-specific). The check
-#    below re-asserts it statically via `nono why`.
+#    (proven: EPERM there, while sockets in allowed paths still connect --
+#    the block is path-specific). The check below re-asserts it via `nono why`.
 # 2. HERDR_ENV, HERDR_SOCKET_PATH and HERDR_CLIENT_SOCKET_PATH are stripped
 #    (environment.deny_vars) so an agent concludes "not under herdr" instead
 #    of failing on the socket; HERDR_AGENT is KEPT (the wrapper exports it --
@@ -57,10 +56,9 @@ fail() { echo "dev-agents check: $*" >&2; exit 1; }
 ##### check -- the invariants, machine-checked ################################
 
 check() {
-  # strict (standalone `check`): an installed copy differing from the repo is
-  # a failure. lenient (pre-install in `all`): expected mid-flight -- refusing
-  # there is a deadlock, the run that fixes staleness would trip on it
-  # ("is stale; re-run" -- re-running fails identically forever).
+  # strict (standalone `check`): installed differing from repo is a failure.
+  # lenient (pre-install): staleness is what the install below cures --
+  # refusing there is a deadlock no re-run can fix.
   local strict="${1:-strict}"
   # Inside a sandbox, /usr/local/etc/nono is invisible by design, and an
   # unreadable install would masquerade as "not installed yet" below. Refuse
@@ -81,10 +79,8 @@ check() {
   # is denied (the runtime EPERM proof lives in the header).
   jq -e '.filesystem.deny | index("$HOME/.config/herdr")' "$profile_src" >/dev/null \
     || fail "profile does not deny \$HOME/.config/herdr"
-  # No `| head -1` here: head exits early, nono dies of SIGPIPE writing the
-  # rest, pipefail turns that into 141, and set -e kills the run before any
-  # output -- a silent, race-prone failure (hit live: two clean check runs,
-  # then two silent failures).
+  # No `| head -1`: head exits early, nono SIGPIPEs writing the rest,
+  # pipefail yields 141, and set -e kills the run before it prints anything.
   local why
   why=$(nono why --profile "$profile_src" --unix-socket "$HOME/.config/herdr/sessions/check/herdr.sock" 2>&1 || true)
   case "$why" in DENIED*) ;; *) fail "nono why: herdr socket not denied (${why:-no output})" ;; esac
@@ -118,11 +114,10 @@ check() {
     echo "  (stale: $profile_dst -- the install below refreshes it)"
   fi
 
-  # PATH: the wrapper must win. A brew omp would shadow it (/opt/homebrew/bin
-  # sorts first) -- dev-agents removes the formula on install. (grep reads to
-  # EOF, never -q: an early-exiting grep SIGPIPEs its producer, and pipefail
-  # turns a FOUND omp into a false condition -- the exact reason the first
-  # install run skipped `brew uninstall omp` in silence.)
+  # PATH: the wrapper must win; a brew omp would shadow it (/opt/homebrew/bin
+  # sorts first) -- install removes the formula. grep reads to EOF, never -q:
+  # an early-exit reader SIGPIPEs brew, and pipefail turns a found omp into a
+  # false condition.
   if [ -x /opt/homebrew/bin/omp ] || [ -x "$(brew --prefix 2>/dev/null)/bin/omp" ]; then
     echo "  warning: a brew-managed omp still shadows the wrapper on PATH"
   fi
@@ -132,11 +127,9 @@ check() {
 
 ##### install -- root-owned files, sudo, TTY-gated like system-check ##########
 
-# NOT called `install`: bash resolves functions before binaries, so a function
-# named install turns the seeding `install -m 644 ...` below into infinite
-# recursion (hit live: the first seed whose cmp-skipped equality check missed
-# -- an edited AGENTS.md -- spammed the header line until Ctrl-C). The seeds
-# additionally call `command install` so no future rename can re-arm it.
+# NOT named `install`: bash resolves functions before binaries, so the seed
+# lines below would call the function itself and recurse. They additionally
+# say `command install` so no future rename can re-arm it.
 install_stack() {
   # TTY gate: an unattended bootstrap (ssh, no prompt possible) skips the
   # sudo part instead of hanging.

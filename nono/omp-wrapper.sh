@@ -20,9 +20,8 @@ export TMPDIR
 
 # The sandbox denies ~/.config/fish (deny_shell_configs), so the shells this
 # agent spawns never run brew's shellenv. Carry the tool paths through env.
-# Deduped: nono counts each entry once when it warns about sandbox-writable
-# PATH dirs, and a login PATH already carrying ~/.local/bin would double-count
-# it (two warnings for the one intentional grant).
+# Deduped: nono warns per PATH entry, and a login PATH already carrying
+# ~/.local/bin turns one intentional rw grant into two warnings.
 PATH="$(printf '%s' "$HOME/.local/bin:__BREW_PREFIX__/bin:__BREW_PREFIX__/sbin:$PATH" | awk -v RS=: -v ORS=: '!seen[$0]++' | sed 's/:$//')"
 export PATH
 
