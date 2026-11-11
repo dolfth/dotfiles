@@ -76,9 +76,13 @@ check() {
   # is denied (the runtime EPERM proof lives in the header).
   jq -e '.filesystem.deny | index("$HOME/.config/herdr")' "$profile_src" >/dev/null \
     || fail "profile does not deny \$HOME/.config/herdr"
+  # No `| head -1` here: head exits early, nono dies of SIGPIPE writing the
+  # rest, pipefail turns that into 141, and set -e kills the run before any
+  # output -- a silent, race-prone failure (hit live: two clean check runs,
+  # then two silent failures).
   local why
-  why=$(nono why --profile "$profile_src" --unix-socket "$HOME/.config/herdr/sessions/check/herdr.sock" 2>/dev/null | head -1)
-  [ "$why" = "DENIED" ] || fail "nono why: herdr socket not denied ($why)"
+  why=$(nono why --profile "$profile_src" --unix-socket "$HOME/.config/herdr/sessions/check/herdr.sock" 2>/dev/null || true)
+  case "$why" in DENIED*) ;; *) fail "nono why: herdr socket not denied (${why:-no output})" ;; esac
 
   # R4 + R3 + R2-keep: wrapper pins the profile by path, wraps (not runs),
   # exports HERDR_AGENT, and references nothing under \$HOME for the sandbox
@@ -107,8 +111,10 @@ check() {
   fi
 
   # PATH: the wrapper must win. A brew omp would shadow it (/opt/homebrew/bin
-  # sorts first) -- dev-agents removes the formula on install.
-  command -v omp 2>/dev/null | grep -qx "$wrapper_dst" || true  # informational
+  # sorts first) -- dev-agents removes the formula on install. (grep reads to
+  # EOF, never -q: an early-exiting grep SIGPIPEs its producer, and pipefail
+  # turns a FOUND omp into a false condition -- the exact reason the first
+  # install run skipped `brew uninstall omp` in silence.)
   if [ -x /opt/homebrew/bin/omp ] || [ -x "$(brew --prefix 2>/dev/null)/bin/omp" ]; then
     echo "  warning: a brew-managed omp still shadows the wrapper on PATH"
   fi
@@ -141,7 +147,7 @@ install() {
   rm -f "$tmp_wrapper"
 
   # The pinned raw binary, mirroring nwa's ompPkg.
-  if ! "$raw_dst" --version 2>/dev/null | grep -q "$omp_version"; then
+  if ! "$raw_dst" --version 2>/dev/null | grep "$omp_version" >/dev/null; then
     echo "==> Fetching omp $omp_version (pinned, checksum-verified)"
     tmp_bin="$(mktemp)"
     curl -fL --retry 3 -o "$tmp_bin" \
@@ -154,7 +160,7 @@ install() {
 
   # The brew formula would shadow the wrapper on PATH: clean cutover, the
   # pinned release is the raw binary now.
-  if brew list --formula 2>/dev/null | grep -qx omp; then
+  if brew list --formula 2>/dev/null | grep -x omp >/dev/null; then
     echo "==> Removing brew omp (superseded by $raw_dst)"
     brew uninstall omp
   fi
