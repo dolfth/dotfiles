@@ -24,15 +24,25 @@ memory:
   backend: mnemopi
 mnemopi:
   llmMode: smol
-  noEmbeddings: true
+  noEmbeddings: false
+  embeddingVariant: multilingual
+  scoping: per-project-tagged
+  polyphonicRecall: true
+  proactiveLinking: true
 providers:
   cacheWarming: "off"
 modelRoles:
   default: splash-fn/unsloth/Qwen3.8-Flash-Next-GGUF:UD-Q4_K_XL
   tiny: local/lfm2.5-230m
   memory: splash-fn/unsloth/Qwen3.8-Flash-Next-GGUF:UD-Q4_K_XL
-  judge: local/lfm2-1.2b
+  judge: splash-fn/unsloth/Qwen3.8-Flash-Next-GGUF:UD-Q4_K_XL
 title:
   generator: tiny
 update:
   auto: false
+retry:
+  fallbackChains:
+    default:
+      - splash-fn/unsloth/Qwen3.8-Flash-Next-GGUF:UD-Q4_K_XL
+      - omlx/Qwen3.8-27B-oQ4e-mtp:thinking
+      - splash/unsloth/Qwen3.8-27B-GGUF:UD-Q4_K_XL
