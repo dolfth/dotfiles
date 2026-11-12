@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+#MISE the gate: this tree must pass `mise run check` before it can be
+# committed. core.hooksPath is set by the pre-packages hook (per-checkout),
+# so adopting the repo adopts the gate; --no-verify skips, and pre-push then
+# catches the tree before it leaves the machine.
+set -uo pipefail
+
+gitdir=$(git rev-parse --git-dir)
+marker="$gitdir/mise-check-pass"
+tree=$(git write-tree)   # the index the commit will capture
+
+# An identical tree that already passed needs no re-check (commit then
+# immediately amend/re-commit is the common loop).
+if [ -f "$marker" ] && grep -qx "$tree" "$marker"; then
+  exit 0
+fi
+
+if mise run check; then
+  { printf '%s\n' "$tree"; tail -n 9 "$marker" 2>/dev/null; } >"$marker.tmp" && mv "$marker.tmp" "$marker"
+  exit 0
+fi
+echo "pre-commit: mise run check failed -- fix it, or commit --no-verify (pre-push will re-check)" >&2
+exit 1

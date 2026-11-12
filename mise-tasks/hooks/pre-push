@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+#MISE the backstop: every tree about to be pushed must have passed `mise run
+# check` -- normally the pre-commit hook checked it already and this is a
+# silent grep. A --no-verify commit or an amend reaches the gate here.
+set -uo pipefail
+
+gitdir=$(git rev-parse --git-dir)
+marker="$gitdir/mise-check-pass"
+zero=0000000000000000000000000000000000000000
+
+# stdin lines: <local ref> <local sha> <remote ref> <remote sha>
+# the underscored fields are read for position -- the format is fixed
+while read -r local_ref local_sha _remote_ref _remote_sha; do
+  [ "$local_sha" = "$zero" ] && continue   # a deletion pushes no new tree
+  tree=$(git rev-parse "$local_sha^{tree}")
+  if [ -f "$marker" ] && grep -qx "$tree" "$marker"; then
+    continue
+  fi
+  echo "pre-push: ${local_ref##refs/heads/} carries an unchecked tree -- mise run check" >&2
+  if mise run check; then
+    { printf '%s\n' "$tree"; tail -n 9 "$marker" 2>/dev/null; } >"$marker.tmp" && mv "$marker.tmp" "$marker"
+  else
+    echo "pre-push: refusing to push the unchecked tree $tree (--no-verify to override)" >&2
+    exit 1
+  fi
+done

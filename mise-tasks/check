@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 #MISE tags=["macos"]
-# The repo's own self-test: run it before pushing (and after editing any
-# task). The same four legs, in order:
+# The repo's own self-test. Wired automatic: the pre-commit/pre-push hooks
+# (mise-tasks/hooks, gated by core.hooksPath which the pre-packages hook
+# sets) reject unchecked trees, and the final hook ends every bootstrap with
+# this task -- so it also runs by hand whenever you want the verdict without
+# committing. The same four legs, in order:
 #
 #   1. config gate   -- the pre-packages hook's assertion (mise.toml), moved
 #                       to commit-time: `mise env` IS the config load, and a
@@ -45,9 +48,11 @@ if ! command -v shellcheck >/dev/null 2>&1; then
   echo "  shellcheck missing -- it is in the Brewfile; mise run brew-bundle" >&2
   rc=1
 else
-  # -x follows the `# shellcheck source=` directive into _defaults.sh.
-  if shellcheck -x mise-tasks/* nono/omp-wrapper.sh; then
-    echo "  clean: $(find mise-tasks -maxdepth 1 -type f | wc -l | tr -d ' ') task scripts + wrapper"
+  # File list from find: shellcheck refuses a directory argument unless
+  # given -r, and a plain glob hands it mise-tasks/hooks. -x follows the
+  # `# shellcheck source=` directive into _defaults.sh.
+  if find mise-tasks -type f -print0 | xargs -0 shellcheck -x nono/omp-wrapper.sh; then
+    echo "  clean: $(find mise-tasks -type f | wc -l | tr -d ' ') task scripts + wrapper + hooks"
   else
     rc=1
   fi
@@ -77,7 +82,15 @@ log="$HOME/Library/Logs/pin-check.log"
 if ! launchctl print "$agent" >/dev/null 2>&1; then
   rc=1; echo "  dev.mise.pin-check not loaded -- mise bootstrap macos launchd-agents apply" >&2
 elif [ ! -f "$log" ]; then
-  rc=1; echo "  agent loaded but $(basename "$log") missing -- it has never run: mise run pin-check" >&2
+  # Grace for the just-installed agent: the final hook runs check on every
+  # bootstrap, and a fresh install has not reached its first calendar time
+  # yet. Past the grace a missing log is a dead heartbeat, not a young one.
+  plist="$HOME/Library/LaunchAgents/dev.mise.pin-check.plist"
+  if [ -n "$(find "$plist" -mtime -9 2>/dev/null)" ]; then
+    echo "  agent installed, first heartbeat pending -- seed the log with: mise run pin-check"
+  else
+    rc=1; echo "  agent loaded but $(basename "$log") missing -- it has never run: mise run pin-check" >&2
+  fi
 else
   # The newest DATE-STAMPED line, not the newest line: pin-check's summary
   # is one dated line per run, and nothing else may pass as a heartbeat

@@ -106,9 +106,13 @@ resolve_mise() {
   fi
 }
 resolve_mise
+repo=$(git rev-parse --show-toplevel 2>/dev/null) || repo=$PWD
+# The versioned git hooks gate every commit and push with the check task.
+# core.hooksPath lives in .git/config -- per-checkout, not in the repo --
+# so the bootstrap sets it on every machine that adopts this one.
+git -C "$repo" config core.hooksPath mise-tasks/hooks 2>/dev/null || true
 # Fresh checkout: write the missing miserc (README, "Config layout").
 if [ "$(uname -s)" = "Darwin" ]; then
-  repo=$(git rev-parse --show-toplevel 2>/dev/null) || repo=$PWD
   if [ ! -f "$repo/miserc.local.toml" ]; then
     {
       echo '# Per-machine environment selection: which mise.<env>.toml modules to load.'
@@ -137,7 +141,7 @@ mise run defaults-snapshot && mise run brew-bundle
 """
 
 [bootstrap.hooks.final]
-description = "Deploy the herdr and vscodium extensions, install the omp sandbox, run the system check, remove Apple Intelligence, and pin the Finder sidebar"
+description = "Deploy the herdr and vscodium extensions, install the omp sandbox, run the system check, remove Apple Intelligence, pin the Finder sidebar, and self-test the repo"
 run = """
 resolve_mise() {
   if ! command -v mise >/dev/null 2>&1; then
@@ -147,7 +151,9 @@ resolve_mise() {
   fi
 }
 resolve_mise
-mise run herdr-plugins && mise run vscode-extensions && mise run dev-agents && mise run system-check && mise run apple-intelligence && mise run finder-favorites
+# check last: its dot-diff leg is the idempotence assertion of this very
+# run -- applied and converged means nothing left to deploy.
+mise run herdr-plugins && mise run vscode-extensions && mise run dev-agents && mise run system-check && mise run apple-intelligence && mise run finder-favorites && mise run check
 """
 
 # Background sync, both Macs. A launchd agent, not a [bootstrap.services]
