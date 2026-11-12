@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Shared defaults domain list. Source from defaults-snapshot and system-check
 # so the list stays in one place.
 _UI_DOMAINS=(

@@ -119,6 +119,9 @@ check() {
   # R6: no grants of $HOME itself, ~/.ssh, or secret-manager key paths.
   local grants
   grants=$(jq -r '[.filesystem | (.allow // [])[], (.allow_file // [])[], (.read // [])[], (.read_file // [])[]] | join(" ")' "$profile_src")
+  # the patterns are literals on purpose: they match $HOME text inside the
+  # profile JSON, never an expanded path
+  # shellcheck disable=SC2016
   for bad in '"$HOME"' '$HOME/.ssh' sops age/ '$HOME/.gnupg' '$HOME/.aws'; do
     case " $grants " in *" $bad "*) fail "profile grants a protected path: $bad" ;; esac
   done

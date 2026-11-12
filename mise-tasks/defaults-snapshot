@@ -9,6 +9,7 @@ set -euo pipefail
 if [ "$(uname -s)" != "Darwin" ]; then
   exit 0
 fi
+# shellcheck source=mise-tasks/_defaults.sh
 source "$(dirname "${BASH_SOURCE[0]}")/_defaults.sh"
 
 snap | shasum | awk '{print $1}' > "${TMPDIR:-/tmp}/mise-defaults-snapshot"

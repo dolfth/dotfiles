@@ -47,7 +47,7 @@ if ! command -v shellcheck >/dev/null 2>&1; then
 else
   # -x follows the `# shellcheck source=` directive into _defaults.sh.
   if shellcheck -x mise-tasks/* nono/omp-wrapper.sh; then
-    echo "  clean: $(ls mise-tasks | wc -l | tr -d ' ') task scripts + wrapper"
+    echo "  clean: $(find mise-tasks -maxdepth 1 -type f | wc -l | tr -d ' ') task scripts + wrapper"
   else
     rc=1
   fi
@@ -79,16 +79,21 @@ if ! launchctl print "$agent" >/dev/null 2>&1; then
 elif [ ! -f "$log" ]; then
   rc=1; echo "  agent loaded but $(basename "$log") missing -- it has never run: mise run pin-check" >&2
 else
-  last=$(tail -1 "$log" | awk '{print $1}')
-  # days since the last heartbeat (date -j parses the log's own stamp)
-  if last_epoch=$(date -j -f '%Y-%m-%d' "$last" +%s 2>/dev/null); then
+  # The newest DATE-STAMPED line, not the newest line: pin-check's summary
+  # is one dated line per run, and nothing else may pass as a heartbeat
+  # (the agent's own stdout has its file since 2026-11-12; logs before that
+  # carry interleaved mise chatter).
+  last_line=$(grep -E '^[0-9]{4}-[0-9]{2}-[0-9]{2} ' "$log" | tail -1)
+  if [ -z "$last_line" ]; then
+    rc=1; echo "  log holds no dated heartbeat line: $(tail -1 "$log")" >&2
+  elif last_epoch=$(date -j -f '%Y-%m-%d' "${last_line%% *}" +%s 2>/dev/null); then
     age=$(( ($(date +%s) - last_epoch) / 86400 ))
-    echo "  last run ${age}d ago: $(tail -1 "$log")"
+    echo "  last run ${age}d ago: $last_line"
     if [ "$age" -gt 8 ]; then
       rc=1; echo "  weekly heartbeat stale (>8d): the agent is not firing" >&2
     fi
   else
-    rc=1; echo "  log's last line carries no parseable date: $last" >&2
+    rc=1; echo "  heartbeat line carries no parseable date: $last_line" >&2
   fi
 fi
 

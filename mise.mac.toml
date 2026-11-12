@@ -21,15 +21,20 @@ pared_version = "2.2.0"
 # domain. The log doubles as the heartbeat's liveness proof; `mise run check`
 # flags it stale past 8 days. mise's agent runner passes no shell PATH, so
 # the program and PATH carry absolute paths.
+# The cwd must be the config root: a task in the global config's mise-tasks/
+# resolves only under that root -- from ~, mise reports "no tasks defined".
+# stdout/stderr land in their own file: mise's run chatter interleaves with
+# the task's one-line-per-run summary, and pin-check.log must stay a clean
+# heartbeat ledger (check's parser reads its newest date-stamped line).
 [bootstrap.macos.launchd.agents.pin-check]
 program = "{{ system_brew_prefix }}/bin/mise"
 args = ["run", "pin-check"]
-working_directory = "~"
+working_directory = "{{ env.HOME }}/.config/mise"
 start_calendar_interval = [{ weekday = 3, hour = 9, minute = 30 }]
 process_type = "Background"
 environment = { "PATH" = "{{ system_brew_prefix }}/bin:/usr/bin:/bin:/usr/sbin:/sbin" }
-stdout_path = "{{ env.HOME }}/Library/Logs/pin-check.log"
-stderr_path = "{{ env.HOME }}/Library/Logs/pin-check.log"
+stdout_path = "{{ env.HOME }}/Library/Logs/pin-check.out.log"
+stderr_path = "{{ env.HOME }}/Library/Logs/pin-check.out.log"
 run_at_load = false
 kickstart = false
 

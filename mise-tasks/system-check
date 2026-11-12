@@ -63,6 +63,7 @@ chflags nohidden "${HOME}/Library" 2>/dev/null || true
 #
 # Killing Dock and WindowManager rebuilds Spaces and makes AeroSpace re-tile,
 # so only restart them if the defaults bootstrap just wrote actually changed
+# shellcheck source=mise-tasks/_defaults.sh
 source "$(dirname "${BASH_SOURCE[0]}")/_defaults.sh"
 
 before_file="${TMPDIR:-/tmp}/mise-defaults-snapshot"
