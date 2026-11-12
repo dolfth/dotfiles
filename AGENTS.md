@@ -4,6 +4,9 @@
   the prose.
 - Same restraint in comments and commit messages: what and why, few
   lines, no session backstory.
+- Same for status reports to the human: short sentences, one fact each,
+  plain words; no nested clauses, no dash-pileups, tables only for real
+  comparisons.
 - Check the mise release notes now and then for features this repo could
   use, and bump the floor in mise.toml when one is worth pinning.
   Last checked: 2026.11.5 (2026-11-10).
