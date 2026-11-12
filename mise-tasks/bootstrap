@@ -22,10 +22,18 @@ if command -v timeout >/dev/null 2>&1; then
 else
   lc() { launchctl "$@"; }
 fi
-for agent in dev.mise.omlx dev.mise.splash dev.mise.splash-fn; do
+for agent in dev.mise.omlx dev.mise.splash dev.mise.splash-fn dev.mise.pin-check; do
   plist="${HOME}/Library/LaunchAgents/${agent}.plist"
   if [ ! -f "$plist" ]; then
     continue   # agents not declared on this machine (the gza module owns them)
+  fi
+  # A scheduled agent must always be loaded -- launchd fires the calendar
+  # time only for a loaded job -- but must never be kickstarted: a manual
+  # start outside the schedule would fake a heartbeat.
+  if plutil -extract StartCalendarInterval xml1 -o - "$plist" 2>/dev/null | grep -q "<dict>"; then
+    lc bootstrap "$gui" "$plist" 2>/dev/null || true
+    echo "  ${agent}: scheduled; (re)loaded, not started"
+    continue
   fi
   # An agent without RunAtLoad is on demand by design (the 27B and omlx: one
   # GPU pool tenant at a time, switched by `mise run gpupool`); self-healing

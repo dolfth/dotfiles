@@ -11,8 +11,27 @@ VISUAL = "hx"
 [vars]
 # pared release for the apple-intelligence task (no mainline brew formula,
 # no mise backend). Bump to upgrade; the task replaces the binary when the
-# version changes.
+# version changes. pin-check (the agent below) probes this pin's URL weekly.
 pared_version = "2.2.0"
+
+# The weekly heartbeat for the pinned release URLs (see the pin-check task).
+# A calendar schedule, not KeepAlive: nothing resident, one short run per
+# Wednesday. No RunAtLoad/kickstart -- a login or a bootstrap must not start
+# it off-schedule; the bootstrap task loads it if it ever fell out of the
+# domain. The log doubles as the heartbeat's liveness proof; `mise run check`
+# flags it stale past 8 days. mise's agent runner passes no shell PATH, so
+# the program and PATH carry absolute paths.
+[bootstrap.macos.launchd.agents.pin-check]
+program = "{{ system_brew_prefix }}/bin/mise"
+args = ["run", "pin-check"]
+working_directory = "~"
+start_calendar_interval = [{ weekday = 3, hour = 9, minute = 30 }]
+process_type = "Background"
+environment = { "PATH" = "{{ system_brew_prefix }}/bin:/usr/bin:/bin:/usr/sbin:/sbin" }
+stdout_path = "{{ env.HOME }}/Library/Logs/pin-check.log"
+stderr_path = "{{ env.HOME }}/Library/Logs/pin-check.log"
+run_at_load = false
+kickstart = false
 
 ##### macOS defaults #####
 #

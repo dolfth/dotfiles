@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+#MISE tags=["macos"]
+# The pinned release URLs, probed. The two tasks that fetch a pinned GitHub
+# release (dev-agents: the omp binary; apple-intelligence: the pared tarball
+# + checksum sidecar) fail the moment upstream removes or renames an asset --
+# and the only way to discover that is to fetch it for real, possibly during
+# a bootstrap on the one box that matters. This task HEADs every pinned asset
+# so the breakage is announced before it is hit.
+#
+# The reminder surfaces (nothing here needs a watching eye):
+#   - the dev.mise.pin-check agent runs it weekly (mise.mac.toml);
+#   - every run, green or red, appends one line to ~/Library/Logs/pin-check.log,
+#     so the log's own age is the liveness proof of the heartbeat;
+#   - a failing run raises a macOS notification (unsandboxed agent sessions;
+#     from ssh/osascript-less contexts the exit code is the signal);
+#   - `mise run check` reports a log older than 8 days as a dead heartbeat.
+#
+# Versions are parsed from their single sources of truth -- the omp_version
+# line in mise-tasks/dev-agents, pared_version in mise.mac.toml -- so a
+# bump needs no change here; a parse failure means those moved shape, which
+# is itself worth failing on.
+
+set -uo pipefail   # no -e: check every pin, report all of them
+
+if [ "$(uname -s)" != "Darwin" ]; then
+  echo "pin-check is macOS-only; skipping."
+  exit 0
+fi
+
+repo="$HOME/.config/mise"
+log="$HOME/Library/Logs/pin-check.log"
+failures=()
+checked=0
+
+# The pinned versions, from their owning files. A missing line is a format
+# change in the source -- fail loudly, the pin went unchecked.
+omp_version=$(sed -n 's/^omp_version="\([^"]*\)"/\1/p' "$repo/mise-tasks/dev-agents" | head -1)
+[ -n "$omp_version" ] || failures+=("omp: no omp_version line in mise-tasks/dev-agents")
+pared_version=$(sed -n 's/^pared_version = "\([^"]*\)"/\1/p' "$repo/mise.mac.toml" | head -1)
+[ -n "$pared_version" ] || failures+=("pared: no pared_version in mise.mac.toml")
+
+# HEAD a pinned asset; GitHub answers 404 (redirect-followed) for removed
+# releases and assets alike.
+probe() { # probe NAME URL
+  local code
+  code=$(curl -fsIL --max-time 20 -o /dev/null -w '%{http_code}' "$2" 2>/dev/null) || {
+    failures+=("$1: fetch failed (${code:-curl error}) $2"); return; }
+  checked=$((checked + 1))
+  echo "  $1: $code $2"
+}
+
+[ -n "${omp_version:-}" ] && \
+  probe "omp $omp_version" \
+    "https://github.com/can1357/oh-my-pi/releases/download/v$omp_version/omp-darwin-arm64"
+if [ -n "${pared_version:-}" ]; then
+  pared_base="https://github.com/4evy/pared/releases/download/$pared_version/pared-macos-arm64.tar.gz"
+  probe "pared $pared_version" "$pared_base"
+  probe "pared $pared_version sha256" "$pared_base.sha256"
+fi
+
+# One line per run, capped: the log is also the heartbeat's liveness proof,
+# so it must always exist and must never outgrow its usefulness.
+ts=$(date '+%Y-%m-%d %H:%M')
+if [ ${#failures[@]} -eq 0 ]; then
+  line="$ts ok  $checked/$((checked + ${#failures[@]}))  omp $omp_version, pared $pared_version"
+else
+  line="$ts FAIL $((${#failures[@]})) of $((checked + ${#failures[@]})): $(printf '%s; ' "${failures[@]}")"
+fi
+printf '%s\n' "$line" >>"$log"
+if [ "$(wc -l <"$log")" -gt 250 ]; then
+  tail -n 200 "$log" >"$log.tmp" && mv "$log.tmp" "$log"
+fi
+
+if [ ${#failures[@]} -gt 0 ]; then
+  printf '  %s\n' "${failures[@]}" >&2
+  # The weekly agent runs unsandboxed in the GUI session, so the user sees
+  # this; anywhere else osascript fails quietly and the exit code speaks.
+  /usr/bin/osascript -e "display notification \"${failures[0]}\" with title \"pin-check: a pinned release URL broke\" sound name \"Basso\"" 2>/dev/null || true
+  echo "log: $log"
+  exit 1
+fi
+echo "all $checked pinned assets live (log: $log)"

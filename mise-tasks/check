@@ -1,0 +1,100 @@
+#!/usr/bin/env bash
+#MISE tags=["macos"]
+# The repo's own self-test: run it before pushing (and after editing any
+# task). The same four legs, in order:
+#
+#   1. config gate   -- the pre-packages hook's assertion (mise.toml), moved
+#                       to commit-time: `mise env` IS the config load, and a
+#                       typo'd key only warns, so the gate fails on unknown
+#                       fields instead of letting a half-wrong config through.
+#   2. shellcheck    -- every task script and helper in the repo. The class
+#                       of bug it catches: unquoted expansion, unset under
+#                       set -u, globs that survived by accident.
+#   3. idempotence   -- `mise dot diff` must be empty: deploy converged means
+#                       nothing left to deploy. A non-empty diff is drift
+#                       between the repo's declared state and this machine.
+#   4. heartbeat     -- the weekly pin-check agent: loaded, and its log
+#                       written within 8 days. (pin-check's own result is in
+#                       the log; this leg only proves the alarm clock runs.)
+#
+# The omp sandbox denies the dotfiles' target paths (~/.config outside the
+# repo), so leg 3 self-skips inside the sandbox with a note -- run this task
+# from a normal shell for it to mean anything.
+
+set -uo pipefail   # no -e: every leg runs and reports; the exit code sums up
+
+rc=0
+if [ "$(uname -s)" != "Darwin" ]; then
+  echo "check is macOS-only (its dotfiles and launchd legs are); skipping."
+  exit 0
+fi
+
+echo "== 1. config gate"
+gate_err=$(mktemp)
+if ! mise env >/dev/null 2>"$gate_err"; then
+  cat "$gate_err" >&2; rc=1; echo "  the mise config does not parse"
+elif grep -qE 'unknown field|did you mean' "$gate_err"; then
+  cat "$gate_err" >&2; rc=1; echo "  unknown fields in the mise config"
+else
+  echo "  config loads clean"
+fi
+rm -f "$gate_err"
+
+echo "== 2. shellcheck"
+if ! command -v shellcheck >/dev/null 2>&1; then
+  echo "  shellcheck missing -- it is in the Brewfile; mise run brew-bundle" >&2
+  rc=1
+else
+  # -x follows the `# shellcheck source=` directive into _defaults.sh.
+  if shellcheck -x mise-tasks/* nono/omp-wrapper.sh; then
+    echo "  clean: $(ls mise-tasks | wc -l | tr -d ' ') task scripts + wrapper"
+  else
+    rc=1
+  fi
+fi
+
+echo "== 3. dotfiles idempotence"
+# The sandbox probe: the omp sandbox answers EPERM for the target dir; the
+# same absence looks identical to `[ -e ]`, so ask ls what it saw.
+probe=$(ls "$HOME/.config/starship.toml" 2>&1)
+case "$probe" in
+  *"Operation not permitted"*)
+    echo "  sandboxed shell: dotfile targets unreadable, leg skipped -- run outside the omp sandbox"
+    ;;
+  *)
+    if diff_out=$(mise dot diff 2>&1); then
+      echo "  no drift: the deployed files match the repo"
+    else
+      printf '%s\n' "$diff_out" | grep -E '^dotfile differs' >&2 || printf '%s\n' "$diff_out" >&2
+      rc=1; echo "  drift above: mise dotfiles apply (or mise bootstrap) to converge, else commit the live edits"
+    fi
+    ;;
+esac
+
+echo "== 4. pin-check heartbeat"
+agent="gui/$(id -u)/dev.mise.pin-check"
+log="$HOME/Library/Logs/pin-check.log"
+if ! launchctl print "$agent" >/dev/null 2>&1; then
+  rc=1; echo "  dev.mise.pin-check not loaded -- mise bootstrap macos launchd-agents apply" >&2
+elif [ ! -f "$log" ]; then
+  rc=1; echo "  agent loaded but $(basename "$log") missing -- it has never run: mise run pin-check" >&2
+else
+  last=$(tail -1 "$log" | awk '{print $1}')
+  # days since the last heartbeat (date -j parses the log's own stamp)
+  if last_epoch=$(date -j -f '%Y-%m-%d' "$last" +%s 2>/dev/null); then
+    age=$(( ($(date +%s) - last_epoch) / 86400 ))
+    echo "  last run ${age}d ago: $(tail -1 "$log")"
+    if [ "$age" -gt 8 ]; then
+      rc=1; echo "  weekly heartbeat stale (>8d): the agent is not firing" >&2
+    fi
+  else
+    rc=1; echo "  log's last line carries no parseable date: $last" >&2
+  fi
+fi
+
+if [ "$rc" -eq 0 ]; then
+  echo "check: all legs pass"
+else
+  echo "check: FAILED legs above" >&2
+fi
+exit "$rc"

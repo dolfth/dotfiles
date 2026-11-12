@@ -262,8 +262,12 @@ used to track. To delete a file the repo deployed, declare it
 | `finder-favorites` | final | Finder sidebar Favorites := exactly the visible `$HOME` directories, alphabetically -- hand-pinned tiles (the stock Applications one included) and stale bookmarks are removed, like the Dock rule. Favorites are an LSSharedFileList archive, not a defaults domain, so the task writes through that (deprecated, alive) API; Finder updates live and a converged list is a no-op. Bookmarks are only ever resolved with no-interaction/no-mount flags and the run has a 90 s watchdog, so a stale item can never block the bootstrap. No-op off macOS |
 | `gpupool` | manual (gza) | the GPU pool is single-tenant -- pick its owner: `fn` flash-fn on :8100 (default), `27` the 27B splash server on :8000, `mlx` omlx on :8080, `status` who answers. Two tenants would OOM-crash each other's Metal clients, so the rest stay unloaded |
 | `tailscale-ssh` | manual (Macs) | advertise Tailscale SSH on the CLI tailscaled (`tailscale set --ssh`) and report; refuses from a tailnet SSH session (interception would hang it) and while the app variant is installed. Variant cutover itself is the README's manual sequence |
+| `check` | manual (Macs) | the repo self-test, run before pushing: the config gate (the pre-packages hook's assertion at commit-time), shellcheck over the task scripts, `mise dot diff` idempotence (a non-empty diff is drift -- fail), and the weekly pin-check heartbeat's freshness (a log older than 8 days is a dead agent). The dot-diff leg self-skips inside the omp sandbox, whose profile denies the dotfiles' target paths -- run from a normal shell |
+| `pin-check` | weekly agent + manual (Macs) | probe the pinned GitHub release URLs -- the omp binary of `dev-agents`, the pared tarball and checksum sidecar of `apple-intelligence` -- with the versions parsed from their single sources of truth, so a bump needs no edit here and a parse failure means those moved shape. The `dev.mise.pin-check` agent (`mise.mac.toml`, Wed 09:30) runs it; every run logs one line to `~/Library/Logs/pin-check.log` -- the log's age is the heartbeat's own liveness proof, which `check` reads -- and a broken pin raises a macOS notification and a non-zero exit |
 
-They run on every `mise bootstrap` / `mise update` and do nothing when
+They run on every `mise bootstrap` (plain, or with `--update` to refresh
+metadata and repositories first — `mise upgrade`, the `up` function, is tool
+upgrades, not an apply) and do nothing when
 there is nothing to do. The macOS-only tasks carry the `macos` tag and
 `gpupool` carries `gza` (mise >= 2026.11.2), so a group can be selected
 explicitly -- `mise run --tag macos`, `mise tasks ls --tag gza` -- instead

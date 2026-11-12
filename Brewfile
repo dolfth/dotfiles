@@ -36,6 +36,8 @@ brew "mosh"
 # agents by PATH name, so every launch is sandboxed); the raw binary is
 # omp-unsandboxed. The Brewfile carries the tool, the task the policy.
 brew "nono"
+# Lints the repo's own task scripts; the mise-tasks/check task runs it.
+brew "shellcheck"
 brew "starship"
 # Runs under the dev.mise.syncthing launchd agent (mise.toml), not
 # `brew services`.
