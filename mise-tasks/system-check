@@ -51,6 +51,17 @@ fi
 # regardless of the account name (declarative defaults cannot interpolate).
 defaults write com.apple.finder NewWindowTargetPath -string "file:///$USER/"
 
+# Menu bar: show the Bluetooth item. Module visibility is a per-module int
+# in the per-host controlcenter domain (2 = menu bar visible; the observed
+# end state of a System-Settings enable), read by the snapshot's
+# -currentHost export, so a fresh Mac gets ControlCenter restarted with it.
+# The VOLUME item deliberately has no line here: in this macOS generation
+# its menu-bar state lives only inside per-machine NSKeyedArchiver blobs
+# (com.apple.controlcenter.bentoboxes / .displayablemenuextras) keyed by
+# UUID and rewritten by ControlCenter on every UI toggle -- no public key
+# exists to write, so it stays a manual Control-Center-settings step.
+defaults -currentHost write com.apple.controlcenter Bluetooth -int 2
+
 # Manual light or dark mode conflicts with the automatic switch (declarative
 # in mise.mac.toml); `defaults delete` exits 1 when the key is already gone.
 if defaults read NSGlobalDomain AppleInterfaceStyle >/dev/null 2>&1; then
