@@ -16,7 +16,9 @@ if [ -f "$marker" ] && grep -qx "$tree" "$marker"; then
 fi
 
 if mise run check; then
-  { printf '%s\n' "$tree"; tail -n 9 "$marker" 2>/dev/null; } >"$marker.tmp" && mv "$marker.tmp" "$marker"
+  # the trailing true: a first run's tail of the not-yet-existing marker
+  # would otherwise fail the group and skip the mv
+  { printf '%s\n' "$tree"; tail -n 9 "$marker" 2>/dev/null; true; } >"$marker.tmp" && mv "$marker.tmp" "$marker"
   exit 0
 fi
 echo "pre-commit: mise run check failed -- fix it, or commit --no-verify (pre-push will re-check)" >&2

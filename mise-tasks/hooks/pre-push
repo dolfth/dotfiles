@@ -18,7 +18,8 @@ while read -r local_ref local_sha _remote_ref _remote_sha; do
   fi
   echo "pre-push: ${local_ref##refs/heads/} carries an unchecked tree -- mise run check" >&2
   if mise run check; then
-    { printf '%s\n' "$tree"; tail -n 9 "$marker" 2>/dev/null; } >"$marker.tmp" && mv "$marker.tmp" "$marker"
+    # trailing true: tail of a missing marker must not fail the group
+    { printf '%s\n' "$tree"; tail -n 9 "$marker" 2>/dev/null; true; } >"$marker.tmp" && mv "$marker.tmp" "$marker"
   else
     echo "pre-push: refusing to push the unchecked tree $tree (--no-verify to override)" >&2
     exit 1
