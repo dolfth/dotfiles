@@ -2,6 +2,10 @@
 # `herdr config reset-keys` rewrites it and drops a backup beside it, and the
 # first-run wizard persists its answer here. A symlink would put both writes
 # (and the backup) into the repo checkout.
+#
+# Saved SSH machines (nwa is added on gza) are NOT here: `herdr machine add`
+# keeps them as app state in the same directory. Check with `herdr machine
+# list` / `status`.
 
 # The first-run notification wizard persists its answer into this file, so
 # opt out up front.
@@ -31,4 +35,12 @@ description = "sandboxed oh-my-pi"
 # `mise dot status` does not flag it as changed.
 [ui]
 agent_panel_sort = "spaces"
+
+# Parallel-agent work: "New worktree" on a Git workspace row (or
+# `herdr worktree create --branch <name>`) checks out
+# <directory>/<repo>/<branch-slug> as a workspace grouped with its repo --
+# one checkout and one agent per branch, listed together. Pinned to herdr's
+# documented default, same reasoning as agent_panel_sort above.
+[worktrees]
+directory = "~/.herdr/worktrees"
 

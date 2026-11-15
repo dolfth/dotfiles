@@ -124,4 +124,8 @@ kickstart = true
 # pi owns its settings file; the merge re-asserts the two pinned keys and
 # keeps whatever pi wrote for itself.
 "~/.pi/agent/settings.json/pinned" = { source = "pi/agent/settings.json", merge = true }
+# herdr rewrites its config itself (reset-keys, the first-run wizard), so
+# this is a copy, not a symlink -- same rule as on nwa. The agent-pane
+# keybindings land here because gza hosts the dev agents now.
+"~/.config/herdr/config.toml" = { source = "herdr/config.toml", mode = "copy" }
 
