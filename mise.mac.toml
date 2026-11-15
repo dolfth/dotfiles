@@ -234,3 +234,9 @@ value = { "NSDefaultDisplayName" = "DuckDuckGo", "NSProviderIdentifier" = "com.d
 # edit entry only seeds it: written when missing, then only missing keys are
 # ever filled in.
 "~/.config/linearmouse/linearmouse.json/initial" = { source = "linearmouse.json", merge = "missing" }
+# Handy keeps its settings in this store file and saves it with a plain
+# fs::write (no temp-and-rename), so the symlink survives every in-app save:
+# settings edits flow into the repo -- commit them. On a host where Handy has
+# already run, adopt the live file before applying (`mise dot add` captures
+# the source first, then links -- never the other way around).
+"~/Library/Application Support/com.pais.handy/settings_store.json" = { source = "handy/settings_store.json" }
