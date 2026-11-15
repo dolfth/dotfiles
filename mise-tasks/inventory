@@ -225,19 +225,45 @@ fi
 } > "$tmp/manifest"
 
 mv "$tmp/manifest" "$out"
-cat "$out"
 echo "saved: $out" >&2
 
-# Sizes: stdout only, they change between runs and would poison diffs.
+# --- report ------------------------------------------------------------------
+# Sizes first: stdout-only data (they change between runs and would poison
+# the diffs), feeding the report below. The manifest keeps names, not paths,
+# so the path is rebuilt per kind.
+: > "$tmp/sizes"
 if [ -z "$quick" ]; then
-  echo '== sizes (stdout only)' >&2
-  # The manifest stores names, not paths: rebuild the path per kind.
   LC_ALL=C sort -u "$tmp/body" \
-    | awk -F'\t' '$1=="appsupport"{print "A\t"$3} $1=="container"{print "C\t"$3}' > "$tmp/sizedirs"
-  while IFS=$'\t' read -r k n; do
-    p="$LIB/Containers/$n"
-    [ "$k" = A ] && p="$LIB/Application Support/$n"
-    printf '  %-55s %s\n' "${p#"$LIB"/}" \
-      "$(du -sk "$p" 2>/dev/null | awk '{printf "%.0fM", $1/1024}')" >&2
-  done < "$tmp/sizedirs"
+    | awk -F'\t' '$1=="appsupport"{print "A\t"$3} $1=="container"{print "C\t"$3}' \
+    | while IFS=$'\t' read -r k n; do
+        p="$LIB/Containers/$n"
+        [ "$k" = A ] && p="$LIB/Application Support/$n"
+        printf '%s\t%s\t%s\n' "$k" "$n" \
+          "$(du -sk "$p" 2>/dev/null | awk '{printf "%.0fM", $1/1024}')"
+      done > "$tmp/sizes"
 fi
+
+total=$(wc -l < "$tmp/body" | tr -d ' ')
+unowned=$(awk -F'\t' '$2=="?"' "$tmp/body" | wc -l | tr -d ' ')
+printf 'inventory %s -- %s entries, %s unowned (?)\n' "$host" "$total" "$unowned"
+
+for kind in appsupport container group prefs agent systemagent account; do
+  count=$(awk -F'\t' -v k="$kind" '$1==k' "$tmp/body" | wc -l | tr -d ' ')
+  [ "$count" -gt 0 ] || continue
+  label=$kind
+  [ "$kind" = account ] && label=accounts
+  printf '\n== %s (%s)\n' "$label" "$count"
+  # LC_ALL=C: '?' sorts before every origin word, so the findings lead.
+  awk -F'\t' -v k="$kind" '$1==k{print $2"\t"$3}' "$tmp/body" | LC_ALL=C sort \
+    | while IFS=$'\t' read -r o i; do
+        s="" kk=""
+        [ "$kind" = appsupport ] && kk=A
+        [ "$kind" = container ] && kk=C
+        if [ -n "$kk" ]; then
+          s=$(awk -F'\t' -v k="$kk" -v n="$i" '$1==k&&$2==n{print $3; exit}' "$tmp/sizes")
+        fi
+        printf '  %-42s %-20s %s\n' "$i" "$o" "$s"
+      done
+done
+
+printf '\ndiff the two Macs: diff <(grep -v "^#" a.txt) <(grep -v "^#" b.txt)\n'
