@@ -196,20 +196,20 @@ for f in /Library/LaunchAgents/*.plist /Library/LaunchDaemons/*.plist; do
 done
 adb="$LIB/Accounts/Accounts4.sqlite"
 if [ -f "$adb" ]; then
-  # ZACCOUNTTYPE is an integer FK; the type NAMES live in ZACCOUNTTYPE's
-  # table. Ladder: names+who, then names only (ZUSERNAME/ZLABEL can be
-  # encrypted-away), then the raw table as the last resort.
+  # ZACCOUNTTYPE is an integer FK; the type identity is ZACCOUNTTYPE.ZIDENTIFIER
+  # (macOS 27 schema: no ZLABEL on ZACCOUNT). Ladder: names+who, names only,
+  # raw table last.
   rows=$(sqlite3 -readonly "$adb" \
-          "select lower(t.ZACCOUNTTYPE) ||' '||
-             coalesce(nullif(a.ZUSERNAME,''), nullif(a.ZLABEL,''), 'acct-'||a.Z_PK)
+          "select lower(t.ZIDENTIFIER) ||' '|| coalesce(nullif(a.ZUSERNAME,''),'')
            from ZACCOUNT a join ZACCOUNTTYPE t on a.ZACCOUNTTYPE = t.Z_PK;" \
           2>/dev/null | tr -cd '[:print:]\n' || true)
   [ -z "$rows" ] && rows=$(sqlite3 -readonly "$adb" \
-          "select lower(ZACCOUNTTYPE) from ZACCOUNTTYPE
+          "select lower(ZIDENTIFIER) from ZACCOUNTTYPE
            where Z_PK in (select ZACCOUNTTYPE from ZACCOUNT);" \
           2>/dev/null | tr -cd '[:print:]\n' || true)
   [ -z "$rows" ] && rows=$(sqlite3 -readonly "$adb" \
           "select ZACCOUNTTYPE from ZACCOUNT;" 2>/dev/null | tr -cd '[:print:]\n' || true)
+  rows=$(printf '%s\n' "$rows" | sed 's/[[:space:]]*$//')
   while IFS= read -r r; do
     [ -n "$r" ] && printf 'account\t-\t%s\n' "$r" >> "$tmp/body"
   done <<< "$rows"
