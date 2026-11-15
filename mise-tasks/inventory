@@ -1,0 +1,222 @@
+#!/usr/bin/env bash
+#MISE tags=["macos"]
+# A diffable manifest of app state on this Mac: what lives in ~/Library that
+# the repo does not own, annotated by who does. The question it answers is
+# "what has not transferred between the Macs yet": run it on both hosts
+# (terminal, not the omp sandbox -- the app-support trees are denied there),
+# copy the two files together, and
+#
+#   diff <(grep -v '^#' inventory-gza.txt) <(grep -v '^#' inventory-mca.txt)
+#
+# lists the delta. A '?' line only on one host is not transferred, not in
+# the repo, not brew'd, not syncthing'd -- the transfer backlog. Account
+# rows diff separately: an account on one host missing from the other means
+# sign into it there (credentials stay in the first host's keychain; the
+# manifest only says WHICH).
+#
+# Annotations per line, first match wins:
+#   repo        a [dotfiles] target touches the path (mise dot ls), or the
+#               domain is in the declarative UI list (_defaults.sh), or mise
+#               itself deploys the plist (dev.mise.*)
+#   brew:<tok>  an installed cask's bundle id (via its Info.plist) or app
+#               name matches -- bootstrap will install the app; state is
+#               the app's own
+#   sync        under a syncthing share (read from the live config; shares
+#               are per-machine state, not repo-declared)
+#   ?           none of the above: read it as a finding
+#
+# The saved manifest holds only stable fields (kind, origin, item) so the
+# two hosts' files diff cleanly; sizes go to stdout only, which is also why
+# --quick exists (skip the du pass).
+#
+# Sections: appsupport (Application Support dirs), container (sandboxed
+# apps' homes), group (Group Containers), prefs (non-Apple defaults
+# domains), agent (~/Library/LaunchAgents), systemagent (the /Library ones,
+# third-party), account (the Accounts4 table). Apple-owned entries are
+# filtered -- they are the OS's state, not yours.
+set -euo pipefail
+shopt -s nullglob
+
+if [ "$(uname -s)" != "Darwin" ]; then
+  exit 0
+fi
+quick=""
+[ "${1:-}" = "--quick" ] && quick=1
+
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+LIB="$HOME/Library"
+
+lc() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]'; }
+
+# The omp sandbox probe (the check task's idiom): EPERM on Application
+# Support means the interesting half of Library is blind here, and a partial
+# manifest would poison every diff -- refuse instead of writing one.
+probe=$(ls "$LIB/Application Support" 2>&1) || true
+case "$probe" in
+  *"Operation not permitted"*)
+    echo "inventory: the omp sandbox denies ~/Library/Application Support -- run this task from a normal terminal." >&2
+    exit 1
+    ;;
+esac
+# The FDA probe (system-check's): without it the account db may read empty.
+if ! head -c1 "/Library/Application Support/com.apple.TCC/TCC.db" >/dev/null 2>&1; then
+  echo "NOTE: no Full Disk Access on this shell; the account section may be blind." >&2
+fi
+
+host="${HOST:-$(scutil --get LocalHostName 2>/dev/null || hostname -s)}"
+out="$LIB/Logs/inventory-$host.txt"
+mkdir -p "$LIB/Logs"
+tmp="$(mktemp -d)"
+trap 'rm -rf "$tmp"' EXIT
+: > "$tmp/repo"; : > "$tmp/repo-domains"; : > "$tmp/cask-apps"
+: > "$tmp/brew-bundle"; : > "$tmp/brew-name"; : > "$tmp/shares"
+
+# --- annotation inputs -----------------------------------------------------
+# repo: every [dotfiles] target of the loaded config, expanded.
+mise dot ls --json 2>/dev/null | jq -r '.files[].target' | sed "s|^~|$HOME|" > "$tmp/repo" || true
+# repo: the declarative UI domains bootstrap writes.
+# shellcheck source=mise-tasks/_defaults.sh
+source "$REPO/mise-tasks/_defaults.sh"
+for d in "${_UI_DOMAINS[@]}"; do printf '%s\n' "$d"; done >> "$tmp/repo-domains"
+# brew: installed casks -> bundle id (the app's Info.plist: `defaults` needs
+# a context plain shells lack, plutil does not) and app name.
+brew info --cask --installed --json=v2 2>/dev/null \
+  | jq -r '.casks[] | .token as $t | (.artifacts[]? | objects | select(has("app")) | .app[]? | [$t, .] | @tsv)' \
+  > "$tmp/cask-apps" || true
+# Offline or stale-API fallback: the per-cask file list names the .app.
+if [ ! -s "$tmp/cask-apps" ]; then
+  while IFS= read -r t; do
+    app=$(brew list --cask "$t" 2>/dev/null \
+            | grep -m1 -E '^/Applications/.*\.app$' | sed 's|^/Applications/||') || true
+    [ -n "$app" ] && printf '%s\t%s\n' "$t" "$app" >> "$tmp/cask-apps"
+  done < <(brew list --cask 2>/dev/null || true)
+fi
+while IFS=$'\t' read -r token app; do
+  p="/Applications/$app"
+  [ -d "$p" ] || p="$HOME/Applications/$app"
+  bid=$(plutil -extract CFBundleIdentifier raw "$p/Contents/Info.plist" 2>/dev/null || true)
+  [ -n "$bid" ] && printf '%s\t%s\n' "$bid" "$token" >> "$tmp/brew-bundle"
+  a=${app%.app}; a=${a##*/}
+  printf '%s\t%s\n' "$(lc "$a")" "$token" >> "$tmp/brew-name"
+done < "$tmp/cask-apps"
+# the token itself names some state dirs (obsidian/, vscodium/)
+while IFS= read -r t; do printf '%s\t%s\n' "$(lc "$t")" "$t"; done \
+  < <(brew list --cask 2>/dev/null || true) >> "$tmp/brew-name"
+# sync: folder paths from the live syncthing config.
+sed -n 's/.*<folder .*path="\([^"]*\)".*/\1/p' \
+  "$LIB/Application Support/Syncthing/config.xml" > "$tmp/shares" 2>/dev/null || true
+
+# --- helpers ----------------------------------------------------------------
+lookup_in() { awk -F'\t' -v k="$1" '$1==k{print $2; exit}' "$2" 2>/dev/null; }
+
+# repo hit: the path equals or contains a [dotfiles] target, or sits inside
+# one (a dotfile target's parent dir IS repo state).
+under_repo() {
+  local p="$1" t
+  while IFS= read -r t; do
+    [ -n "$t" ] || continue
+    case "$p" in "$t"|"$t"/*) return 0 ;; esac
+    case "$t" in "$p"/*) return 0 ;; esac
+  done < "$tmp/repo"
+  return 1
+}
+under_share() {
+  local p="$1" s
+  while IFS= read -r s; do
+    [ -n "$s" ] || continue
+    case "$p" in "$s"|"$s"/*) return 0 ;; esac
+  done < "$tmp/shares"
+  return 1
+}
+
+# origin <kind> <item-name> <path-or-""> <domain-or-"">
+origin() {
+  local kind="$1" item="$2" path="$3" domain="$4" tok=""
+  case "$kind" in
+    prefs)
+      grep -qxF "$domain" "$tmp/repo-domains" && { printf 'repo'; return; }
+      ;;
+    agent|systemagent)
+      case "$item" in dev.mise.*) printf 'repo'; return ;; esac
+      ;;
+  esac
+  if [ -n "$path" ] && under_repo "$path"; then printf 'repo'; return; fi
+  tok=$(lookup_in "$domain" "$tmp/brew-bundle")
+  [ -z "$tok" ] && tok=$(lookup_in "$(lc "$item")" "$tmp/brew-name")
+  [ -z "$tok" ] && tok=$(lookup_in "${item#group.}" "$tmp/brew-bundle")
+  if [ -n "$tok" ]; then printf 'brew:%s' "$tok"; return; fi
+  if [ -n "$path" ] && under_share "$path"; then printf 'sync'; return; fi
+  printf '?'
+}
+
+emit() { # kind item path domain -> manifest line
+  printf '%s\t%s\t%s\n' "$1" "$(origin "$1" "$2" "$3" "$4")" "$2" >> "$tmp/body"
+}
+
+# --- sections ----------------------------------------------------------------
+: > "$tmp/body"
+for d in "$LIB/Application Support"/*/; do
+  n=${d%/}; n=${n##*/}
+  case "$n" in
+    com.apple.*|Address\ Book|CallHistory*|CloudDocs|CloudKit|Configuration\ Profiles|ControlCenter|CrashReporter|MobileSync) continue ;;
+  esac
+  emit appsupport "$n" "${d%/}" ""
+done
+for d in "$LIB/Containers"/*/; do
+  n=${d%/}; n=${n##*/}
+  case "$n" in com.apple.*) continue ;; esac
+  emit container "$n" "${d%/}" "$n"
+done
+for d in "$LIB/Group Containers"/*/; do
+  n=${d%/}; n=${n##*/}
+  case "$n" in group.com.apple.*|com.apple.*) continue ;; esac
+  emit group "$n" "${d%/}" "${n#group.}"
+done
+for f in "$LIB/Preferences"/*.plist; do
+  n=${f##*/}; n=${n%.plist}
+  case "$n" in com.apple.*|pbs|TokenBucketRateLimiter|loginwindow) continue ;; esac
+  emit prefs "$n" "" "$n"
+done
+for f in "$LIB/LaunchAgents"/*.plist; do
+  emit agent "${f##*/}" "" ""
+done
+for f in /Library/LaunchAgents/*.plist /Library/LaunchDaemons/*.plist; do
+  n=${f##*/}
+  case "$n" in com.apple.*) continue ;; esac
+  emit systemagent "$n" "" ""
+done
+adb="$LIB/Accounts/Accounts4.sqlite"
+if [ -f "$adb" ]; then
+  rows=$(sqlite3 -readonly "$adb" \
+          "select ZACCOUNTTYPE ||' '.. coalesce(ZUSERNAME,'') from ZACCOUNT;" \
+          2>/dev/null | tr -cd '[:print:]\n' || true)
+  [ -z "$rows" ] && rows=$(sqlite3 -readonly "$adb" \
+          "select ZACCOUNTTYPE from ZACCOUNT;" 2>/dev/null || true)
+  while IFS= read -r r; do
+    [ -n "$r" ] && printf 'account\t-\t%s\n' "$r" >> "$tmp/body"
+  done <<< "$rows"
+fi
+
+{
+  printf '# inventory host=%s macos=%s repo=%s run=%s\n' \
+    "$host" \
+    "$(sw_vers -productVersion 2>/dev/null || true)-$(sw_vers -buildVersion 2>/dev/null || true)" \
+    "$(git -C "$REPO" rev-parse --short HEAD 2>/dev/null || true)" \
+    "$(date '+%Y-%m-%d %H:%M')"
+  LC_ALL=C sort -u "$tmp/body"
+} > "$tmp/manifest"
+
+mv "$tmp/manifest" "$out"
+cat "$out"
+echo "saved: $out" >&2
+
+# Sizes: stdout only, they change between runs and would poison diffs.
+if [ -z "$quick" ]; then
+  echo '== sizes (stdout only)' >&2
+  LC_ALL=C sort -u "$tmp/body" \
+    | awk -F'\t' '$1=="appsupport"||$1=="container"{print $3}' > "$tmp/sizedirs"
+  while IFS= read -r p; do
+    printf '  %-55s %s\n' "${p#"$LIB"/}" \
+      "$(du -sk "$p" 2>/dev/null | awk '{printf "%.0fM", $1/1024}')" >&2
+  done < "$tmp/sizedirs"
+fi
