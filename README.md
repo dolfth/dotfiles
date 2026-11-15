@@ -187,7 +187,7 @@ mise bootstrap remote --adopt '…' --host newbox.ts.net --remote-env mac
 | `mise.toml` | always | per-host fallback vars (accent/icon/tailnet/sshKeys), the shared dotfiles (incl. the omp agent config and aerospace), the syncthing LaunchAgent for both Macs, the bootstrap hooks, the fleet inventory (`[bootstrap.remote]`) |
 | `mise.mac.toml` | `mac` selected | both Macs: the declarative macOS defaults, `$EDITOR`/`$VISUAL` (helix), `~/.zshrc`, `~/.ssh/config`, the fish functions, linearmouse |
 | `mise.mca.toml` | `mca` selected | the laptop: host identity vars (host/accent/icon, HOST/KIND) |
-| `mise.gza.toml` | `gza` selected | the desktop: the omlx and splash LaunchAgents, the omlx and pi configs; its brew entries are in `Brewfile.gza` |
+| `mise.gza.toml` | `gza` selected | the desktop: the omlx and splash LaunchAgents, the omlx, pi and herdr configs; its brew entries are in `Brewfile.gza` |
 | `mise.nwa.toml` | `nwa` selected | the pi and herdr configs (mise itself comes from Nix, not a package list) |
 | `miserc.local.toml` | never committed | this machine's selection: `env = ["mac", "<host>"]` |
 | `Brewfile`, `Brewfile.gza` | the brew-bundle task | the brew manifest: the shared entries, plus the desktop's servers |
@@ -232,15 +232,19 @@ release itself.
 | `git/allowed_signers.tera` | `~/.config/git/allowed_signers` | every host's public key (the `sshKeys` var) |
 | `ghostty/config` | `~/.config/ghostty/config` | Nerd Font, so starship's glyphs render |
 | `aerospace/aerospace.toml` | `~/.config/aerospace/aerospace.toml` | both Macs; merged -- AeroSpace rewrites the file itself when the layout changes in-app |
-| `herdr/config.toml` | `~/.config/herdr/config.toml` | nwa only; copied -- herdr rewrites the file itself |
+| `herdr/config.toml` | `~/.config/herdr/config.toml` | both Macs; copied -- herdr rewrites the file itself |
 | `linearmouse.json` | `~/.config/linearmouse/linearmouse.json` | written only if absent, then LinearMouse owns it |
+| `handy/settings_store.json` | `~/Library/Application Support/com.pais.handy/settings_store.json` | Macs; symlinked -- Handy saves the store with a plain write, so in-app settings edits flow back into the repo: commit them. On a host where Handy already ran, `mise dot add` adopts the live file (it captures the source before linking) |
 | `pi/agent/settings.json` | `~/.pi/agent/settings.json` | gza + nwa; two pinned keys deep-merged into the file pi writes |
 | `omlx/*.json` | `~/.omlx/` | gza; the pinned settings deep-merged into the files omlx writes (auth keys stay omlx's), plus server aliases for the host's `.local` and Tailscale names |
 | `omp/agent/config.yml` | `~/.omp/agent/config.yml` | symlinked on every host: `/settings` changes flow back into the repo -- commit them |
 | `omp/agent/models.yml.tera` | `~/.omp/agent/models.yml` | the omlx + splash providers; `baseUrl` is `127.0.0.1` on gza, the gza tailnet FQDN elsewhere |
-| `nono/omp.json` | `/usr/local/etc/nono/omp.json` | Macs; the Seatbelt profile for omp, installed root:wheel by the `dev-agents` task -- by copy, never a repo symlink: the sandboxed agent must not be able to edit its own sandbox |
+| `nono/omp.json` | `/usr/local/etc/nono/omp.json` | Macs; the Seatbelt profile for omp, installed root:wheel by the `dev-agents` task -- by copy, never a repo symlink: the sandboxed agent must not be able to edit its own sandbox. Denies `~/.omp/profiles`, the state of the omp named profile `local`, so networked sessions cannot read sensitive work |
+| (generated from `nono/omp.json` + `vars.omp_base`) | `/usr/local/etc/nono/local-omp.json` | Macs; the offline profile for sensitive work, built by `dev-agents` instead of stored -- the two profiles cannot drift. Adds the model host's network allow-list (`network.block` would kill loopback too, invariant 8) and restores the state-tree deny carve-out |
 | `nono/omp-wrapper.sh` | `/usr/local/bin/omp` | Macs; root:wheel, so `omp` on PATH -- and every launch by name, `herdr agent start` included -- is sandboxed. Raw binary: `omp-unsandboxed`. Redirects Bun's install cache to `~/.omp/cache/bun-install` (`~/.bun` is denied; the memory embedder installs its runtime with Bun). The port of nwa's `dev-agents.nix`; requirements in the task's header |
+| `nono/local-omp-wrapper.sh` | `/usr/local/bin/local-omp` | Macs; root:wheel; the offline entry point for sensitive work. `OMP_PROFILE=local` relocates omp's state -- sessions, logs, the mnemopi store -- into `~/.omp/profiles/local`, which the daily profile denies; scratch lives there too. Runs `nono run`, not wrap: the domain allow-list is a proxy feature and the proxy needs the supervisor -- under wrap the same profile enforces nothing. `vars.omp_base` on the GPU-pool ports is the only reachable network |
 | `nono/AGENTS-sandbox.md` | `~/.omp/agent/AGENTS.md` | Macs; the note omp loads into every session, so a sandbox denial costs one line, not a token-spending investigation |
+| `nono/AGENTS-sandbox-local.md` | `~/.omp/profiles/local/agent/AGENTS.md` | Macs; the offline variant of the note, installed into the `local` omp profile the wrapper selects; the `local` agent dir also gets symlinks to the rendered `models.yml`/`config.yml` and the shared runtime caches |
 
 Rows without a host apply to every machine. Files on disk that no loaded
 module declares are left alone; `mise dot prune` removes ones the repo
