@@ -26,6 +26,7 @@
     ],
     "allow_file": ["$HOME/.config/mise/omp/agent/config.yml"],
     "deny": [
+      "$HOME/.omp/profiles",
       "$HOME/.config/herdr",
       "$HOME/.local/share/fish",
       "$HOME/Downloads",

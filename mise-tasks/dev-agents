@@ -21,7 +21,9 @@
 #    of failing on the socket; HERDR_AGENT is KEPT (the wrapper exports it --
 #    herdr reads it from the pane's foreground process to name the agent).
 # 3. `nono wrap`, not `nono run`: run's non-dumpable supervisor becomes the
-#    foreground process and herdr panes show "unknown".
+#    foreground process and herdr panes show "unknown". This is the DAILY
+#    omp's constraint (it wants herdr's agent integration); local-omp
+#    deliberately uses run instead -- see 8.
 # 4. --profile takes a full path, never a name: names resolve at run time and
 #    a registry pack can claim one (nwa watched `nono pull` replace a profile
 #    with one granting ~/.claude and the network).
@@ -34,6 +36,29 @@
 #    grant, so denying Documents forbade launching sandboxed omp from a
 #    workdir under it (EPERM on getcwd, Bun dies at startup). Default-deny
 #    keeps it shut; the check re-asserts that from a neutral workdir.
+# 8. local-omp (sensitive work, offline): its profile is NOT a repo file.
+#    It is generated here from omp.json + vars.omp_base (gen_local_profile),
+#    so the two entry points cannot drift on filesystem grants; they differ
+#    only by name, the deny carve-out of #9, and a network allow-list of the
+#    model host (vars.omp_base: 127.0.0.1 on gza, the tailnet FQDN elsewhere)
+#    plus open_port 8000/8080/8100. open_port is needed because omp fetches
+#    deliberately bypass proxy env vars for loopback targets, so the direct
+#    path must be granted. network.block=true is NOT usable: it denies
+#    loopback too, open_port or not (probed: network_blocked). The local
+#    wrapper runs `nono run`, not wrap: domain filtering is a proxy feature,
+#    the proxy lives in run's supervisor, and wrap without a parent silently
+#    enforces no allow-list at all (proven: a wrap-launched local-omp
+#    fetched the open internet 2026-11-12; docs/cli/features/execution-modes
+#    lists "no network proxy" as a direct-mode limit). Supervised mode also
+#    keeps the herdr foreground-process name unsuitable for omp -- wanted:
+#    herdr must not claim local-omp sessions.
+# 9. local-omp state is invisible to the daily sandbox: omp.json DENIES
+#    $HOME/.omp/profiles (deny outranks the ~/.omp allow), while the
+#    generated local-omp.json drops that line to keep its own state. With
+#    OMP_PROFILE=local (wrapper) sessions, logs, and the mnemopi store all
+#    live under it, so sensitive facts cannot resurface in a networked
+#    session's memory. The daily profile's deny must never block its own
+#    workdir: nothing is ever worked on under ~/.omp/profiles.
 
 set -euo pipefail
 
@@ -46,10 +71,18 @@ root="$(cd "$(dirname "$0")/.." && pwd)"
 profile_src="$root/nono/omp.json"
 wrapper_src="$root/nono/omp-wrapper.sh"
 agents_md_src="$root/nono/AGENTS-sandbox.md"
+local_wrapper_src="$root/nono/local-omp-wrapper.sh"
+agents_local_src="$root/nono/AGENTS-sandbox-local.md"
 
 profile_dst=/usr/local/etc/nono/omp.json
+local_profile_dst=/usr/local/etc/nono/local-omp.json
 wrapper_dst=/usr/local/bin/omp
+local_wrapper_dst=/usr/local/bin/local-omp
 raw_dst=/usr/local/bin/omp-unsandboxed
+
+# The omp named profile local-omp runs in: its whole state tree, invisible
+# to the daily sandbox by the deny of #9.
+local_state="$HOME/.omp/profiles/local"
 
 # Pinned like nwa's ompPkg (a versioned release binary with a checksum, not a
 # brew formula: the wrapper must point at a stable path brew never touches).
@@ -57,6 +90,28 @@ omp_version="18.18.6"
 omp_sha256="ed2e63eb43888eb76cb1409b245b1db4557c94dfad52dc545c9aaca01ebce82d"  # omp-darwin-arm64
 
 fail() { echo "dev-agents check: $*" >&2; exit 1; }
+
+# The model host from vars.omp_base (127.0.0.1 on gza, the tailnet FQDN
+# elsewhere) -- the same source models.yml.tera renders, so the network
+# allow-list tracks the catalog by construction.
+omp_base() {
+  local base
+  base="$(mise vars | awk '$1 == "omp_base" { print $2 }')"
+  [ -n "$base" ] || fail "vars.omp_base not set (base mise.toml)"
+  printf '%s' "$base"
+}
+
+# local-omp.json, generated whole from omp.json -- the deliberate diffs only
+# (invariants 8 and 9): the name, the state-tree deny carve-out, and the
+# network allow-list. A repo copy would drift.
+gen_local_profile() {
+  jq --arg base "$(omp_base)" '
+    .meta.name = "local-omp"
+    | .meta.description = "omp offline: model host only, state isolated from the daily sandbox"
+    | .filesystem.deny -= ["$HOME/.omp/profiles"]
+    | .network = { "allow_domain": [$base], "open_port": [8000, 8080, 8100] }
+  ' "$profile_src"
+}
 
 ##### check -- the invariants, machine-checked ################################
 
@@ -68,7 +123,10 @@ check() {
   # Inside a sandbox, /usr/local/etc/nono is invisible by design, and an
   # unreadable install would masquerade as "not installed yet" below. Refuse
   # rather than certify what cannot be seen (NONO_CAP_FILE is set by nono).
-  [ -z "${NONO_CAP_FILE:-}" ] || fail "running inside a nono sandbox; the check must run unsandboxed (omp-unsandboxed -- mise run dev-agents check)"
+  # No escape hatch to name: a sandboxed child stays sandboxed (nested
+  # sandbox_init EPERMs), and 'omp-unsandboxed -- <cmd>' is not an exec --
+  # '--' starts omp message text. The caller hands the command to a plain terminal.
+  [ -z "${NONO_CAP_FILE:-}" ] || fail "running inside a nono sandbox; the check must run unsandboxed -- run 'mise run dev-agents check' from a normal terminal"
   command -v nono >/dev/null || fail "nono not installed (Brewfile entry; run the bootstrap or brew install nono)"
   command -v jq >/dev/null || fail "jq not installed"
 
@@ -98,6 +156,32 @@ check() {
   docs_why=$(nono why --profile "$profile_src" --workdir "$root" --path "$HOME/Documents" 2>&1 || true)
   case "$docs_why" in DENIED*) ;; *) fail "nono why: \$HOME/Documents not denied (${docs_why:-no output})" ;; esac
 
+  # R8 + R9: local-omp's profile is generated, never a repo file (#8).
+  local gen
+  gen="$(mktemp)"
+  gen_local_profile > "$gen" || fail "cannot generate local-omp profile"
+  nono profile validate "$gen" >/dev/null || fail "generated local-omp profile does not validate"
+
+  # R8: the model host answers, the remote world does not.
+  local net_why remote_why
+  net_why=$(nono why --profile "$gen" --host "$(omp_base)" --port 8100 2>&1 || true)
+  case "$net_why" in ALLOWED*) ;; *) fail "local-omp: model host not reachable (${net_why:-no output})" ;; esac
+  remote_why=$(nono why --profile "$gen" --host api.openai.com 2>&1 || true)
+  case "$remote_why" in DENIED*) ;; *) fail "local-omp: remote network not denied (${remote_why:-no output})" ;; esac
+
+  # R8 backstop: generation must not relax default-deny on documents.
+  local local_docs_why
+  local_docs_why=$(nono why --profile "$gen" --workdir "$root" --path "$HOME/Documents" 2>&1 || true)
+  case "$local_docs_why" in DENIED*) ;; *) fail "local-omp: \$HOME/Documents not denied (${local_docs_why:-no output})" ;; esac
+
+  # R9: the daily sandbox is blind to local state; local reads its own.
+  local state_path="$local_state/agent/memories/mnemopi/mnemopi.db"
+  local daily_state_why local_state_why
+  daily_state_why=$(nono why --profile "$profile_src" --workdir "$root" --path "$state_path" 2>&1 || true)
+  case "$daily_state_why" in DENIED*) ;; *) fail "daily omp can read local state (${daily_state_why:-no output})" ;; esac
+  local_state_why=$(nono why --profile "$gen" --workdir "$root" --path "$state_path" 2>&1 || true)
+  case "$local_state_why" in ALLOWED*) ;; *) fail "local-omp cannot read its own state (${local_state_why:-no output})" ;; esac
+
   # R6 as the engine sees it, not only as this file's text: the static scan
   # below reads the profile's own lists, while extends/groups can grant more
   # -- so the private key gets the same runtime re-assertion as the socket
@@ -116,19 +200,41 @@ check() {
   grep -q "export BUN_INSTALL_CACHE_DIR=" "$wrapper_src" \
     || fail "wrapper does not redirect the Bun install cache (~/.bun is denied; the memory embedder dies)"
 
-  # R6: no grants of $HOME itself, ~/.ssh, or secret-manager key paths.
-  local grants
-  grants=$(jq -r '[.filesystem | (.allow // [])[], (.allow_file // [])[], (.read // [])[], (.read_file // [])[]] | join(" ")' "$profile_src")
-  # the patterns are literals on purpose: they match $HOME text inside the
-  # profile JSON, never an expanded path
-  # shellcheck disable=SC2016
-  for bad in '"$HOME"' '$HOME/.ssh' sops age/ '$HOME/.gnupg' '$HOME/.aws'; do
-    case " $grants " in *" $bad "*) fail "profile grants a protected path: $bad" ;; esac
+  # The same requirements on the local wrapper (#8/#9's entry point) --
+  # except supervised mode is mandatory there: wrap hosts no proxy, so the
+  # allow-list would be inert (its own comment carries the story).
+  grep -q -- "--profile $local_profile_dst" "$local_wrapper_src" \
+    || fail "local wrapper does not pass --profile $local_profile_dst (a full path)"
+  grep -q "nono run " "$local_wrapper_src" \
+    || fail "local wrapper does not use 'nono run' (domain filtering needs the supervised proxy)"
+  grep -q "export HERDR_AGENT=local-omp" "$local_wrapper_src" \
+    || fail "local wrapper does not export HERDR_AGENT=local-omp"
+  grep -q "export OMP_PROFILE=local" "$local_wrapper_src" \
+    || fail "local wrapper does not export OMP_PROFILE=local (state isolation, #9)"
+
+  # R9 as text, before the engine sees it: daily denies the state tree,
+  # and the generated profile must carry the carve-out.
+  jq -e '.filesystem.deny | index("$HOME/.omp/profiles")' "$profile_src" >/dev/null \
+    || fail "daily profile does not deny \$HOME/.omp/profiles"
+  jq -e '.filesystem.deny | index("$HOME/.omp/profiles") | not' "$gen" >/dev/null \
+    || fail "local-omp profile still denies its own state tree"
+
+  # R6: no grants of $HOME itself, ~/.ssh, or secret-manager key paths --
+  # both profiles, the generated one included.
+  local pf grants
+  for pf in "$profile_src" "$gen"; do
+    grants=$(jq -r '[.filesystem | (.allow // [])[], (.allow_file // [])[], (.read // [])[], (.read_file // [])[]] | join(" ")' "$pf")
+    # the patterns are literals on purpose: they match $HOME text inside the
+    # profile JSON, never an expanded path
+    # shellcheck disable=SC2016
+    for bad in '"$HOME"' '$HOME/.ssh' sops age/ '$HOME/.gnupg' '$HOME/.aws'; do
+      case " $grants " in *" $bad "*) fail "$pf grants a protected path: $bad" ;; esac
+    done
   done
 
   # R5 on the installed copies: present, current, root:wheel.
   local p
-  for f in "$profile_dst" "$wrapper_dst" "$raw_dst"; do
+  for f in "$profile_dst" "$local_profile_dst" "$wrapper_dst" "$local_wrapper_dst" "$raw_dst"; do
     [ -e "$f" ] || { echo "  (not installed yet: $f)"; continue; }
     p=$(stat -f '%Su:%Sg' "$f")
     [ "$p" = "root:wheel" ] || fail "$f is owned by $p, want root:wheel (the agent could edit its own sandbox)"
@@ -142,9 +248,16 @@ check() {
   if [ -e "$profile_dst" ] && ! cmp -s "$profile_src" "$profile_dst"; then
     stale="$profile_dst"
   fi
+  if [ -e "$local_profile_dst" ] && ! cmp -s "$gen" "$local_profile_dst"; then
+    stale="${stale:+$stale, }$local_profile_dst"
+  fi
   if [ -n "$brew_prefix" ] && [ -e "$wrapper_dst" ] \
      && ! cmp -s <(sed "s|__BREW_PREFIX__|$brew_prefix|g" "$wrapper_src") "$wrapper_dst"; then
     stale="${stale:+$stale, }$wrapper_dst"
+  fi
+  if [ -n "$brew_prefix" ] && [ -e "$local_wrapper_dst" ] \
+     && ! cmp -s <(sed "s|__BREW_PREFIX__|$brew_prefix|g" "$local_wrapper_src") "$local_wrapper_dst"; then
+    stale="${stale:+$stale, }$local_wrapper_dst"
   fi
   if [ -e "$raw_dst" ] && ! "$raw_dst" --version 2>/dev/null | grep "$omp_version" >/dev/null; then
     stale="${stale:+$stale, }$raw_dst"
@@ -189,9 +302,20 @@ install_stack() {
   sudo mkdir -p /usr/local/etc/nono /usr/local/bin
   sudo install -o root -g wheel -m 644 "$profile_src" "$profile_dst"
 
+  # local-omp.json is generated here, not stored in the repo (#8).
+  local_profile="$(mktemp)"
+  gen_local_profile > "$local_profile"
+  sudo install -o root -g wheel -m 644 "$local_profile" "$local_profile_dst"
+  rm -f "$local_profile"
+
   tmp_wrapper="$(mktemp)"
   sed "s|__BREW_PREFIX__|$brew_prefix|g" "$wrapper_src" > "$tmp_wrapper"
   sudo install -o root -g wheel -m 755 "$tmp_wrapper" "$wrapper_dst"
+  rm -f "$tmp_wrapper"
+
+  tmp_wrapper="$(mktemp)"
+  sed "s|__BREW_PREFIX__|$brew_prefix|g" "$local_wrapper_src" > "$tmp_wrapper"
+  sudo install -o root -g wheel -m 755 "$tmp_wrapper" "$local_wrapper_dst"
   rm -f "$tmp_wrapper"
 
   # The pinned raw binary, mirroring nwa's ompPkg.
@@ -235,7 +359,21 @@ install_stack() {
   cmp -s "$agents_md_src" "$HOME/.omp/agent/AGENTS.md" \
     || command install -m 644 "$agents_md_src" "$HOME/.omp/agent/AGENTS.md"
 
-  echo "==> Installed: $(/usr/local/bin/omp-unsandboxed --version), wrapped by $wrapper_dst"
+  # Seed the omp named profile local-omp runs in (#9). A named profile sees
+  # only its own config, so point it at the same rendered files: config.yml
+  # resolves into the repo (already granted via allow_file in both profiles),
+  # models.yml under the granted ~/.omp. The cache symlinks share runtime
+  # material and model weights -- static, no doc content, and un-downloadable
+  # offline by design. The offline note teaches local-omp its rules.
+  mkdir -p "$local_state/tmp" "$local_state/agent"
+  ln -sfn "$HOME/.omp/agent/models.yml" "$local_state/agent/models.yml"
+  ln -sfn "$HOME/.omp/agent/config.yml" "$local_state/agent/config.yml"
+  ln -sfn "$HOME/.omp/agent/cache" "$local_state/agent/cache"
+  ln -sfn "$HOME/.omp/cache" "$local_state/cache"
+  cmp -s "$agents_local_src" "$local_state/agent/AGENTS.md" \
+    || command install -m 644 "$agents_local_src" "$local_state/agent/AGENTS.md"
+
+  echo "==> Installed: $(/usr/local/bin/omp-unsandboxed --version), wrapped by $wrapper_dst and $local_wrapper_dst"
 }
 
 case "${1:-all}" in
