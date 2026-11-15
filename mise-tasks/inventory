@@ -83,18 +83,25 @@ for d in "${_UI_DOMAINS[@]}"; do printf '%s\n' "$d"; done >> "$tmp/repo-domains"
 brew info --cask --installed --json=v2 2>/dev/null \
   | jq -r '.casks[] | .token as $t | (.artifacts[]? | objects | select(has("app")) | .app[]? | [$t, .] | @tsv)' \
   > "$tmp/cask-apps" || true
-# Offline or stale-API fallback: the per-cask file list names the .app.
-if [ ! -s "$tmp/cask-apps" ]; then
-  while IFS= read -r t; do
-    app=$(brew list --cask "$t" 2>/dev/null \
-            | grep -m1 -E '^/Applications/.*\.app$' | sed 's|^/Applications/||') || true
-    [ -n "$app" ] && printf '%s\t%s\n' "$t" "$app" >> "$tmp/cask-apps"
-  done < <(brew list --cask 2>/dev/null || true)
-fi
+# Tokens the info JSON skipped (pkg-style casks, tailscale-app) or got
+# stale on: the per-cask file list names the installed .app directly.
+cut -f1 "$tmp/cask-apps" | LC_ALL=C sort -u > "$tmp/have"
+brew list --cask 2>/dev/null | LC_ALL=C sort > "$tmp/toks" || true
+while IFS= read -r t; do
+  app=$(brew list --cask "$t" 2>/dev/null \
+          | grep -m1 -E '\.app$' || true)
+  [ -n "$app" ] && printf '%s\t%s\n' "$t" "${app#/Applications/}" >> "$tmp/cask-apps"
+done < <(LC_ALL=C comm -23 "$tmp/toks" "$tmp/have")
 while IFS=$'\t' read -r token app; do
-  p="/Applications/$app"
-  [ -d "$p" ] || p="$HOME/Applications/$app"
-  bid=$(plutil -extract CFBundleIdentifier raw "$p/Contents/Info.plist" 2>/dev/null || true)
+  # The info JSON's path can be stale (aerospace moved out of its versioned
+  # dir); the bare app name is the second candidate.
+  p=""
+  for c in "/Applications/$app" "$HOME/Applications/$app" \
+           "/Applications/${app##*/}" "$HOME/Applications/${app##*/}"; do
+    [ -d "$c" ] && { p="$c"; break; }
+  done
+  bid=""
+  [ -n "$p" ] && bid=$(plutil -extract CFBundleIdentifier raw "$p/Contents/Info.plist" 2>/dev/null || true)
   [ -n "$bid" ] && printf '%s\t%s\n' "$bid" "$token" >> "$tmp/brew-bundle"
   a=${app%.app}; a=${a##*/}
   printf '%s\t%s\n' "$(lc "$a")" "$token" >> "$tmp/brew-name"
@@ -157,8 +164,9 @@ emit() { # kind item path domain -> manifest line
 : > "$tmp/body"
 for d in "$LIB/Application Support"/*/; do
   n=${d%/}; n=${n##*/}
+  # Daemon-owned dirs (the OS's own state, not an app's) and Apple names.
   case "$n" in
-    com.apple.*|Address\ Book|CallHistory*|CloudDocs|CloudKit|Configuration\ Profiles|ControlCenter|CrashReporter|MobileSync) continue ;;
+    com.apple.*|AddressBook|Animoji|CallHistory*|CloudDocs|CloudKit|Configuration\ Profiles|ControlCenter|CrashReporter|DifferentialPrivacy|DiskImages|FaceTime|FileProvider|IntelligenceFlow|Knowledge|MobileSync|SESStorage|homeenergyd|icdd|locationaccessstored|networkserviceproxy) continue ;;
   esac
   emit appsupport "$n" "${d%/}" ""
 done
@@ -169,12 +177,13 @@ for d in "$LIB/Containers"/*/; do
 done
 for d in "$LIB/Group Containers"/*/; do
   n=${d%/}; n=${n##*/}
-  case "$n" in group.com.apple.*|com.apple.*) continue ;; esac
-  emit group "$n" "${d%/}" "${n#group.}"
+  # Team-id prefixes (243LU875E5.groups.com.apple.podcasts) still name Apple.
+  case "$n" in group.com.apple.*|com.apple.*|*com.apple.*) continue ;; esac
+  emit group "$n" "${d%/}" "$(printf '%s' "${n#group.}" | sed -E 's/^[A-Z0-9]{10}\.//')"
 done
 for f in "$LIB/Preferences"/*.plist; do
   n=${f##*/}; n=${n%.plist}
-  case "$n" in com.apple.*|pbs|TokenBucketRateLimiter|loginwindow) continue ;; esac
+  case "$n" in com.apple.*|pbs|TokenBucketRateLimiter|loginwindow|ContextStoreAgent|diagnostics_agent|familycircled|localizationswitcherd|sharedfilelistd|systemgroup.*) continue ;; esac
   emit prefs "$n" "" "$n"
 done
 for f in "$LIB/LaunchAgents"/*.plist; do
@@ -187,11 +196,20 @@ for f in /Library/LaunchAgents/*.plist /Library/LaunchDaemons/*.plist; do
 done
 adb="$LIB/Accounts/Accounts4.sqlite"
 if [ -f "$adb" ]; then
+  # ZACCOUNTTYPE is an integer FK; the type NAMES live in ZACCOUNTTYPE's
+  # table. Ladder: names+who, then names only (ZUSERNAME/ZLABEL can be
+  # encrypted-away), then the raw table as the last resort.
   rows=$(sqlite3 -readonly "$adb" \
-          "select ZACCOUNTTYPE ||' '.. coalesce(ZUSERNAME,'') from ZACCOUNT;" \
+          "select lower(t.ZACCOUNTTYPE) ||' '||
+             coalesce(nullif(a.ZUSERNAME,''), nullif(a.ZLABEL,''), 'acct-'||a.Z_PK)
+           from ZACCOUNT a join ZACCOUNTTYPE t on a.ZACCOUNTTYPE = t.Z_PK;" \
           2>/dev/null | tr -cd '[:print:]\n' || true)
   [ -z "$rows" ] && rows=$(sqlite3 -readonly "$adb" \
-          "select ZACCOUNTTYPE from ZACCOUNT;" 2>/dev/null || true)
+          "select lower(ZACCOUNTTYPE) from ZACCOUNTTYPE
+           where Z_PK in (select ZACCOUNTTYPE from ZACCOUNT);" \
+          2>/dev/null | tr -cd '[:print:]\n' || true)
+  [ -z "$rows" ] && rows=$(sqlite3 -readonly "$adb" \
+          "select ZACCOUNTTYPE from ZACCOUNT;" 2>/dev/null | tr -cd '[:print:]\n' || true)
   while IFS= read -r r; do
     [ -n "$r" ] && printf 'account\t-\t%s\n' "$r" >> "$tmp/body"
   done <<< "$rows"
@@ -213,9 +231,12 @@ echo "saved: $out" >&2
 # Sizes: stdout only, they change between runs and would poison diffs.
 if [ -z "$quick" ]; then
   echo '== sizes (stdout only)' >&2
+  # The manifest stores names, not paths: rebuild the path per kind.
   LC_ALL=C sort -u "$tmp/body" \
-    | awk -F'\t' '$1=="appsupport"||$1=="container"{print $3}' > "$tmp/sizedirs"
-  while IFS= read -r p; do
+    | awk -F'\t' '$1=="appsupport"{print "A\t"$3} $1=="container"{print "C\t"$3}' > "$tmp/sizedirs"
+  while IFS=$'\t' read -r k n; do
+    p="$LIB/Containers/$n"
+    [ "$k" = A ] && p="$LIB/Application Support/$n"
     printf '  %-55s %s\n' "${p#"$LIB"/}" \
       "$(du -sk "$p" 2>/dev/null | awk '{printf "%.0fM", $1/1024}')" >&2
   done < "$tmp/sizedirs"
