@@ -166,7 +166,7 @@ for d in "$LIB/Application Support"/*/; do
   n=${d%/}; n=${n##*/}
   # Daemon-owned dirs (the OS's own state, not an app's) and Apple names.
   case "$n" in
-    com.apple.*|AddressBook|Animoji|CallHistory*|CloudDocs|CloudKit|Configuration\ Profiles|ControlCenter|CrashReporter|DifferentialPrivacy|DiskImages|FaceTime|FileProvider|IntelligenceFlow|Knowledge|MobileSync|SESStorage|homeenergyd|icdd|locationaccessstored|networkserviceproxy) continue ;;
+    com.apple.*|AddressBook|Animoji|App\ Store|AskPermission|Automator|CallHistory*|CloudDocs|CloudKit|Configuration\ Profiles|ControlCenter|CrashReporter|DifferentialPrivacy|DiskImages|FamilySettings|FaceTime|FileProvider|IntelligenceFlow|Knowledge|MobileSync|SESStorage|SyncServices|appplaceholdersyncd|contactsd|homeenergyd|iLifeMediaBrowser|icdd|icloudmailagent|identityservicesd|locationaccessstored|networkserviceproxy|tipsd) continue ;;
   esac
   emit appsupport "$n" "${d%/}" ""
 done
@@ -183,7 +183,7 @@ for d in "$LIB/Group Containers"/*/; do
 done
 for f in "$LIB/Preferences"/*.plist; do
   n=${f##*/}; n=${n%.plist}
-  case "$n" in com.apple.*|pbs|TokenBucketRateLimiter|loginwindow|ContextStoreAgent|diagnostics_agent|familycircled|localizationswitcherd|sharedfilelistd|systemgroup.*) continue ;; esac
+  case "$n" in com.apple.*|pbs|TokenBucketRateLimiter|loginwindow|ContextStoreAgent|diagnostics_agent|familycircled|localizationswitcherd|sharedfilelistd|systemgroup.*|mbuseragent|replayd|ScopedBookmarkAgent|icloudmailagent|org.sparkle-project.Sparkle.Autoupdate) continue ;; esac
   emit prefs "$n" "" "$n"
 done
 for f in "$LIB/LaunchAgents"/*.plist; do
@@ -239,7 +239,10 @@ if [ -z "$quick" ]; then
         p="$LIB/Containers/$n"
         [ "$k" = A ] && p="$LIB/Application Support/$n"
         printf '%s\t%s\t%s\n' "$k" "$n" \
-          "$(du -sk "$p" 2>/dev/null | awk '{printf "%.0fM", $1/1024}')"
+          "$(du -sk "$p" 2>/dev/null | awk \
+            '{if ($1<1024) printf "%.0fK", $1;
+              else if ($1<1048576) printf "%.0fM", $1/1024;
+              else printf "%.1fG", $1/1048576}')"
       done > "$tmp/sizes"
 fi
 
