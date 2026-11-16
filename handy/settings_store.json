@@ -180,7 +180,7 @@
     "selected_microphone": null,
     "selected_model": "handy-computer/canary-1b-v2-gguf/canary-1b-v2-Q8_0.gguf",
     "selected_output_device": null,
-    "settings_schema_version": 2,
+    "settings_schema_version": 3,
     "shortcut_activation": "hold_or_toggle",
     "show_tray_icon": true,
     "show_whats_new_on_update": true,
