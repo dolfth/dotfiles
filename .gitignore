@@ -11,3 +11,5 @@ omp/agent/*.lock
 # from SQLite's `:memory:` name without special-casing it, so it lands in the
 # cwd. Rewritten on every interactive run; upstream, not yet reported.
 :memory:.ses
+# Finder's per-directory metadata; rewritten on every window visit.
+.DS_Store
