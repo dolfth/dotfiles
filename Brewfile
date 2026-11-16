@@ -59,6 +59,10 @@ cask "handy"
 cask "iina"
 cask "imageoptim"
 cask "linearmouse"
+# Objective-See's application firewall: mca ran it for a long time, gza
+# never had it. First run needs a terminal -- the cask installs a system
+# extension that must be approved in Privacy & Security.
+cask "lulu"
 cask "monitorcontrol"
 cask "notunes"
 cask "obsidian"
