@@ -53,14 +53,19 @@ defaults write com.apple.finder NewWindowTargetPath -string "file:///$USER/"
 
 # Dock: the Downloads folder tile. Folder tiles live in persistent-others,
 # which mise's dock.apps feature never touches, and a tile needs $HOME plus
-# a security-scoped bookmark: without one the Dock stores the tile but shows
-# "?" for it (verified on this macOS -- a plain _CFURLString tile renders
-# dead). Neither fits a TOML value, so the task ensures it, like Finder's
-# home target. Swift owns the read-modify-write: a converged (or hand-
-# dragged) bookmarked tile is a no-op, every other tile survives, and a
-# Downloads tile without a bookmark -- the dead shape an earlier commit
-# wrote -- is dropped and rewritten. The Dock is only killed when something
-# actually changed; a restart rebuilds Spaces.
+# a bookmark: without one the Dock stores the tile but shows "?" (verified
+# on this macOS). Neither fits a TOML value, so the task ensures it, like
+# Finder's home target. The bookmark must be UNscoped --
+# .withoutImplicitSecurityScope: a .withSecurityScope bookmark carries a
+# cookie keyed to the creating app's signing identity and only that app can
+# resolve it, so one made outside the Dock renders "?" no matter how well
+# formed (this happened), and a plain bookmark embeds a sandbox extension
+# that dies at reboot. Unscoped is the documented durable location form,
+# and its bytes are deterministic for a given folder -- so the task
+# regenerates and compares, making a converged tile a no-op and replacing
+# every wrong shape (bookmarkless, scoped, stale). Swift owns the read-
+# modify-write; tiles that are not Downloads survive. The Dock is killed
+# only when the bytes actually changed; a restart rebuilds Spaces.
 dock_rc=0
 timeout 90 swift -suppress-warnings - <<'EOF' || dock_rc=$?
 import Foundation
@@ -78,31 +83,28 @@ func tileURL(_ t: Any) -> URL? {
 func tileBookmark(_ t: Any) -> Data? {
     ((t as? [String: Any])?["tile-data"] as? [String: Any])?["bookmark"] as? Data
 }
-var others = (CFPreferencesCopyAppValue(key, dock) as? [Any]) ?? []
-if let ours = others.first(where: { tileURL($0)?.path == dl.path }),
-   !(tileBookmark(ours) ?? Data()).isEmpty {
-    exit(0)   // converged; a hand-dragged tile counts
-}
-others.removeAll { tileURL($0)?.path == dl.path }
-// Security-scoped first (the shape the Dock itself stores); the flag is
-// rejected outside some contexts, so fall back to a plain bookmark -- the
-// shape the known Dock-deployment scripts generate.
-guard let bm = (try? dl.bookmarkData(options: [.withSecurityScope]))
-        ?? (try? dl.bookmarkData()) else {
+guard let bm = try? dl.bookmarkData(options: [.withoutImplicitSecurityScope])
+else {
     print("  Dock: no bookmark for \(dl.path); Downloads tile left as it was")
     exit(1)
 }
+let others = (CFPreferencesCopyAppValue(key, dock) as? [Any]) ?? []
+if let ours = others.first(where: { tileURL($0)?.path == dl.path }),
+   tileBookmark(ours) == bm {
+    exit(0)   // converged; the deterministic bytes ARE the state check
+}
+var updated = others.filter { tileURL($0)?.path != dl.path }
 // isDirectory:true so the URL carries exactly one trailing slash, the shape
 // the Dock's own folder tiles store.
 let urlString = URL(fileURLWithPath: dl.path, isDirectory: true).absoluteString
-others.append(["tile-data": ["bookmark": bm,
-                             "file-data": ["_CFURLString": urlString,
-                                           "_CFURLStringType": 8],
-                             "file-label": "Downloads", "file-type": 2],
-               "tile-type": "file-tile"])
-CFPreferencesSetAppValue(key, others as NSArray, dock)
+updated.append(["tile-data": ["bookmark": bm,
+                              "file-data": ["_CFURLString": urlString,
+                                            "_CFURLStringType": 8],
+                              "file-label": "Downloads", "file-type": 2],
+                "tile-type": "file-tile"])
+CFPreferencesSetAppValue(key, updated as NSArray, dock)
 CFPreferencesAppSynchronize(dock)
-print("  Dock: wrote the Downloads tile with a security-scoped bookmark")
+print("  Dock: wrote the Downloads tile (unscoped bookmark)")
 exit(13)
 EOF
 [ "$dock_rc" = 127 ] && echo "  Dock: swift unavailable; Downloads tile skipped"
