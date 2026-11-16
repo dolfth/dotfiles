@@ -52,18 +52,62 @@ fi
 defaults write com.apple.finder NewWindowTargetPath -string "file:///$USER/"
 
 # Dock: the Downloads folder tile. Folder tiles live in persistent-others,
-# which mise's dock.apps feature never touches, and the tile needs $HOME plus
-# a binary form a TOML value cannot carry -- so ensure it here. The check
-# matches the stored file-data URL, so a hand-dragged tile of the same folder
-# counts too. The text file-data is all the tile needs to load: the Dock
-# adds its own bookmark and mod-dates when it next reads the list. A
-# converged Dock is a no-op; the restart leg below reloads the Dock when
-# this write changed the domain.
-if ! defaults read com.apple.dock persistent-others 2>/dev/null \
-    | grep -q "file://${HOME}/Downloads"; then
-  defaults write com.apple.dock persistent-others -array-add \
-    "<dict><key>tile-data</key><dict><key>file-data</key><dict><key>_CFURLString</key><string>file://${HOME}/Downloads/</string><key>_CFURLStringType</key><integer>8</integer></dict><key>file-label</key><string>Downloads</string></dict><key>tile-type</key><string>file-tile</string></dict>"
-  echo "  Dock: added the Downloads tile"
+# which mise's dock.apps feature never touches, and a tile needs $HOME plus
+# a security-scoped bookmark: without one the Dock stores the tile but shows
+# "?" for it (verified on this macOS -- a plain _CFURLString tile renders
+# dead). Neither fits a TOML value, so the task ensures it, like Finder's
+# home target. Swift owns the read-modify-write: a converged (or hand-
+# dragged) bookmarked tile is a no-op, every other tile survives, and a
+# Downloads tile without a bookmark -- the dead shape an earlier commit
+# wrote -- is dropped and rewritten. The Dock is only killed when something
+# actually changed; a restart rebuilds Spaces.
+dock_rc=0
+timeout 90 swift -suppress-warnings - <<'EOF' || dock_rc=$?
+import Foundation
+let home = FileManager.default.homeDirectoryForCurrentUser.standardizedFileURL
+let dl = home.appendingPathComponent("Downloads")
+let key = "persistent-others" as CFString
+let dock = "com.apple.dock" as CFString
+func tileURL(_ t: Any) -> URL? {
+    guard let td = (t as? [String: Any])?["tile-data"] as? [String: Any],
+          let fd = td["file-data"] as? [String: Any],
+          let s = fd["_CFURLString"] as? String
+    else { return nil }
+    return URL(string: s)?.standardizedFileURL
+}
+func tileBookmark(_ t: Any) -> Data? {
+    ((t as? [String: Any])?["tile-data"] as? [String: Any])?["bookmark"] as? Data
+}
+var others = (CFPreferencesCopyAppValue(key, dock) as? [Any]) ?? []
+if let ours = others.first(where: { tileURL($0)?.path == dl.path }),
+   !(tileBookmark(ours) ?? Data()).isEmpty {
+    exit(0)   // converged; a hand-dragged tile counts
+}
+others.removeAll { tileURL($0)?.path == dl.path }
+// Security-scoped first (the shape the Dock itself stores); the flag is
+// rejected outside some contexts, so fall back to a plain bookmark -- the
+// shape the known Dock-deployment scripts generate.
+guard let bm = (try? dl.bookmarkData(options: [.withSecurityScope]))
+        ?? (try? dl.bookmarkData()) else {
+    print("  Dock: no bookmark for \(dl.path); Downloads tile left as it was")
+    exit(1)
+}
+// isDirectory:true so the URL carries exactly one trailing slash, the shape
+// the Dock's own folder tiles store.
+let urlString = URL(fileURLWithPath: dl.path, isDirectory: true).absoluteString
+others.append(["tile-data": ["bookmark": bm,
+                             "file-data": ["_CFURLString": urlString,
+                                           "_CFURLStringType": 8],
+                             "file-label": "Downloads", "file-type": 2],
+               "tile-type": "file-tile"])
+CFPreferencesSetAppValue(key, others as NSArray, dock)
+CFPreferencesAppSynchronize(dock)
+print("  Dock: wrote the Downloads tile with a security-scoped bookmark")
+exit(13)
+EOF
+[ "$dock_rc" = 127 ] && echo "  Dock: swift unavailable; Downloads tile skipped"
+if [ "$dock_rc" = 13 ]; then
+  killall Dock >/dev/null 2>&1 || echo "  Dock: restart failed; the tile appears when the Dock next starts"
 fi
 
 # Menu bar: show the Bluetooth item. Module visibility is a per-module int
