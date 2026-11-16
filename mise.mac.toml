@@ -9,23 +9,22 @@ EDITOR = "hx"
 VISUAL = "hx"
 
 [vars]
-# pared release for the apple-intelligence task (no mainline brew formula,
-# no mise backend). Bump to upgrade; the task replaces the binary when the
-# version changes. pin-check (the agent below) probes this pin's URL weekly.
+# pared release for the apple-intelligence task: no mainline brew formula, no
+# mise backend. Bump to upgrade; the task replaces the binary on a version
+# change, and pin-check (the agent below) probes this URL weekly.
 pared_version = "2.2.0"
 
-# The weekly heartbeat for the pinned release URLs (see the pin-check task).
-# A calendar schedule, not KeepAlive: nothing resident, one short run per
-# Wednesday. No RunAtLoad/kickstart -- a login or a bootstrap must not start
-# it off-schedule; the bootstrap task loads it if it ever fell out of the
-# domain. The log doubles as the heartbeat's liveness proof; `mise run check`
-# flags it stale past 8 days. mise's agent runner passes no shell PATH, so
-# the program and PATH carry absolute paths.
-# The cwd must be the config root: a task in the global config's mise-tasks/
-# resolves only under that root -- from ~, mise reports "no tasks defined".
-# stdout/stderr land in their own file: mise's run chatter interleaves with
-# the task's one-line-per-run summary, and pin-check.log must stay a clean
-# heartbeat ledger (check's parser reads its newest date-stamped line).
+# The weekly heartbeat for the pinned release URLs (see the pin-check task). A
+# calendar schedule, not KeepAlive: nothing resident, one short run per
+# Wednesday. No RunAtLoad or kickstart, so a login or bootstrap cannot start it
+# off-schedule; the bootstrap task loads it again if it fell out of the domain.
+# `mise run check` flags a log older than 8 days. mise's agent runner passes no
+# shell PATH, so program and PATH are absolute.
+#
+# The cwd is the config root: a task in the global config's mise-tasks/ resolves
+# only under that root -- from ~, mise reports "no tasks defined". stdout and
+# stderr get their own file, because mise's run chatter would interleave with
+# the one-line-per-run summary that check parses.
 [bootstrap.macos.launchd.agents.pin-check]
 program = "{{ system_brew_prefix }}/bin/mise"
 args = ["run", "pin-check"]
@@ -40,22 +39,21 @@ kickstart = false
 
 ##### macOS defaults #####
 #
-# Mise writes these on every `mise bootstrap`, so settings flipped by hand
-# get put back, and deleting a line stops setting it (it does not restore
-# the old value).
+# Mise rewrites these on every `mise bootstrap`, so a setting flipped by hand
+# goes back, and deleting a line stops setting it without restoring the old
+# value.
 #
-# The sandboxed-app defaults Mail/TextEdit/Displays are NOT here: they
-# lives in a container only Full Disk Access can write, which SSH sessions
-# lack, so the system-check task applies those (and skips them with a message
-# when the terminal lacks FDA).
+# The sandboxed apps Mail/TextEdit/Displays are NOT here: their domains live in
+# a container only Full Disk Access can write, which SSH sessions lack, so the
+# system-check task applies those (and skips them with a message when the
+# terminal has no FDA).
 
 # No pinned Dock tiles: the empty apps list removes every app tile mise
-# recognises, leaving only running applications (and the Trash; folder and
-# other tiles in persistent-others are outside mise's apps feature -- the
-# Downloads tile there is kept by the system-check task instead).
-# Deliberately the named dock section, not a raw persistent-apps value --
-# mise keeps each tile's bookmark while managing the layout, and its status
-# reports the layout instead of the raw archive.
+# recognises, leaving only running applications and the Trash. Folder tiles in
+# persistent-others are outside mise's apps feature -- system-check keeps the
+# Downloads one. Deliberately the named dock section, not a raw persistent-apps
+# value: mise keeps each tile's bookmark while managing the layout, and its
+# status reports the layout instead of the raw archive.
 [bootstrap.macos.dock]
 apps = []
 
@@ -155,12 +153,12 @@ apps = []
 [bootstrap.macos.defaults."com.apple.print.PrintingPrefs"]
 "Quit When Finished" = true
 
-# com.apple.universalaccess is NOT declared here: macOS TCC-protects it, so
-# a non-privileged write (mise's CFPreferencesSynchronize, `defaults write`)
-# commits nothing and mise aborts the whole bootstrap on that one domain.
-# Its three old toggles are cosmetic -- set them once in System Settings >
-# Accessibility (Reduce Transparency; Show window title bar icons; Scroll
-# with two fingers to close); they persist.
+# com.apple.universalaccess is NOT declared here: macOS TCC-protects it, so a
+# non-privileged write (mise's CFPreferencesSynchronize, `defaults write`)
+# commits nothing, and mise aborts the whole bootstrap on that one domain. Its
+# three old toggles are cosmetic -- set them once in System Settings >
+# Accessibility (Reduce Transparency; Show window title bar icons; Scroll with
+# two fingers to close); they persist.
 
 [bootstrap.macos.defaults."com.apple.HIToolbox"]
 # Fn/Globe alone: 0 = nothing, 1 = input source, 2 = emoji, 3 = dictation
@@ -197,14 +195,12 @@ apps = []
 [bootstrap.macos.defaults."com.apple.commerce"]
 "AutoUpdate" = false
 
-# Safari's default search engine, per device: iCloud's Safari sync covers
-# bookmarks, history, Reading List and tabs, never this setting. macOS 14+
-# resolves the engine from this system-scoped preference (Safari migrates
-# its old per-app key here on launch and records the migration in
-# SearchProviderIdentifierMigratedToSystemPreference); the identifier is
-# the one DuckDuckGo's own Jamf deployment guide publishes. A path entry
-# keeps any other provider dictionaries NSPreferredWebServices may hold.
-# The engine is read at Safari launch, so a change applies next start.
+# Safari's default search engine, per device: iCloud syncs bookmarks, history,
+# Reading List and tabs, never this. macOS 14+ resolves the engine from this
+# system-scoped preference (Safari migrates its old per-app key here itself),
+# and the identifier is the one DuckDuckGo's own Jamf guide publishes. The path
+# entry keeps any other provider dictionaries NSPreferredWebServices may hold.
+# Safari reads it at launch, so a change applies next start.
 [[bootstrap.macos.defaults_entries]]
 domain = "NSGlobalDomain"
 key = "NSPreferredWebServices"
@@ -213,9 +209,9 @@ value = { "NSDefaultDisplayName" = "DuckDuckGo", "NSProviderIdentifier" = "com.d
 
 [dotfiles]
 # A copy, not a symlink: the omp sandbox denies ~/.zshrc (extends: default's
-# shell-config rules), nono canonicalizes a deny through a symlink, and the
-# rule would therefore deny the repo's own zshrc from the agent that manages
-# it. The live rc stays denied either way -- the agent edits the repo copy.
+# shell-config rules), nono canonicalizes a deny through a symlink, so the rule
+# would deny the repo's own zshrc to the agent that manages it. The live rc
+# stays denied either way -- the agent edits the repo copy.
 "~/.zshrc" = { source = "zshrc", mode = "copy" }
 # A real file at 0600: a symlink would expose the repo file's permissions to
 # ssh's checks.
@@ -237,7 +233,7 @@ value = { "NSDefaultDisplayName" = "DuckDuckGo", "NSProviderIdentifier" = "com.d
 "~/.config/linearmouse/linearmouse.json/initial" = { source = "linearmouse.json", merge = "missing" }
 # Handy keeps its settings in this store file and saves it with a plain
 # fs::write (no temp-and-rename), so the symlink survives every in-app save:
-# settings edits flow into the repo -- commit them. On a host where Handy has
-# already run, adopt the live file before applying (`mise dot add` captures
-# the source first, then links -- never the other way around).
+# settings edits flow into the repo -- commit them. Where Handy has already
+# run, adopt the live file before applying: `mise dot add` captures the source
+# first, then links, never the other way around.
 "~/Library/Application Support/com.pais.handy/settings_store.json" = { source = "handy/settings_store.json" }

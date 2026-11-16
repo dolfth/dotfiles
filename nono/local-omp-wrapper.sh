@@ -54,16 +54,14 @@ if [ -r "$HOME/.config/git/known_hosts" ]; then
   export GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=$HOME/.config/git/known_hosts"
 fi
 
-# Supervised mode on purpose, unlike the daily wrapper: domain filtering is
-# a proxy feature and the proxy lives in the supervisor -- 'nono wrap'
-# carries no proxy, so an allow-listed profile under wrap is silently
-# unrestricted (docs/cli/features/execution-modes; found the hard way
+# Supervised mode on purpose, unlike the daily wrapper: domain filtering is a
+# proxy feature and the proxy lives in the supervisor, so an allow-listed
+# profile under 'nono wrap' is silently unrestricted (found the hard way
 # 2026-11-12: curl 200 from a filtered local-omp session). The unsandboxed
-# parent costs the herdr foreground-process label (invariant 3), which
-# local-omp does not want anyway. Direct outbound is kernel-blocked while
-# filtering is active; the model ports above stay open via open_port.
-# --profile stays a full path, never a name (a registry pack can claim a
-# name; see dev-agents header).
+# parent costs the herdr foreground-process label (invariant 3), unwanted here
+# anyway. Direct outbound is kernel-blocked while filtering is active; the model
+# ports above stay open through open_port. --profile is a full path, never a
+# name (a registry pack can claim a name; dev-agents header).
 exec __BREW_PREFIX__/bin/nono run --allow-cwd \
   --profile /usr/local/etc/nono/local-omp.json \
   -- /usr/local/bin/omp-unsandboxed "$@"

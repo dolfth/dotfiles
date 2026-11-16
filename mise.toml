@@ -3,11 +3,10 @@
 # uncommitted miserc.local.toml -- the pre-packages hook writes the mac
 # fallback on a fresh checkout. See README.md.
 
-# mise below this refuses every command with an upgrade hint. It is honored
-# in the global config too (this directory), not just project configs. The
-# floor covers what onboarding and `remote_mise` need; raising it re-breaks
-# every machine below the new floor until its mise is upgraded. 2026.11.2
-# brings task tags, 2026.11.3 the task.logs setting used below.
+# mise below this refuses every command with an upgrade hint; honored in this
+# global config too, not only in project configs. The floor covers what
+# onboarding and `remote_mise` need; raising it re-breaks every machine below
+# it until mise is upgraded. 2026.11.2 brings task tags, 2026.11.3 task.logs.
 min_version = "2026.11.3"
 
 [vars]
@@ -20,15 +19,14 @@ icon = "\U000F033D"   # nf-md-linux
 # Tailscale MagicDNS domain: hosts are reachable as <host>.<tailnet>.
 tailnet = "foxhound-insen.ts.net"
 
-# omp's baseUrl for machines that are not the omlx host itself; the gza
-# module overrides with 127.0.0.1. The FQDN (the tailnet, above): MagicDNS
-# resolves <host>.<tailnet>, never the bare hostname.
+# omp's baseUrl except on the omlx host itself, where the gza module overrides
+# with 127.0.0.1. The FQDN because MagicDNS resolves <host>.<tailnet>, never
+# the bare hostname.
 omp_base = "gza.foxhound-insen.ts.net"
 
-# Public SSH keys, mirrored from https://github.com/dolfth.keys (that page
-# is the canonical record: rotate a key or join a machine, update both).
-# Each host signs its commits with its own key; these fill
-# ~/.config/git/allowed_signers so every host verifies every other's.
+# Mirrored from https://github.com/dolfth.keys, the canonical record: rotate a
+# key or join a machine, update both. Each host signs with its own key; these
+# fill ~/.config/git/allowed_signers so every host verifies every other's.
 ssh_keys = """
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBA2RcuVWjT5vlSHUdcNi8hWcG5xiRI1BJcHjlWq1dqY
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEburPU7lpE3tnJac9R5jAbMTDqb0FA02Jqt0qVsVeUh
@@ -47,43 +45,40 @@ ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKORTGA2F28t4VWxuvjVPnX9sfZOnNjmR5LoB8uvcwFU
 "~/.config/ghostty/config" = "ghostty/config"
 
 # AeroSpace rewrites this file when the layout changes in-app, so it is a
-# merge: our keys win, everything else AeroSpace or the user wrote stays.
+# merge: our keys win, whatever AeroSpace or the user wrote elsewhere stays.
 "~/.config/aerospace/aerospace.toml/pinned" = { source = "aerospace/aerospace.toml", merge = true }
 
-# config.yml is a symlink, so /settings edits flow back into the repo
-# instead of resetting. models.yml is a whole-file template: vars.omp_base
-# is 127.0.0.1 on gza (the servers are local there) and the gza tailnet
-# FQDN everywhere else.
+# config.yml is a symlink, so /settings edits flow back into the repo instead
+# of resetting. models.yml is a whole-file template: vars.omp_base is 127.0.0.1
+# on gza, where the servers are local, and the tailnet FQDN elsewhere.
 "~/.omp/agent/config.yml" = "omp/agent/config.yml"
 "~/.omp/agent/models.yml" = { source = "omp/agent/models.yml.tera", mode = "template" }
 
 [settings]
-# mise >= 2026.10.19 refuses to run tasks unless the config they come from
-# is trusted, and trust is per-machine state a fresh machine or re-adopt
-# lacks. trusted_config_paths is read from the global config (this
-# directory) before any trust decision, so the entry travels with the
-# checkout. (The error's own advice, `mise trust ~/.config/mise`, normalizes
-# to `~` -- already trusted -- and records nothing here.)
+# mise >= 2026.10.19 refuses to run tasks from an untrusted config, and trust
+# is per-machine state a fresh machine or re-adopt lacks. trusted_config_paths
+# is read from this global config before any trust decision, so the entry
+# travels with the checkout. (The error's own advice, `mise trust
+# ~/.config/mise`, normalizes to `~` -- already trusted -- records nothing.)
 trusted_config_paths = ["~/.config/mise"]
 
-# Keep the full output of each task's last run (mise >= 2026.11.3) so a
-# failed bootstrap hook can be read back with `mise tasks log NAME` even
-# though the default output style hides passing tasks' lines. Stored under
-# ~/.local/state/mise/task-logs/ with owner-only permissions, 4 MiB each.
+# Keep each task's last full output (mise >= 2026.11.3). The default output
+# style hides passing tasks' lines, and a failed bootstrap hook must stay
+# readable with `mise tasks log NAME`. Owner-only files, 4 MiB each, under
+# ~/.local/state/mise/task-logs/.
 task.logs = true
 
 [bootstrap.hooks]
 # Both tasks no-op off macOS (they guard on uname), so they are safe in the
 # base for all three machines. defaults-snapshot must run before bootstrap
-# writes the declarative defaults -- the final system check compares against
-# it to decide whether UI processes need a restart. brew-bundle is explained
-# by its own task header and the README's "Why brew + mise".
+# writes the declarative defaults: the final system check compares against it
+# to decide whether UI processes need a restart.
 #
-# The prologue (repeated in both hooks): in a non-login ssh session --
-# `mise bootstrap remote` -- the inherited PATH holds only the bare system
+# The prologue, repeated in both hooks: in a non-login ssh session
+# (`mise bootstrap remote`) the inherited PATH holds only the bare system
 # directories, so resolve mise there (brew prefix, Nix store, standalone
 # install) before `mise run`; that also puts brew on PATH for brew-bundle.
-# Locally mise is already on PATH and the prologue is a no-op.
+# Locally mise is already on PATH and the prologue does nothing.
 
 # Each hook gets its own subtable: the subtable holds `description`
 # (mise >= 2026.10.22; `mise bootstrap` prints it instead of the script's
@@ -91,12 +86,12 @@ task.logs = true
 [bootstrap.hooks.pre-packages]
 description = "Write the missing miserc (fresh Mac), gate the config parse, take the defaults snapshot, and bundle the Brewfiles"
 # Seeds and gates, in order: writes a missing miserc.local.toml (uncommitted,
-# so a fresh checkout has none; the module loads on the *next* invocation --
-# mise read the config at startup), then runs `mise env` and fails the
-# bootstrap if the config does not parse or has unknown fields. A typo'd key
-# otherwise only warns and is ignored, so without this gate the slow phases
-# would run on a half-wrong config. (mise 2026.10.x has no validate
-# subcommand; `mise env` *is* the config load.)
+# so a fresh checkout has none; the module loads on the *next* invocation, mise
+# read the config at startup), then runs `mise env` and fails the bootstrap if
+# the config does not parse or has unknown fields. A typo'd key otherwise only
+# warns and is ignored, so without this gate the slow phases run on a
+# half-wrong config. (`mise env` *is* the config load; 2026.10.x has no
+# validate subcommand.)
 run = """
 resolve_mise() {
   if ! command -v mise >/dev/null 2>&1; then

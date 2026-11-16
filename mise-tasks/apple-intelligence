@@ -28,10 +28,9 @@ fi
 ##### 1. The pinned release binary ###########################################
 #
 # No mainline brew formula (the tap's is a source build wanting full Xcode)
-# and no mise backend, so the task installs the official release itself:
-# into ~/.local/share/pared, called by absolute path (a bootstrap internal,
-# not on PATH). Bump the PARED_VERSION var (mise.mac.toml) to upgrade; a
-# version mismatch replaces the install.
+# and no mise backend, so the official release is installed here: under
+# ~/.local/share/pared, called by absolute path, never on PATH. Bump
+# PARED_VERSION (mise.mac.toml) to upgrade; a mismatch replaces the install.
 
 ver="${PARED_VERSION:-2.2.0}"
 dir="${HOME}/.local/share/pared"
@@ -71,13 +70,11 @@ fi
 
 ##### 2. The policy: every feature off #######################################
 #
-# Applies the supported local preferences (including the Siri keys
-# system-check used to write) and saves the policy the profile is
-# generated from. A sandboxed domain that cannot be written (Messages,
-# Mail, ... over a session without Full Disk Access) fails the command but
-# not the run: the policy is saved and the profile generated, the profile
-# and the cleanup below do not depend on the preference writes, and the
-# next bootstrap with Full Disk Access re-applies them.
+# The supported local preferences (including the Siri keys system-check used
+# to write) plus the policy the profile is generated from. A sandboxed domain
+# that cannot be written (Messages, Mail, without Full Disk Access) fails the
+# command but not the run: the profile and the cleanup do not depend on those
+# writes, and the next FDA-carrying bootstrap re-applies them.
 
 if "$pared" disable all; then
   echo "  policy: every feature disabled (Siri included)"
@@ -88,11 +85,10 @@ fi
 ##### 3. The profile (the one manual step) ###################################
 #
 # `pared profile open` stages the .mobileconfig and opens System Settings;
-# the user clicks Install. The download blocks land in
-# /Library/Managed Preferences/com.apple.MobileAsset.plist, which is what
-# is checked: absent means the profile is not installed, so it is opened
-# again. The installed profile is never replaced by this task (its
-# settings stay in effect) -- the check re-opens it only when it is gone.
+# the click is the human's. The download blocks land in
+# /Library/Managed Preferences/com.apple.MobileAsset.plist, which is the check:
+# absent means no profile, so it opens again. An installed profile is never
+# replaced from here, only re-opened when gone.
 
 if [ -f "/Library/Managed Preferences/com.apple.MobileAsset.plist" ]; then
   echo "  profile installed (the download blocks are in place)"
@@ -111,12 +107,11 @@ fi
 
 ##### 4. Model cleanup #######################################################
 #
-# Asks Apple's asset service to remove the models the disabled features
-# would have downloaded, then checks the folders. The removal itself is
-# daemon-driven and always runs (the profile blocks re-downloads); the
-# folder check needs Full Disk Access (the same probe system-check uses --
-# SSH sessions lack it), so without it the result is reported unverified
-# rather than skipped. Never fails the bootstrap: warnings only.
+# Asks Apple's asset service to remove the models the disabled features would
+# have downloaded, then checks the folders. Removal is daemon-driven and always
+# runs (the profile blocks re-downloads); the folder check needs Full Disk
+# Access, so without it the result is reported unverified instead of skipped.
+# Warnings only: never fails the bootstrap.
 
 fda=1
 if ! head -c1 "/Library/Application Support/com.apple.TCC/TCC.db" >/dev/null 2>&1; then

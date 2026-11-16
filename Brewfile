@@ -8,12 +8,11 @@
 # mise itself is listed so a fresh machine is complete (the bootstrap
 # installs Homebrew before it runs).
 
-# omp's tap. trusted: true -- Homebrew 6+ refuses formulae from untrusted
-# taps, and the trust state is per-machine (~/.homebrew/trust.json), so
-# bundle records it (why: Brewfile.gza). The other taps carry the apps
-# below: aerospace (window tiling; its config is in this repo), glance
-# (menu-bar dashboard), borders (window borders for aerospace), and the
-# tsk task board CLI.
+# omp's tap. trusted: true, because Homebrew 6+ refuses formulae from untrusted
+# taps and the trust state is per-machine (~/.homebrew/trust.json), so bundle
+# records it (why in full: Brewfile.gza). The other taps carry the apps below:
+# aerospace (window tiling; config in this repo), glance (menu-bar dashboard),
+# borders (window borders for aerospace), the tsk task board CLI.
 tap "can1357/homebrew-tap", trusted: true
 tap "chamburr/tap", trusted: true
 tap "nikitabobko/tap", trusted: true
@@ -64,9 +63,8 @@ cask "handy"
 cask "iina"
 cask "imageoptim"
 cask "linearmouse"
-# Objective-See's application firewall: mca ran it for a long time, gza
-# never had it. First run needs a terminal -- the cask installs a system
-# extension that must be approved in Privacy & Security.
+# Objective-See's application firewall. First run needs a terminal: the cask
+# installs a system extension that must be approved in Privacy & Security.
 cask "lulu"
 cask "monitorcontrol"
 cask "notunes"
@@ -78,9 +76,8 @@ cask "utm"
 cask "vscodium"
 cask "whatcable"
 
-# mas installs by ID; the name is only a label. The machine must be signed
-# in to the App Store before mas can download anything, and the app must
-# already be in the account's purchase history -- otherwise the entry
+# mas installs by ID; the name is a label. The machine must be signed in to the
+# App Store and the app must be in that account's purchase history, or the entry
 # fails. The explicit `id:` form is required by current homebrew-bundle: a
 # positional-ID line ("mas 361285480") aborts the whole bundle with
 # "options[:id] should be an Integer".

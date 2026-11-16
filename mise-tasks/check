@@ -3,8 +3,7 @@
 # The repo's own self-test. Wired automatic: the pre-commit/pre-push hooks
 # (mise-tasks/hooks, gated by core.hooksPath which the pre-packages hook
 # sets) reject unchecked trees, and the final hook ends every bootstrap with
-# this task -- so it also runs by hand whenever you want the verdict without
-# committing. The same four legs, in order:
+# this task. The same four legs, in order:
 #
 #   1. config gate   -- the pre-packages hook's assertion (mise.toml), moved
 #                       to commit-time: `mise env` IS the config load, and a

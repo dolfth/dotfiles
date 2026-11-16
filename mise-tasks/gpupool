@@ -4,15 +4,12 @@
 # iogpu fuse) holds ONE model server: flash-fn (86G), the 27B (30G), or the
 # server omlx spawns for its own models (~30G per engine). Below the fuse the
 # kernel refuses no allocation, so two resident tenants do not queue -- their
-# Metal clients die (watchdog panics, server OOM crashloops, the GUI
-# renderer). This task says who owns the pool; the agents for the
-# others stay unloaded -- or loaded-idle, which mise's launchd apply may
-# leave behind, harmless: no RunAtLoad, no KeepAlive and no kickstart, so no
-# process ever spawns except when this task kicks the job it selects. None is
-# RunAtLoad except flash-fn, the default owner, so the bootstrap self-heal
-# and logins never resurrect a switched-out tenant -- omlx loads its engine
-# the moment a request arrives, so it must be unloaded, not merely idle,
-# while another server runs.
+# Metal clients die: watchdog panics, server OOM crashloops, the GUI renderer.
+#
+# The switched-out tenants stay unloaded rather than loaded-idle. Only
+# flash-fn, the default owner, is RunAtLoad, so neither the bootstrap
+# self-heal nor a login resurrects a tenant this task switched out. omlx
+# loads its engine the moment a request arrives, so idle is not enough for it.
 #
 # usage: mise run gpupool fn|27|mlx|status
 #   fn    flash-fn on :8100, the default (drops 27B + omlx sessions)

@@ -41,10 +41,9 @@ if [ -n "$fda" ]; then
   defaults write com.apple.TextEdit PlainTextEncodingForWrite -int 4
   # Displays: show the display list in Displays settings
   defaults write com.apple.Displays-Settings.extension showListByDefault -int 2
-  # Safari: keep its container-scoped engine id in step with the system
-  # preference (declared in mise.mac.toml), so Safari's own Settings >
-  # Search pane agrees. Not declarative: the container is FDA-gated like
-  # Mail's, and a failing defaults domain aborts the whole bootstrap.
+  # Safari: its engine id is container-scoped, so it cannot be declared like
+  # the system preference in mise.mac.toml. A failing defaults domain aborts
+  # the whole bootstrap, which is why it sits behind the FDA guard.
   defaults write com.apple.Safari DefaultBrowserSearchProviderIdentifier -string com.duckduckgo
 fi
 # Finder: open new windows to Home. Written here so $USER resolves correctly
@@ -52,21 +51,16 @@ fi
 defaults write com.apple.finder NewWindowTargetPath -string "file:///$USER/"
 
 # Dock: the Downloads folder tile. Folder tiles live in persistent-others,
-# which mise's dock.apps feature never touches, and a tile needs $HOME plus
-# binary data no TOML value can carry -- so the task ensures it, like
-# Finder's home target. Two dead shapes taught the contract (both rendered
-# "?"): a file-tile without a bookmark, and a file-tile carrying a scoped
-# bookmark. A dragged folder proves the Dock's own shape is a
-# directory-tile -- file-tile was the whole bug -- with the bookmark stored
-# as `book`, _CFURLStringType 15, and stack keys. The Dock's `book` bytes
-# are not reproducible from any public creation option (scoped layout,
-# cookie zeroed), so convergence cannot byte-compare: a Downloads tile the
-# Dock itself made (directory-tile) is accepted untouched -- yours wins --
-# and only a missing or file-tile-shaped Downloads tile (this task's old
-# broken writes) is replaced, by a full copy of the dragged recipe with an
-# unscoped bookmark (the durable location form; scoped cookies are
-# creator-app-only, plain ones expire at reboot). The Dock is killed only
-# when the task actually wrote; a restart rebuilds Spaces.
+# which mise's dock.apps never touches, and a tile needs $HOME plus binary
+# data no TOML value can carry. The shape the Dock renders is a
+# directory-tile carrying the `book` bookmark unscoped (.withoutImplicit-
+# SecurityScope: a location, not a creator-app cookie) plus the stack keys:
+# a file-tile, or a bookmark-less tile, renders "?". The `book` bytes are not
+# reproducible from any public creation option, so convergence cannot
+# byte-compare: a Downloads directory-tile is left alone (a dragged one or a
+# healed one), a missing or file-tile-shaped one is replaced by the recipe
+# above. The Dock is killed only when something was written; a restart
+# rebuilds Spaces.
 dock_rc=0
 timeout 90 swift -suppress-warnings - <<'EOF' || dock_rc=$?
 import Foundation
@@ -123,15 +117,13 @@ if [ "$dock_rc" = 13 ]; then
   killall Dock >/dev/null 2>&1 || echo "  Dock: restart failed; the tile appears when the Dock next starts"
 fi
 
-# Menu bar: show the Bluetooth item. Module visibility is a per-module int
-# in the per-host controlcenter domain (2 = menu bar visible; the observed
-# end state of a System-Settings enable), read by the snapshot's
-# -currentHost export, so a fresh Mac gets ControlCenter restarted with it.
-# The VOLUME item deliberately has no line here: in this macOS generation
-# its menu-bar state lives only inside per-machine NSKeyedArchiver blobs
-# (com.apple.controlcenter.bentoboxes / .displayablemenuextras) keyed by
-# UUID and rewritten by ControlCenter on every UI toggle -- no public key
-# exists to write, so it stays a manual Control-Center-settings step.
+# Menu bar: the Bluetooth item. Per-module visibility is an int in the
+# per-host controlcenter domain (2 = shown, the end state of a System-Settings
+# enable), and the snapshot's -currentHost export reads it, so a fresh Mac
+# gets ControlCenter restarted with it. Volume has no line here: its menu-bar
+# state lives only in per-machine NSKeyedArchiver blobs keyed by UUID and
+# rewritten by ControlCenter on every UI toggle, so there is no public key to
+# write and it stays a manual step.
 defaults -currentHost write com.apple.controlcenter Bluetooth -int 2
 
 # Manual light or dark mode conflicts with the automatic switch (declarative
@@ -162,13 +154,13 @@ fi
 
 ##### LinearMouse login item (the one non-scriptable UI step) #################
 #
-# "Start at Login" lives in the private login-items (BTM) store, which only the
-# app's UI toggle writes -- not in linearmouse.json (its 0.12 schema accepts
-# only $schema + schemes) and not in defaults, so mise cannot declare it. The
-# item survives reboots/reinstalls (it points at /Applications), so this is a
-# one-time step per machine; unlike AeroSpace (start-at-login in its config
-# self-registers on first launch), merely launching LinearMouse registers
-# nothing. Only remind when the app is installed but the item is absent.
+# "Start at Login" lives in the private login-items (BTM) store, which only
+# the app's own toggle writes: not linearmouse.json (0.12 accepts only $schema
+# and schemes), not defaults. The item points at /Applications and survives
+# reboots and reinstalls, so it is one step per machine. Launching the app
+# registers nothing -- unlike AeroSpace, whose config self-registers at first
+# launch. So this only reminds, and only when the app is there and the item
+# is not.
 if [ "$(uname -s)" = "Darwin" ] && [ -d /Applications/LinearMouse.app ] \
   && ! sfltool dumpbtm 2>/dev/null | grep -q "com.lujjjh.LinearMouse"; then
   echo "  LinearMouse is not set to start at login: open it and tick 'Start at Login'"
@@ -213,13 +205,12 @@ sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setstealthmode on >/dev/n
 
 ##### MagicDNS in /etc/resolv.conf ############################################
 #
-# Programs that read /etc/resolv.conf (bun, Go without cgo) never see the
-# Tailscale supplemental resolver that scutil and curl use, so MagicDNS
-# names come back ENOTFOUND for them -- omp (bun-compiled) is exactly that
-# class. Newer Tailscale clients rewrite the file at start (gza: since
-# 1.102.x); keep the content declared so an older client or an OS rewrite
-# can't strand file-reading resolvers. The tailnet resolver forwards public
-# names upstream, so it works as the sole nameserver here.
+# Programs that read the file (bun, Go without cgo) never see the Tailscale
+# supplemental resolver that scutil and curl use, so MagicDNS names return
+# ENOTFOUND for them -- omp is bun-compiled. Newer clients rewrite the file at
+# start (gza: since 1.102.x); declaring the content survives an older client or
+# an OS rewrite. The tailnet resolver forwards public names, so it works as the
+# sole nameserver here.
 if ! grep -q '^nameserver 100\.100\.100\.100' /etc/resolv.conf 2>/dev/null; then
   sudo tee /etc/resolv.conf >/dev/null <<'EOF'
 search foxhound-insen.ts.net localdomain
@@ -287,15 +278,13 @@ if [ "${KIND:-laptop}" = "desktop" ]; then
 
   ##### GPU wired memory ######################################################
   #
-  # macOS caps GPU-wired memory, and so the model size omlx can load. The
-  # cap is the host's hard fuse: every GPU user (omlx, the splash servers)
-  # allocates from this one pool, and below the limit nothing is refused --
-  # raise it near RAM and a full pool freezes the machine (a starved
-  # watchdog panicked the box at 96%). The gza module sets WIRED_LIMIT_MB
-  # to a value that leaves the host room when the pool is full; more than
-  # the pool can get omlx killed mid-load, stranding memory until a reboot.
-  # The sysctl resets at boot, so a LaunchDaemon reapplies it; it is also
-  # set now.
+  # macOS caps GPU-wired memory, and with it the model size omlx can load.
+  # One pool for every GPU user (omlx, the splash servers) and nothing is
+  # refused below the cap: raise it near RAM and a full pool freezes the
+  # machine (a starved watchdog panicked the box at 96%). The gza module sets
+  # WIRED_LIMIT_MB to leave the host room when the pool is full; over it omlx
+  # dies mid-load and strands memory until a reboot. The sysctl resets at
+  # boot, so a LaunchDaemon reapplies it; it is also set now.
   W="${WIRED_LIMIT_MB:?WIRED_LIMIT_MB is not set; add it to the gza module}"
   WIRED="sysctl -w iogpu.wired_limit_mb=${W}"
   sudo tee /Library/LaunchDaemons/dev.mise.wired-limit.plist >/dev/null <<EOF
