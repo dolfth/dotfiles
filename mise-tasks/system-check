@@ -53,19 +53,20 @@ defaults write com.apple.finder NewWindowTargetPath -string "file:///$USER/"
 
 # Dock: the Downloads folder tile. Folder tiles live in persistent-others,
 # which mise's dock.apps feature never touches, and a tile needs $HOME plus
-# a bookmark: without one the Dock stores the tile but shows "?" (verified
-# on this macOS). Neither fits a TOML value, so the task ensures it, like
-# Finder's home target. The bookmark must be UNscoped --
-# .withoutImplicitSecurityScope: a .withSecurityScope bookmark carries a
-# cookie keyed to the creating app's signing identity and only that app can
-# resolve it, so one made outside the Dock renders "?" no matter how well
-# formed (this happened), and a plain bookmark embeds a sandbox extension
-# that dies at reboot. Unscoped is the documented durable location form,
-# and its bytes are deterministic for a given folder -- so the task
-# regenerates and compares, making a converged tile a no-op and replacing
-# every wrong shape (bookmarkless, scoped, stale). Swift owns the read-
-# modify-write; tiles that are not Downloads survive. The Dock is killed
-# only when the bytes actually changed; a restart rebuilds Spaces.
+# binary data no TOML value can carry -- so the task ensures it, like
+# Finder's home target. Two dead shapes taught the contract (both rendered
+# "?"): a file-tile without a bookmark, and a file-tile carrying a scoped
+# bookmark. A dragged folder proves the Dock's own shape is a
+# directory-tile -- file-tile was the whole bug -- with the bookmark stored
+# as `book`, _CFURLStringType 15, and stack keys. The Dock's `book` bytes
+# are not reproducible from any public creation option (scoped layout,
+# cookie zeroed), so convergence cannot byte-compare: a Downloads tile the
+# Dock itself made (directory-tile) is accepted untouched -- yours wins --
+# and only a missing or file-tile-shaped Downloads tile (this task's old
+# broken writes) is replaced, by a full copy of the dragged recipe with an
+# unscoped bookmark (the durable location form; scoped cookies are
+# creator-app-only, plain ones expire at reboot). The Dock is killed only
+# when the task actually wrote; a restart rebuilds Spaces.
 dock_rc=0
 timeout 90 swift -suppress-warnings - <<'EOF' || dock_rc=$?
 import Foundation
@@ -73,38 +74,48 @@ let home = FileManager.default.homeDirectoryForCurrentUser.standardizedFileURL
 let dl = home.appendingPathComponent("Downloads")
 let key = "persistent-others" as CFString
 let dock = "com.apple.dock" as CFString
+func tileDict(_ t: Any) -> [String: Any]? { (t as? [String: Any])?["tile-data"] as? [String: Any] }
 func tileURL(_ t: Any) -> URL? {
-    guard let td = (t as? [String: Any])?["tile-data"] as? [String: Any],
-          let fd = td["file-data"] as? [String: Any],
-          let s = fd["_CFURLString"] as? String
-    else { return nil }
+    guard let fd = tileDict(t)?["file-data"] as? [String: Any],
+          let s = fd["_CFURLString"] as? String else { return nil }
     return URL(string: s)?.standardizedFileURL
 }
-func tileBookmark(_ t: Any) -> Data? {
-    ((t as? [String: Any])?["tile-data"] as? [String: Any])?["bookmark"] as? Data
+func isOurs(_ t: Any) -> Bool { tileURL(t)?.path == dl.path }
+let others = (CFPreferencesCopyAppValue(key, dock) as? [Any]) ?? []
+if let ours = others.first(where: isOurs),
+   (ours as? [String: Any])?["tile-type"] as? String == "directory-tile" {
+    exit(0)   // a Dock-made tile (dragged or healed earlier): hands off
 }
 guard let bm = try? dl.bookmarkData(options: [.withoutImplicitSecurityScope])
 else {
     print("  Dock: no bookmark for \(dl.path); Downloads tile left as it was")
     exit(1)
 }
-let others = (CFPreferencesCopyAppValue(key, dock) as? [Any]) ?? []
-if let ours = others.first(where: { tileURL($0)?.path == dl.path }),
-   tileBookmark(ours) == bm {
-    exit(0)   // converged; the deterministic bytes ARE the state check
+// microsecond ticks since 1970 -- the unit the Dock's own tile stores
+func macEpoch(_ u: URL) -> Int64 {
+    let d = (try? u.resourceValues(forKeys: [.contentModificationDateKey]))?
+        .contentModificationDate ?? Date(timeIntervalSince1970: 0)
+    return Int64(d.timeIntervalSince1970 * 1e6)
 }
-var updated = others.filter { tileURL($0)?.path != dl.path }
-// isDirectory:true so the URL carries exactly one trailing slash, the shape
-// the Dock's own folder tiles store.
-let urlString = URL(fileURLWithPath: dl.path, isDirectory: true).absoluteString
-updated.append(["tile-data": ["bookmark": bm,
-                              "file-data": ["_CFURLString": urlString,
-                                            "_CFURLStringType": 8],
-                              "file-label": "Downloads", "file-type": 2],
-                "tile-type": "file-tile"])
+var updated = others.filter { !isOurs($0) }
+updated.append([
+    "GUID": Int(arc4random()),
+    "tile-type": "directory-tile",
+    "tile-data": [
+        "book": bm,
+        "file-data": ["_CFURLString": dl.absoluteString,
+                      "_CFURLStringType": 15],
+        "file-label": "Downloads",
+        "file-type": 2,
+        "file-mod-date": macEpoch(dl),
+        "parent-mod-date": macEpoch(dl.deletingLastPathComponent()),
+        "arrangement": 1, "displayas": 0, "showas": 0,
+        "preferreditemsize": -1, "is-beta": false,
+    ],
+] as [String: Any])
 CFPreferencesSetAppValue(key, updated as NSArray, dock)
 CFPreferencesAppSynchronize(dock)
-print("  Dock: wrote the Downloads tile (unscoped bookmark)")
+print("  Dock: wrote the Downloads directory-tile")
 exit(13)
 EOF
 [ "$dock_rc" = 127 ] && echo "  Dock: swift unavailable; Downloads tile skipped"
