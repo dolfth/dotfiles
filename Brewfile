@@ -10,13 +10,15 @@
 
 # omp's tap. trusted: true -- Homebrew 6+ refuses formulae from untrusted
 # taps, and the trust state is per-machine (~/.homebrew/trust.json), so
-# bundle records it (why: Brewfile.gza). The other taps carry the GUI apps
+# bundle records it (why: Brewfile.gza). The other taps carry the apps
 # below: aerospace (window tiling; its config is in this repo), glance
-# (menu-bar dashboard), borders (window borders for aerospace).
+# (menu-bar dashboard), borders (window borders for aerospace), and the
+# tsk task board CLI.
 tap "can1357/homebrew-tap", trusted: true
 tap "chamburr/tap", trusted: true
 tap "nikitabobko/tap", trusted: true
 tap "FelixKratz/formulae", trusted: true
+tap "smarzban/tap", trusted: true
 
 brew "bat"
 brew "dust"
@@ -42,6 +44,9 @@ brew "starship"
 # Runs under the dev.mise.syncthing launchd agent (mise.toml), not
 # `brew services`.
 brew "syncthing"
+# Terminal task board. The herdr-plugins task registers its herdr plugin;
+# the keybindings are in herdr/config.toml.
+brew "smarzban/tap/tsk"
 brew "uv"
 
 # aerospace needs borders (above); the font carries starship's prompt glyphs.

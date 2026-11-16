@@ -59,6 +59,11 @@
 #    live under it, so sensitive facts cannot resurface in a networked
 #    session's memory. The daily profile's deny must never block its own
 #    workdir: nothing is ever worked on under ~/.omp/profiles.
+# 10. The tsk task store (~/.tsk) is granted to the daily profile only. One
+#    store serves every repo -- each board is a view of it -- so offline
+#    document work must not reach it: a note written there would land on the
+#    networked board and in that session's memory. The generated profile
+#    denies it, which outranks the allow it inherits from omp.json.
 
 set -euo pipefail
 
@@ -102,13 +107,14 @@ omp_base() {
 }
 
 # local-omp.json, generated whole from omp.json -- the deliberate diffs only
-# (invariants 8 and 9): the name, the state-tree deny carve-out, and the
-# network allow-list. A repo copy would drift.
+# (invariants 8, 9 and 10): the name, the state-tree deny carve-out, the tsk
+# store deny, and the network allow-list. A repo copy would drift.
 gen_local_profile() {
   jq --arg base "$(omp_base)" '
     .meta.name = "local-omp"
     | .meta.description = "omp offline: model host only, state isolated from the daily sandbox"
     | .filesystem.deny -= ["$HOME/.omp/profiles"]
+    | .filesystem.deny += ["$HOME/.tsk"]
     | .network = { "allow_domain": [$base], "open_port": [8000, 8080, 8100] }
   ' "$profile_src"
 }
@@ -182,6 +188,13 @@ check() {
   local_state_why=$(nono why --profile "$gen" --workdir "$root" --path "$state_path" 2>&1 || true)
   case "$local_state_why" in ALLOWED*) ;; *) fail "local-omp cannot read its own state (${local_state_why:-no output})" ;; esac
 
+  # R10: the shared tsk store belongs to the daily sandbox alone.
+  local daily_tsk_why local_tsk_why
+  daily_tsk_why=$(nono why --profile "$profile_src" --workdir "$root" --path "$HOME/.tsk" 2>&1 || true)
+  case "$daily_tsk_why" in ALLOWED*) ;; *) fail "daily omp cannot reach the tsk store (${daily_tsk_why:-no output})" ;; esac
+  local_tsk_why=$(nono why --profile "$gen" --workdir "$root" --path "$HOME/.tsk" 2>&1 || true)
+  case "$local_tsk_why" in DENIED*) ;; *) fail "local-omp can reach the tsk store (${local_tsk_why:-no output})" ;; esac
+
   # R6 as the engine sees it, not only as this file's text: the static scan
   # below reads the profile's own lists, while extends/groups can grant more
   # -- so the private key gets the same runtime re-assertion as the socket
@@ -218,6 +231,13 @@ check() {
     || fail "daily profile does not deny \$HOME/.omp/profiles"
   jq -e '.filesystem.deny | index("$HOME/.omp/profiles") | not' "$gen" >/dev/null \
     || fail "local-omp profile still denies its own state tree"
+
+  # R10 as text: the daily profile grants the shared store, the generated
+  # one carries the deny that outranks the inherited allow.
+  jq -e '.filesystem.allow | index("$HOME/.tsk")' "$profile_src" >/dev/null \
+    || fail "daily profile does not allow \$HOME/.tsk"
+  jq -e '.filesystem.deny | index("$HOME/.tsk")' "$gen" >/dev/null \
+    || fail "local-omp profile does not deny the shared tsk store"
 
   # R6: no grants of $HOME itself, ~/.ssh, or secret-manager key paths --
   # both profiles, the generated one included.
@@ -341,7 +361,7 @@ install_stack() {
   # rules (Landlock needed the path to exist; Seatbelt does not care, but one
   # shape on both hosts is easier to reason about).
   mkdir -p "$HOME/.config/herdr" "$HOME/.omp/agent" "$HOME/.cache/nono-tmp/omp" \
-           "$HOME/.local/share/uv" "$HOME/.local/bin" "$HOME/.config/git"
+           "$HOME/.local/share/uv" "$HOME/.local/bin" "$HOME/.config/git" "$HOME/.tsk"
 
   # The agent's git pieces with ~/.ssh denied: the PUBLIC signing key and the
   # known hosts copy the wrapper points git at.

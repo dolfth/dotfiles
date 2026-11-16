@@ -17,7 +17,8 @@
       "$HOME/.omp",
       "$HOME/.local/bin",
       "$HOME/.local/state/mise",
-      "$HOME/.local/share/uv"
+      "$HOME/.local/share/uv",
+      "$HOME/.tsk"
     ],
     "read_file": [
       "$HOME/.config/git/sign.pub",

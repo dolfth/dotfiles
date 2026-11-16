@@ -30,6 +30,24 @@ key = "prefix+alt+o"
 type = "pane"
 command = "omp"
 description = "sandboxed oh-my-pi"
+
+# tsk task board (brew smarzban/tap/tsk; the herdr-plugins task registers
+# the herdr-tsk plugin with `tsk setup herdr`, which leaves these bindings
+# alone once present). prefix+t opens or focuses the board of the current
+# workspace, prefix+a quick-captures a task. Where tsk is not installed
+# (nwa until its flake gains it) the plugin is unregistered and the keys
+# do nothing.
+[[keys.command]]
+key = "prefix+t"
+type = "plugin_action"
+command = "herdr-tsk.open-board"
+description = "tsk board"
+
+[[keys.command]]
+key = "prefix+a"
+type = "plugin_action"
+command = "herdr-tsk.quick-capture"
+description = "tsk quick capture"
 # "spaces" is herdr's default, but its UI persists the value to disk on
 # first use; pinning it keeps the file matching the source so
 # `mise dot status` does not flag it as changed.

@@ -12,6 +12,9 @@
 - omp state (sessions, memory, logs) lives in `~/.omp/profiles/local` and is
   invisible to networked sessions by design. Memory recall is scoped to the
   current project, within that isolated store.
+- `~/.tsk` (the tsk task board) is closed here on purpose: one store serves
+  every repo, so a note written during offline work would surface on the
+  networked board. Keep task text out of the documents you edit here.
 - `git commit -S` works through the ssh-agent; `git push` cannot reach any
   remote. Sync from an unsandboxed shell.
 - A permission error outside the paths above is the sandbox: name the path,

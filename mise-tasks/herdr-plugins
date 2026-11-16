@@ -3,6 +3,14 @@
 # reinstalling replaces the checkout, which is what we want.
 #   lmilojevicc/herdr-tab-rename: names each tab after its focused pane's
 #   directory, leaves manual names alone, autostarts with Herdr.
+#   tsk: `tsk setup herdr` generates the herdr-tsk plugin bundle under
+#   ~/.config/herdr/tsk-plugins/ (pointed at the installed binary) and
+#   links it. The prefix+t / prefix+a bindings live in herdr/config.toml,
+#   so setup finds them already bound and rewrites nothing -- the deployed
+#   config stays identical to the repo copy, keeping `mise dot diff` empty.
+#   `tsk setup agents --yes` installs the tsk-cli skill for every agent tsk
+#   detects (omp: ~/.omp/agent/skills/), so an agent works the board through
+#   the CLI; a skill whose version already matches is left alone.
 set -uo pipefail   # no -e: one failed plugin shouldn't abort the bootstrap
 
 if ! command -v herdr >/dev/null 2>&1; then
@@ -12,3 +20,19 @@ fi
 
 echo "==> Installing herdr plugins"
 herdr plugin install lmilojevicc/herdr-tab-rename --yes || echo "  herdr-tab-rename: install failed"
+
+# Skipped where tsk is absent (nwa until its flake gains it): the bindings
+# in the deployed config stay inert until the plugin registers. The agent
+# skill needs no plugin, but rides the same guard -- every host here that
+# runs an agent runs herdr too.
+if command -v tsk >/dev/null 2>&1; then
+  tsk setup herdr || echo "  tsk: herdr setup failed"
+  tsk setup agents --yes || echo "  tsk: agent skill install failed"
+else
+  echo "  tsk not installed -- skipping herdr-tsk registration and agent skill"
+fi
+
+# Pick up the registrations and keybindings in the running server; when no
+# server is up the next start reads them anyway.
+herdr server reload-config >/dev/null 2>&1 \
+  || echo "  herdr server reload-config failed (no server running?)"
