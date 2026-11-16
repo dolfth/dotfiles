@@ -1,16 +1,13 @@
-# omp's model catalog: the provider list, rendered whole on every bootstrap.
-# The one host-specific bit is baseUrl: the servers run on gza, so
-# vars.omp_base is "127.0.0.1" there (the gza module) and the gza tailnet
-# FQDN elsewhere (the base -- MagicDNS resolves the FQDN, never the bare
-# hostname).
+# omp's model catalog: the provider list, rendered whole on every bootstrap. The one
+# host-specific bit is baseUrl: the servers run on gza, so vars.omp_base is "127.0.0.1"
+# there (the gza module) and the gza tailnet FQDN elsewhere (the base -- MagicDNS
+# resolves the FQDN, never the bare hostname).
 #
-# If you add or change a model through an omp UI, that edit is a local
-# change and the next `mise bootstrap` resets this file -- edit this source
-# instead.
+# A model added or changed through an omp UI is a local change: the next
+# `mise bootstrap` resets this file. Edit this source instead.
 #
-# gza's GPU pool serves ONE provider at a time (flash-fn by default; `mise
-# run gpupool 27|mlx` switches) -- the other providers' baseUrls refuse
-# connections until their server owns the pool again.
+# gza's GPU pool serves ONE provider at a time (flash-fn by default; `mise run gpupool
+# 27|mlx` switches); the other providers' baseUrls refuse connections meanwhile.
 ---
 providers:
   omlx:

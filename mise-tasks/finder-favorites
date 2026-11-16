@@ -1,18 +1,15 @@
 #!/usr/bin/env bash
 #MISE tags=["macos"]
 # Finder sidebar Favorites := exactly the visible $HOME directories, sorted
-# alphabetically -- declarative like the Dock rule: hand-pinned tiles (and
-# the stock /Applications one) are removed, matching every other declared
-# surface here. Not a defaults domain: Finder stores favorites as the
+# alphabetically -- declarative like the Dock rule: hand-pinned tiles (and the stock
+# /Applications one) are removed. Not a defaults domain: Finder stores favorites as the
 # LSSharedFileList "FavoriteItems" sfl4 archive, so this writes through the
-# deprecated-but-alive LSSharedFileList API -- the same one mise uses for
-# login_items. launchservicesd notifies Finder, so the sidebar updates
-# without a restart. Re-running is a no-op: classification resolves each
-# bookmark with NoUserInteraction|DoNotMountVolumes (the SDK's only two
-# resolution flags), because a full resolve is the one call that can block
-# on a stale or network item -- connecting, mounting, or prompting. An
-# unresolvable item is therefore stale by definition here and gets removed.
-# A 90 s watchdog kills even a wedged call so bootstrap never hangs.
+# deprecated-but-alive LSSharedFileList API -- the same one mise uses for login_items.
+# launchservicesd notifies Finder, so the sidebar updates without a restart. Re-running
+# is a no-op: classification resolves each bookmark with the SDK's only two safe flags,
+# because a full resolve is the one call that can block on a stale or network item --
+# connecting, mounting, or prompting. An unresolvable item is stale by definition here
+# and gets removed. A 90 s watchdog kills even a wedged call so bootstrap never hangs.
 # Cosmetic: any failure (e.g. no GUI session over SSH) warns and exits 0.
 
 set -uo pipefail   # no -e: the swift guard below reports and passes
@@ -22,10 +19,9 @@ if [ "$(uname -s)" != "Darwin" ]; then
   exit 0
 fi
 
-# macOS 27 SDK signatures: Insert(list, afterItem, displayName?, iconRef?,
-# url, properties?, moreToFollow?), Move(list, item, afterItem) and
-# Remove(list, item). The old Top/Bottom/Last anchor constants no longer
-# exist as symbols, so every move and insert anchors to a real item.
+# macOS 27 SDK signatures: Insert(list, afterItem, displayName?, iconRef?, url,
+# properties?, moreToFollow?), Move(list, item, afterItem), Remove(list, item). The old
+# Top/Bottom/Last anchor constants no longer exist as symbols, so anchor to a real item.
 timeout 90 swift -suppress-warnings - <<'EOF' || echo "  favorites: LSSharedFileList failed (headless session? or 90s watchdog); rerun at the keyboard"
 import Foundation
 import CoreServices

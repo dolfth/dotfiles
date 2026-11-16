@@ -13,24 +13,18 @@ omp_base = "127.0.0.1"
 HOST = "gza"
 KIND = "desktop"
 # iogpu.wired_limit_mb: the GPU wired-memory ceiling, applied by system-check's
-# LaunchDaemon. Every GPU user (omlx, splash, splash-fn) allocates from this one
-# pool and the kernel refuses nothing below the ceiling, so the ceiling is the
-# hard fuse against a wired-memory freeze (a value near RAM froze watchdogd and
-# panicked the box). 96 GiB is 75% of RAM, leaving ~24 GB for the host with the
-# pool full: splash's governor then pauses growth instead of the machine
-# freezing, and omlx plans itself to the same number. Running omlx beside a
-# splash server is out of contract -- its model needs the pool the server holds.
+# LaunchDaemon. One pool for every GPU user, nothing refused below the ceiling, so
+# the ceiling is the only thing between a full pool and a frozen machine. 96 GiB
+# (75% of RAM) leaves the host room; running omlx beside a splash server is out of
+# contract -- its model needs the pool the server holds.
 WIRED_LIMIT_MB = "98304"
 
-# The user LaunchAgents running the local servers. bootstrap rewrites a plist
-# and reloads a job whose definition changed; reviving a dead agent is the
-# `bootstrap` task's self-heal. The 96 GiB pool is single-tenant and
-# `mise run gpupool fn|27|mlx` picks its owner, so only the default (flash-fn)
-# is RunAtLoad. omlx must be UNLOADED beside another server, not merely idle: it
-# spawns a splash engine the moment a request arrives. kickstart follows the
-# same rule -- a definition with kickstart = true is STARTED by every launchd
-# apply that touches it, RunAtLoad be damned -- so on-demand tenants keep it off
-# and only gpupool kicks them.
+# The local server agents. bootstrap rewrites plists and reloads changed jobs;
+# reviving a dead one is the `bootstrap` task's job. The pool is single-tenant, so
+# only the default (flash-fn) is RunAtLoad and omlx stays unloaded -- it spawns an
+# engine on the first request. kickstart means the same: a definition with it on is
+# started by every launchd apply, so on-demand tenants keep it off and only gpupool
+# kicks them.
 [bootstrap.macos.launchd.agents.omlx]
 program = "{{ system_brew_prefix }}/opt/omlx/bin/omlx"
 args = ["serve"]
@@ -43,20 +37,15 @@ stdout_path = "{{ env.HOME }}/Library/Logs/omlx.log"
 stderr_path = "{{ env.HOME }}/Library/Logs/omlx.log"
 kickstart = false
 
-# --host 0.0.0.0 plus --allowed-host: omp on mca and nwa reaches splash over
-# the tailnet. The default bind is 127.0.0.1, and a client connecting by name
-# also needs --allowed-host. The catalog uses the FQDN; the bare tailnet name is
-# accepted too, for manual clients (http://gza:8000).
+# --host 0.0.0.0 plus --allowed-host: omp on mca and nwa reaches splash over the
+# tailnet, and a client connecting by name needs the allowed-host too. The bare
+# tailnet name is accepted for manual clients (http://gza:8000).
 [bootstrap.macos.launchd.agents.splash]
 # unsloth's Dynamic 3.0 quant: 5.25 bits/param (17.9 GB), finer than the
-# mlx-community 4bit at the same size class. The repo ships the mmproj vision
-# projector, so no --language-only: vision stays.
-# --max-memory 30G caps this server's Metal plan (weights plus ~128K KV in RAM,
-# the rest over the SSD cache). ON DEMAND: the 96 GiB pool fits one splash plan
-# at a time and nothing below the fuse is refused, so Metal clients die instead
-# of queueing. `mise run gpupool 27|fn|mlx` swaps the owner; run_at_load,
-# keep_alive and kickstart stay off so bootstrap, logins and launchd applies
-# never resurrect it -- only gpupool kicks.
+# mlx-community 4bit at the same size, and the repo ships the mmproj projector so
+# vision stays. --max-memory 30G caps the Metal plan (weights plus ~128K KV in
+# RAM, the rest on the SSD cache). On demand: one plan fits the pool at a time, so
+# run_at_load, keep_alive and kickstart stay off and only `mise run gpupool` kicks.
 program = "{{ system_brew_prefix }}/opt/splash/bin/splash"
 args = ["serve", "--model", "unsloth/Qwen3.8-27B-GGUF:UD-Q4_K_XL", "--host", "0.0.0.0", "--allowed-host", "gza.foxhound-insen.ts.net", "--allowed-host", "gza", "--max-memory", "30G", "--idle-release", "3m"]
 run_at_load = false
@@ -69,26 +58,20 @@ stderr_path = "{{ env.HOME }}/Library/Logs/splash.log"
 kickstart = false
 
 [bootstrap.macos.launchd.agents.splash-fn]
-# Qwen3.8-Flash-Next: 125B MoE (6B active) plus a 51B PLE n-gram table,
-# unsloth's Dynamic 3.0 quant, a 111 GB image. splash plans from the whole Mac
-# in auto mode, so the flags are the contract:
-#   --max-memory 86G  charges the expert store (~89% of the 71.7 GiB experts,
-#     the rest streaming with ARC recycling) plus KV inside the 96 GiB fuse,
-#     leaving ~6 GiB for the GUI's own Metal clients. The GUI wires part of the
-#     same pool and every crash so far was exactly that contest. 90G would only
-#     double the KV pool; the starved end is 50G, which held 23% of the expert
-#     slots and decoded at ~25 tok/s with the GPU at 40%.
-#   --idle-release 15m  3m released and restored 19x during one day of agent
-#     work, taxing each first request ~1.3 s plus a CPU ramp storm.
-#   --max-cache-disk 64G  auto's 32 GiB quota ran to 100.00% full (demotions
-#     refused, KV state restores p50 262 ms) with 357 GB free on the volume.
-#   --thinking-token-budget 8192  bounds requests that bring no budget of their
-#     own, after one wrote 26,856 thinking tokens (~22 min at 20 tok/s).
-# Expert store and PLE row cache stay on auto: the store is the throughput lever
-# (the docs price each extra GiB at 11-23% decode speed), and a 128K prompt
-# touches ~1.1M rows, so auto's 256 MiB row cache hits as often as a pinned
-# 2 GiB one. The serve plan lands in
-# ~/Library/Application Support/Splash/runtime/serve-8100.json.
+# Qwen3.8-Flash-Next: 125B MoE (6B active) plus a 51B PLE table, Dynamic 3.0
+# quant, a 111 GB image. splash plans from the whole Mac, so the flags are the
+# contract:
+#   --max-memory 86G  expert store plus KV inside the 96 GiB fuse, ~6 GiB left for
+#     the GUI's Metal clients. The GUI wires the same pool and every crash so far
+#     was that contest. 90G only doubles the KV pool; 50G starved 23% of the expert
+#     slots to ~25 tok/s at 40% GPU.
+#   --idle-release 15m  3m released and restored 19x in a day of agent work, ~1.3 s
+#     on each first request.
+#   --max-cache-disk 64G  auto's 32 GiB quota hit 100% with 357 GB free.
+#   --thinking-token-budget 8192  one request wrote 26,856 thinking tokens.
+# Expert store and PLE row cache stay on auto: each extra GiB of store is worth
+# 11-23% decode speed, and auto's small row cache hits as often as a pinned 2 GiB
+# one. The serve plan: ~/Library/Application Support/Splash/runtime/serve-8100.json
 program = "{{ system_brew_prefix }}/opt/splash/bin/splash"
 args = ["serve", "--model", "unsloth/Qwen3.8-Flash-Next-GGUF:UD-Q4_K_XL", "--port", "8100", "--host", "0.0.0.0", "--allowed-host", "gza.foxhound-insen.ts.net", "--allowed-host", "gza", "--max-memory", "86G", "--idle-release", "15m", "--max-cache-disk", "64G", "--thinking-token-budget", "8192"]
 run_at_load = true
@@ -101,16 +84,13 @@ stderr_path = "{{ env.HOME }}/Library/Logs/splash-fn.log"
 kickstart = true
 
 [dotfiles]
-# omlx writes these files itself (UI), so each entry deep-merges over the
-# live file: objects merge, arrays and scalars replace, keys we don't own
-# survive -- the auth secrets in settings.json and the models omlx has stay
-# put. A missing target is created from the source. Rendered as Tera first
-# ({{ vars.host }}, {{ vars.tailnet }}, {{ env.HOME }}).
+# omlx writes these from its UI, so each entry deep-merges over the live file:
+# objects merge, arrays and scalars replace, so its auth secrets and model list
+# survive. Rendered as Tera first.
 "~/.omlx/settings.json/pinned" = { source = "omlx/settings.json", merge = true, template = "tera" }
 "~/.omlx/model_settings.json/pinned" = { source = "omlx/model_settings.json", merge = true, template = "tera" }
 "~/.omlx/model_profiles.json/pinned" = { source = "omlx/model_profiles.json", merge = true, template = "tera" }
-# omlx makes settings.json 0600 (it holds the auth keys); this keeps it at
-# 0600 even if the file is (re)created at the repo mode.
+# omlx keeps settings.json 0600 (auth keys); hold that even if it is recreated.
 "~/.omlx/settings.json" = { permissions = "0600" }
 
 # pi owns its settings file; the merge re-asserts the two pinned keys and

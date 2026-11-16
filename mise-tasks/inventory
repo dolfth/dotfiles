@@ -1,36 +1,23 @@
 #!/usr/bin/env bash
 #MISE tags=["macos"]
-# A diffable manifest of app state on this Mac: what lives in ~/Library that
-# the repo does not own, annotated by who does. It answers "what has not
-# transferred between the Macs yet": run it on both hosts (a terminal, not the
-# omp sandbox -- the app-support trees are denied there), copy the two files
-# together, and
-#
+# A diffable manifest of app state on this Mac: what lives in ~/Library that the repo
+# does not own, annotated by who does. It answers "what has not transferred between
+# the Macs yet". Run it on both hosts (a terminal, not the omp sandbox -- the
+# app-support trees are denied there), then diff the comment-stripped files:
 #   diff <(grep -v '^#' inventory-gza.txt) <(grep -v '^#' inventory-mca.txt)
+# A '?' row on one host only is the backlog: not transferred, not in the repo, not
+# brew'd, not syncthing'd. Account rows diff separately; credentials stay in the
+# first host's keychain, the manifest only says WHICH.
 #
-# A '?' row on one host only is the backlog: not transferred, not in the repo,
-# not brew'd, not syncthing'd. Account rows diff separately -- a host missing
-# an account means sign into it there; credentials stay in the first host's
-# keychain, the manifest only says WHICH.
+# Annotation per line, first match wins: repo (a [dotfiles] target, a domain in the
+# declarative UI list _defaults.sh, or a mise-deployed plist), brew:<tok> (an
+# installed cask's bundle id or app name), sync (under a syncthing share, read from
+# the live config), ? (none of the above -- a finding).
 #
-# Annotations per line, first match wins:
-#   repo        a [dotfiles] target touches the path (mise dot ls), the domain
-#               is in the declarative UI list (_defaults.sh), or mise itself
-#               deploys the plist (dev.mise.*)
-#   brew:<tok>  an installed cask's bundle id (from its Info.plist) or app name
-#               matches: bootstrap installs the app, the state is the app's
-#   sync        under a syncthing share (read from the live config, which is
-#               per-machine state, not repo-declared)
-#   ?           none of the above: read it as a finding
-#
-# The saved manifest holds only stable fields (kind, origin, item) so two
-# hosts diff cleanly; sizes go to stdout only, which is also why --quick
-# exists (skip the du pass).
-#
-# Sections: appsupport, container (sandboxed apps' homes), group, prefs
-# (non-Apple defaults domains), agent, systemagent (third-party, /Library),
-# account (the Accounts4 table). Apple-owned entries are filtered: that is the
-# OS's state, not yours.
+# The saved manifest holds only stable fields (kind, origin, item) so hosts diff
+# cleanly; sizes go to stdout only, which is also why --quick skips the du pass.
+# Sections: appsupport, container, group, prefs (non-Apple domains), agent,
+# systemagent (/Library), account. Apple-owned entries are filtered out.
 set -euo pipefail
 shopt -s nullglob
 
@@ -45,9 +32,8 @@ LIB="$HOME/Library"
 
 lc() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]'; }
 
-# The omp sandbox probe (the check task's idiom): EPERM on Application
-# Support means the interesting half of Library is blind here, and a partial
-# manifest would poison every diff -- refuse instead of writing one.
+# The omp sandbox probe (the check task's idiom): a partial manifest would poison
+# every diff, so refuse instead of writing one.
 probe=$(ls "$LIB/Application Support" 2>&1) || true
 case "$probe" in
   *"Operation not permitted"*)
@@ -75,13 +61,13 @@ mise dot ls --json 2>/dev/null | jq -r '.files[].target' | sed "s|^~|$HOME|" > "
 # shellcheck source=mise-tasks/_defaults.sh
 source "$REPO/mise-tasks/_defaults.sh"
 for d in "${_UI_DOMAINS[@]}"; do printf '%s\n' "$d"; done >> "$tmp/repo-domains"
-# brew: installed casks -> bundle id (the app's Info.plist: `defaults` needs
-# a context plain shells lack, plutil does not) and app name.
+# brew: installed casks -> bundle id (plutil reads Info.plist; `defaults` wants a
+# context plain shells lack) and app name.
 brew info --cask --installed --json=v2 2>/dev/null \
   | jq -r '.casks[] | .token as $t | (.artifacts[]? | objects | select(has("app")) | .app[]? | [$t, .] | @tsv)' \
   > "$tmp/cask-apps" || true
-# Tokens the info JSON skipped (pkg-style casks, tailscale-app) or got
-# stale on: the per-cask file list names the installed .app directly.
+# Tokens the info JSON skipped (pkg-style casks) or went stale on: the per-cask
+# file list names the installed .app directly.
 cut -f1 "$tmp/cask-apps" | LC_ALL=C sort -u > "$tmp/have"
 brew list --cask 2>/dev/null | LC_ALL=C sort > "$tmp/toks" || true
 while IFS= read -r t; do
@@ -90,8 +76,7 @@ while IFS= read -r t; do
   [ -n "$app" ] && printf '%s\t%s\n' "$t" "${app#/Applications/}" >> "$tmp/cask-apps"
 done < <(LC_ALL=C comm -23 "$tmp/toks" "$tmp/have")
 while IFS=$'\t' read -r token app; do
-  # The info JSON's path can be stale (aerospace moved out of its versioned
-  # dir); the bare app name is the second candidate.
+  # The info JSON's path can go stale; the bare app name is the second candidate.
   p=""
   for c in "/Applications/$app" "$HOME/Applications/$app" \
            "/Applications/${app##*/}" "$HOME/Applications/${app##*/}"; do
@@ -113,8 +98,8 @@ sed -n 's/.*<folder .*path="\([^"]*\)".*/\1/p' \
 # --- helpers ----------------------------------------------------------------
 lookup_in() { awk -F'\t' -v k="$1" '$1==k{print $2; exit}' "$2" 2>/dev/null; }
 
-# repo hit: the path equals or contains a [dotfiles] target, or sits inside
-# one (a dotfile target's parent dir IS repo state).
+# repo hit: the path equals, contains, or sits inside a [dotfiles] target (a
+# target's parent dir IS repo state).
 under_repo() {
   local p="$1" t
   while IFS= read -r t; do
@@ -193,9 +178,8 @@ for f in /Library/LaunchAgents/*.plist /Library/LaunchDaemons/*.plist; do
 done
 adb="$LIB/Accounts/Accounts4.sqlite"
 if [ -f "$adb" ]; then
-  # ZACCOUNTTYPE is an integer FK; the type identity is ZACCOUNTTYPE.ZIDENTIFIER
-  # (macOS 27 schema: no ZLABEL on ZACCOUNT). Ladder: names+who, names only,
-  # raw table last.
+  # ZACCOUNTTYPE is an integer FK; identity is ZACCOUNTTYPE.ZIDENTIFIER (macOS 27
+  # has no ZLABEL on ZACCOUNT). Ladder: names+who, names only, raw table last.
   rows=$(sqlite3 -readonly "$adb" \
           "select lower(t.ZIDENTIFIER) ||' '|| coalesce(nullif(a.ZUSERNAME,''),'')
            from ZACCOUNT a join ZACCOUNTTYPE t on a.ZACCOUNTTYPE = t.Z_PK;" \

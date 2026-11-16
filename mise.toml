@@ -3,10 +3,8 @@
 # uncommitted miserc.local.toml -- the pre-packages hook writes the mac
 # fallback on a fresh checkout. See README.md.
 
-# mise below this refuses every command with an upgrade hint; honored in this
-# global config too, not only in project configs. The floor covers what
-# onboarding and `remote_mise` need; raising it re-breaks every machine below
-# it until mise is upgraded. 2026.11.2 brings task tags, 2026.11.3 task.logs.
+# mise below this refuses every command with an upgrade hint, in a global config as
+# well as a project one. Raising it re-breaks every machine below the floor.
 min_version = "2026.11.3"
 
 [vars]
@@ -19,14 +17,13 @@ icon = "\U000F033D"   # nf-md-linux
 # Tailscale MagicDNS domain: hosts are reachable as <host>.<tailnet>.
 tailnet = "foxhound-insen.ts.net"
 
-# omp's baseUrl except on the omlx host itself, where the gza module overrides
-# with 127.0.0.1. The FQDN because MagicDNS resolves <host>.<tailnet>, never
-# the bare hostname.
+# omp's baseUrl, except on the omlx host where the gza module overrides with
+# 127.0.0.1. The FQDN: MagicDNS resolves <host>.<tailnet>, never the bare hostname.
 omp_base = "gza.foxhound-insen.ts.net"
 
-# Mirrored from https://github.com/dolfth.keys, the canonical record: rotate a
-# key or join a machine, update both. Each host signs with its own key; these
-# fill ~/.config/git/allowed_signers so every host verifies every other's.
+# Mirrored from https://github.com/dolfth.keys, the canonical record; update both on
+# rotation or when a machine joins. These fill ~/.config/git/allowed_signers, so
+# every host verifies every other's commits.
 ssh_keys = """
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBA2RcuVWjT5vlSHUdcNi8hWcG5xiRI1BJcHjlWq1dqY
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEburPU7lpE3tnJac9R5jAbMTDqb0FA02Jqt0qVsVeUh
@@ -48,50 +45,41 @@ ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKORTGA2F28t4VWxuvjVPnX9sfZOnNjmR5LoB8uvcwFU
 # merge: our keys win, whatever AeroSpace or the user wrote elsewhere stays.
 "~/.config/aerospace/aerospace.toml/pinned" = { source = "aerospace/aerospace.toml", merge = true }
 
-# config.yml is a symlink, so /settings edits flow back into the repo instead
-# of resetting. models.yml is a whole-file template: vars.omp_base is 127.0.0.1
-# on gza, where the servers are local, and the tailnet FQDN elsewhere.
+# config.yml is a symlink, so /settings edits flow back into the repo instead of
+# resetting. models.yml is a whole-file template: vars.omp_base is 127.0.0.1 on gza,
+# the tailnet FQDN elsewhere.
 "~/.omp/agent/config.yml" = "omp/agent/config.yml"
 "~/.omp/agent/models.yml" = { source = "omp/agent/models.yml.tera", mode = "template" }
 
 [settings]
-# mise >= 2026.10.19 refuses to run tasks from an untrusted config, and trust
-# is per-machine state a fresh machine or re-adopt lacks. trusted_config_paths
-# is read from this global config before any trust decision, so the entry
-# travels with the checkout. (The error's own advice, `mise trust
-# ~/.config/mise`, normalizes to `~` -- already trusted -- records nothing.)
+# mise >= 2026.10.19 refuses tasks from an untrusted config, and trust is
+# per-machine. This global setting is read before any trust decision, so the entry
+# travels with the checkout; `mise trust ~/.config/mise` normalizes to `~` and
+# records nothing here.
 trusted_config_paths = ["~/.config/mise"]
 
-# Keep each task's last full output (mise >= 2026.11.3). The default output
-# style hides passing tasks' lines, and a failed bootstrap hook must stay
-# readable with `mise tasks log NAME`. Owner-only files, 4 MiB each, under
-# ~/.local/state/mise/task-logs/.
+# Keep each task's last full output: the default style hides passing tasks' lines,
+# and a failed bootstrap hook must stay readable via `mise tasks log NAME`.
 task.logs = true
 
 [bootstrap.hooks]
-# Both tasks no-op off macOS (they guard on uname), so they are safe in the
-# base for all three machines. defaults-snapshot must run before bootstrap
-# writes the declarative defaults: the final system check compares against it
-# to decide whether UI processes need a restart.
+# Both tasks no-op off macOS (uname guard), so they are safe in the base for
+# every machine. defaults-snapshot runs before bootstrap writes the declarative
+# defaults: the final system check compares against that snapshot.
 #
-# The prologue, repeated in both hooks: in a non-login ssh session
-# (`mise bootstrap remote`) the inherited PATH holds only the bare system
-# directories, so resolve mise there (brew prefix, Nix store, standalone
-# install) before `mise run`; that also puts brew on PATH for brew-bundle.
-# Locally mise is already on PATH and the prologue does nothing.
+# The prologue, repeated in both hooks: a non-login ssh session (`mise bootstrap
+# remote`) has only bare system dirs on PATH, so resolve mise (brew prefix, Nix
+# store, standalone) before `mise run`; that puts brew on PATH for brew-bundle too.
 
-# Each hook gets its own subtable: the subtable holds `description`
-# (mise >= 2026.10.22; `mise bootstrap` prints it instead of the script's
-# first line), so two keys cannot share one [bootstrap.hooks].
+# Each hook gets its own subtable: the subtable holds `description` (mise >=
+# 2026.10.22), which `mise bootstrap` prints instead of the script's first line.
 [bootstrap.hooks.pre-packages]
 description = "Write the missing miserc (fresh Mac), gate the config parse, take the defaults snapshot, and bundle the Brewfiles"
-# Seeds and gates, in order: writes a missing miserc.local.toml (uncommitted,
-# so a fresh checkout has none; the module loads on the *next* invocation, mise
-# read the config at startup), then runs `mise env` and fails the bootstrap if
-# the config does not parse or has unknown fields. A typo'd key otherwise only
-# warns and is ignored, so without this gate the slow phases run on a
-# half-wrong config. (`mise env` *is* the config load; 2026.10.x has no
-# validate subcommand.)
+# Seeds and gates, in order: writes a missing miserc.local.toml (uncommitted, so a
+# fresh checkout has none; the module loads on the *next* invocation), then runs
+# `mise env` and fails the bootstrap if the config does not parse or has unknown
+# fields. A typo'd key only warns, so without this gate the slow phases run on a
+# half-wrong config.
 run = """
 resolve_mise() {
   if ! command -v mise >/dev/null 2>&1; then
@@ -151,10 +139,8 @@ resolve_mise
 mise run herdr-plugins && mise run vscode-extensions && mise run dev-agents && mise run system-check && mise run apple-intelligence && mise run finder-favorites && mise run check
 """
 
-# Background sync, both Macs. A launchd agent, not a [bootstrap.services]
-# user service: mise 2026.10.15 does not render user-service values (an
-# unrendered {{ system_brew_prefix }} reached launchd as the literal `{{`),
-# while [bootstrap.macos.launchd.agents] does -- see the gza agents.
+# Background sync, both Macs. A launchd agent, not a [bootstrap.services] user
+# service: 2026.10.15 does not render user-service values; launchd agents do.
 [bootstrap.macos.launchd.agents.syncthing]
 program = "{{ system_brew_prefix }}/opt/syncthing/bin/syncthing"
 args = ["serve", "--no-browser", "--no-restart"]
@@ -166,13 +152,11 @@ stderr_path = "{{ env.HOME }}/Library/Logs/syncthing.log"
 kickstart = true
 
 [bootstrap.remote]
-# The fleet inventory for `mise bootstrap remote` (README, "Fleet sync").
-# Any machine can orchestrate; gza is the default because it is always on.
-# Host values are literal, not templates, so the tailnet name is repeated.
-# No mise_env here: the remote run loads each host's own miserc.local.toml
-# (a brand-new host has none -- pass --remote-env once). No `source` here:
-# run with --adopt, and pass --update so a host behind main does not
-# silently re-apply its stale commit.
+# The fleet inventory for `mise bootstrap remote` (README, "Fleet sync"). Any machine
+# can orchestrate; gza is the default, being always on. Host values are literal, not
+# templates, so the tailnet name repeats. No mise_env: the remote run loads each
+# host's own miserc.local.toml (--remote-env once for a brand-new host). Run with
+# --adopt and --update, so a host behind main cannot re-apply a stale commit.
 
 [bootstrap.remote.hosts.mca]
 host = "mca.foxhound-insen.ts.net"

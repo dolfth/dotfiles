@@ -1,24 +1,20 @@
 #!/usr/bin/env bash
 #MISE tags=["macos"]
-# The pinned release URLs, probed. The two tasks that fetch a pinned GitHub
-# release (dev-agents: the omp binary; apple-intelligence: the pared tarball
-# + checksum sidecar) fail the moment upstream removes or renames an asset --
-# and the only way to discover that is to fetch it for real, possibly during
-# a bootstrap on the one box that matters. This task HEADs every pinned asset
-# so the breakage is announced before it is hit.
+# The pinned release URLs, probed. The two tasks that fetch a pinned GitHub release
+# (dev-agents: the omp binary; apple-intelligence: the pared tarball + checksum
+# sidecar) fail the moment upstream removes or renames an asset, and the only way to
+# discover that is to fetch it for real -- possibly during a bootstrap on the one box
+# that matters. This task HEADs every pinned asset so the breakage is announced first.
 #
-# The reminder surfaces (nothing here needs a watching eye):
-#   - the dev.mise.pin-check agent runs it weekly (mise.mac.toml);
-#   - every run, green or red, appends one line to ~/Library/Logs/pin-check.log,
-#     so the log's own age is the liveness proof of the heartbeat;
-#   - a failing run raises a macOS notification (unsandboxed agent sessions;
-#     from ssh/osascript-less contexts the exit code is the signal);
-#   - `mise run check` reports a log older than 8 days as a dead heartbeat.
+# The reminder surfaces, none needing a watching eye: the dev.mise.pin-check agent
+# runs it weekly (mise.mac.toml); every run appends one line to
+# ~/Library/Logs/pin-check.log, so the log's age is the heartbeat's liveness proof and
+# `mise run check` calls a log older than 8 days dead; a failing run raises a macOS
+# notification in unsandboxed agent sessions, else the exit code is the signal.
 #
-# Versions are parsed from their single sources of truth -- the omp_version
-# line in mise-tasks/dev-agents, pared_version in mise.mac.toml -- so a
-# bump needs no change here; a parse failure means those moved shape, which
-# is itself worth failing on.
+# Versions are parsed from their single sources of truth -- the omp_version line in
+# mise-tasks/dev-agents, pared_version in mise.mac.toml -- so a bump needs no change
+# here, and a parse failure means those moved shape, itself worth failing on.
 
 set -uo pipefail   # no -e: check every pin, report all of them
 

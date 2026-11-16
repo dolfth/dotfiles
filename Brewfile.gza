@@ -1,15 +1,11 @@
-# gza's brew entries: the local-LLM servers. The LaunchAgents that run them
-# are in mise.gza.toml (run by mise, not `brew services` -- a brew service
-# would be a second, throttled copy on the same port). For the how and the
-# why of the Brewfiles themselves, see Brewfile.
+# gza's brew entries: the local-LLM servers. The LaunchAgents that run them are in
+# mise.gza.toml (run by mise, not `brew services` -- a brew service would be a second,
+# throttled copy on the same port). For the Brewfile mechanism itself, see Brewfile.
 
-# trusted: true -- Homebrew 6+ refuses to load formulae from untrusted taps,
-# and the trust state lives in per-machine ~/.homebrew/trust.json, never in
-# the Brewfile; recording it here keeps a fresh machine from hitting
-# "Refusing to load formula ... from untrusted tap".
-# url: -- the tap moved from the (now 404) homebrew-omlx repo into the main
-# omlx repo, which bare `brew tap jundot/omlx` does not clone by name, so
-# the URL is explicit (the formula reference stays plain `omlx`).
+# trusted: true -- Homebrew 6+ refuses to load formulae from untrusted taps and the
+# trust state is per-machine (~/.homebrew/trust.json), never the Brewfile.
+# url: -- the tap moved from the (now 404) homebrew-omlx repo into the main omlx repo,
+# which bare `brew tap jundot/omlx` does not clone by name; the formula ref stays plain.
 tap "jundot/omlx", url: "https://github.com/jundot/omlx", trusted: true
 # Upstream renamed incoai/tap to incoai/homebrew-tap (old name 404s);
 # formula and keg names unchanged.

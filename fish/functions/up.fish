@@ -7,11 +7,10 @@ function up --description 'Upgrade macOS software: CLT, brew (the Brewfiles), Ap
 
     set -l brew_prefix (brew --prefix 2>/dev/null)
 
-    # The dev.mise.* agents run from their keg, so an upgraded keg keeps its
-    # old version loaded until the agent restarts: record each keg's target
-    # (the "/" sentinel keeps an absent keg a list element, so the two
-    # snapshots stay index-aligned) and kick the one that moved -- the
-    # launchctl print guard no-ops where the agent is absent.
+    # The dev.mise.* agents run from their keg, so an upgraded keg keeps its old version
+    # loaded until restart: record each keg's target (the "/" sentinel keeps an absent
+    # keg index-aligned) and kick the one that moved -- the launchctl print guard no-ops
+    # where the agent is absent.
     set -l servers omlx splash syncthing
     set -l kegs_before
     if test -n "$brew_prefix"
@@ -21,9 +20,8 @@ function up --description 'Upgrade macOS software: CLT, brew (the Brewfiles), Ap
         end
     end
 
-    # brew owns the brew-ecosystem packages (the Brewfiles, README "Why
-    # brew + mise"): one upgrade path for everything installed, including
-    # the tap formulae the current mise release cannot evaluate itself.
+    # brew owns the brew-ecosystem packages (README "Why brew + mise"): one upgrade path
+    # for everything installed, including tap formulae current mise cannot evaluate.
     brew update; and brew upgrade
 
     # App Store auto-updates are off (com.apple.commerce AutoUpdate).

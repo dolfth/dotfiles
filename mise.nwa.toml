@@ -1,8 +1,8 @@
 # nwa: the NixOS server. Select with env = ["nwa"].
 #
-# The NixOS flake (separate repo) still manages the OS itself -- including
-# home-manager's fish functions, which is why this repo deploys only
-# config.fish there. mise on nwa comes from Nix, not a package list.
+# The NixOS flake (separate repo) still manages the OS itself -- including home-manager's
+# fish functions, which is why this repo deploys only config.fish there. mise comes from
+# Nix, not a package list.
 
 [vars]
 host = "nwa"

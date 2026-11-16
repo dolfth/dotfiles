@@ -13,9 +13,8 @@ fi
 
 ##### Sandboxed app defaults (need Full Disk Access) ##########################
 #
-# Sandboxed apps (Mail, TextEdit, Displays) keep their domain in a
-# container only Full Disk Access can write, which SSH sessions lack. Reading
-# the TCC database needs the same access, so it doubles as the check.
+# Sandboxed apps (Mail, TextEdit, Displays, Safari) keep their domain in a
+# container only FDA can write; reading the TCC db needs the same, hence the probe.
 fda=1
 if ! head -c1 "/Library/Application Support/com.apple.TCC/TCC.db" >/dev/null 2>&1; then
   fda=
@@ -46,21 +45,18 @@ if [ -n "$fda" ]; then
   # the whole bootstrap, which is why it sits behind the FDA guard.
   defaults write com.apple.Safari DefaultBrowserSearchProviderIdentifier -string com.duckduckgo
 fi
-# Finder: open new windows to Home. Written here so $USER resolves correctly
-# regardless of the account name (declarative defaults cannot interpolate).
+
+# Finder: new windows open Home. $USER interpolates here, not in declarative
+# defaults.
 defaults write com.apple.finder NewWindowTargetPath -string "file:///$USER/"
 
-# Dock: the Downloads folder tile. Folder tiles live in persistent-others,
-# which mise's dock.apps never touches, and a tile needs $HOME plus binary
-# data no TOML value can carry. The shape the Dock renders is a
-# directory-tile carrying the `book` bookmark unscoped (.withoutImplicit-
-# SecurityScope: a location, not a creator-app cookie) plus the stack keys:
-# a file-tile, or a bookmark-less tile, renders "?". The `book` bytes are not
-# reproducible from any public creation option, so convergence cannot
-# byte-compare: a Downloads directory-tile is left alone (a dragged one or a
-# healed one), a missing or file-tile-shaped one is replaced by the recipe
-# above. The Dock is killed only when something was written; a restart
-# rebuilds Spaces.
+# Dock: the Downloads tile. Folder tiles live in persistent-others, which mise's
+# dock.apps never touches, and a tile needs $HOME plus binary data. It must be a
+# directory-tile with an unscoped `book` bookmark; a file-tile, or a bookmark-less
+# tile, renders "?". Those bytes come from no public creation option, so this
+# compares shape, not bytes: an existing directory-tile is left alone, a
+# file-tile or absent one is replaced. The Dock dies only if something was
+# written -- a restart rebuilds Spaces.
 dock_rc=0
 timeout 90 swift -suppress-warnings - <<'EOF' || dock_rc=$?
 import Foundation
@@ -117,13 +113,9 @@ if [ "$dock_rc" = 13 ]; then
   killall Dock >/dev/null 2>&1 || echo "  Dock: restart failed; the tile appears when the Dock next starts"
 fi
 
-# Menu bar: the Bluetooth item. Per-module visibility is an int in the
-# per-host controlcenter domain (2 = shown, the end state of a System-Settings
-# enable), and the snapshot's -currentHost export reads it, so a fresh Mac
-# gets ControlCenter restarted with it. Volume has no line here: its menu-bar
-# state lives only in per-machine NSKeyedArchiver blobs keyed by UUID and
-# rewritten by ControlCenter on every UI toggle, so there is no public key to
-# write and it stays a manual step.
+# Menu bar: the Bluetooth item -- an int in the per-host controlcenter domain
+# (2 = shown), read by the snapshot's -currentHost export. Volume stays manual:
+# its state lives in per-machine NSKeyedArchiver blobs keyed by UUID.
 defaults -currentHost write com.apple.controlcenter Bluetooth -int 2
 
 # Manual light or dark mode conflicts with the automatic switch (declarative
@@ -154,13 +146,11 @@ fi
 
 ##### LinearMouse login item (the one non-scriptable UI step) #################
 #
-# "Start at Login" lives in the private login-items (BTM) store, which only
-# the app's own toggle writes: not linearmouse.json (0.12 accepts only $schema
-# and schemes), not defaults. The item points at /Applications and survives
-# reboots and reinstalls, so it is one step per machine. Launching the app
-# registers nothing -- unlike AeroSpace, whose config self-registers at first
-# launch. So this only reminds, and only when the app is there and the item
-# is not.
+# "Start at Login" lives in the private login-items (BTM) store, written only by
+# the app's own toggle -- not linearmouse.json, not defaults. The item survives
+# reboots and reinstalls, so it is one step per machine, and launching the app
+# registers nothing. So this only reminds, when the app is there and the item is
+# not.
 if [ "$(uname -s)" = "Darwin" ] && [ -d /Applications/LinearMouse.app ] \
   && ! sfltool dumpbtm 2>/dev/null | grep -q "com.lujjjh.LinearMouse"; then
   echo "  LinearMouse is not set to start at login: open it and tick 'Start at Login'"
@@ -206,11 +196,8 @@ sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setstealthmode on >/dev/n
 ##### MagicDNS in /etc/resolv.conf ############################################
 #
 # Programs that read the file (bun, Go without cgo) never see the Tailscale
-# supplemental resolver that scutil and curl use, so MagicDNS names return
-# ENOTFOUND for them -- omp is bun-compiled. Newer clients rewrite the file at
-# start (gza: since 1.102.x); declaring the content survives an older client or
-# an OS rewrite. The tailnet resolver forwards public names, so it works as the
-# sole nameserver here.
+# supplemental resolver, so MagicDNS names return ENOTFOUND for them. Newer
+# clients rewrite the file; declaring it survives an older client or an OS rewrite.
 if ! grep -q '^nameserver 100\.100\.100\.100' /etc/resolv.conf 2>/dev/null; then
   sudo tee /etc/resolv.conf >/dev/null <<'EOF'
 search foxhound-insen.ts.net localdomain
@@ -227,17 +214,14 @@ fi
 
 case "${KIND:-laptop}" in
   desktop)
-    # gza is the always-on desktop (omlx + splash servers): only the display
-    # sleeps. No standby, hibernation, Power Nap or Low Power Mode. Restart
-    # after a power cut (autorestart); wake on LAN and TCP keepalive as backups.
+    # Always-on desktop: only the display sleeps; no standby, hibernation, Power
+    # Nap or Low Power Mode; autorestart after a power cut.
     sudo pmset -a sleep 0 disksleep 0 standby 0 hibernatemode 0 \
       powernap 0 lowpowermode 0 displaysleep 15 autorestart 1 \
       womp 1 tcpkeepalive 1
-    # "Start up when power is connected" (macOS 26.5+, System Settings >
-    # Energy): Apple limits it to Mac mini 2024+, Mac Studio 2025+, iMac
-    # 2024+; it is not MDM-manageable, and pmset is the only scripted way.
-    # Unsupported hardware/releases reject the key, so warn instead of
-    # aborting the rest of the system part.
+    # "Start up when power is connected" (macOS 26.5+): Mac mini 2024+, Studio
+    # 2025+, iMac 2024+ only, not MDM-manageable, pmset the only scripted way.
+    # Unsupported hosts reject the key, so warn rather than abort.
     if ! sudo pmset autorestartatconnect 1; then
       echo "  'Start up when power is connected' unavailable here (needs Mac mini 2024+ / Mac Studio 2025+ / iMac 2024+ on macOS 26.5+): set it in System Settings > Energy"
     fi
@@ -248,8 +232,7 @@ case "${KIND:-laptop}" in
     sudo pmset -c sleep 10 displaysleep 10 disksleep 10 powernap 0
     ;;
 esac
-# Lock on wake: the stock default is "require password immediately"; pmset
-# has no such setting.
+# Lock on wake: pmset has no such setting; the stock default already asks.
 
 ##### Hostname ################################################################
 # All names set to HOST (the module var), else the current hostname.
@@ -262,12 +245,11 @@ sudo defaults write /Library/Preferences/SystemConfiguration/com.apple.smb.serve
 
 ##### Software Update #########################################################
 #
-# Check for macOS updates, but never download or install them unasked (that
-# is how Tahoe arrived). Install by hand: `softwareupdate -l` / `-i <label>`.
-# Security stays automatic:
-#   - ConfigDataInstall: XProtect, Gatekeeper and malware data; no restart.
-#   - CriticalUpdateInstall: Rapid Security Responses; at most a short restart.
-# Point releases (26.x.y) are macOS updates, even security-only ones.
+# Check, never download or install unasked (that is how Tahoe arrived); install by
+# hand: `softwareupdate -l` / `-i <label>`. Security stays automatic through
+# ConfigDataInstall (XProtect, Gatekeeper, no restart) and CriticalUpdateInstall
+# (Rapid Security Responses, a short restart at most) -- point releases count as
+# macOS updates, security-only ones included, so the install switch stays off.
 sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticCheckEnabled -bool true
 sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticDownload -bool false
 sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticallyInstallMacOSUpdates -bool false
@@ -278,13 +260,10 @@ if [ "${KIND:-laptop}" = "desktop" ]; then
 
   ##### GPU wired memory ######################################################
   #
-  # macOS caps GPU-wired memory, and with it the model size omlx can load.
-  # One pool for every GPU user (omlx, the splash servers) and nothing is
-  # refused below the cap: raise it near RAM and a full pool freezes the
-  # machine (a starved watchdog panicked the box at 96%). The gza module sets
-  # WIRED_LIMIT_MB to leave the host room when the pool is full; over it omlx
-  # dies mid-load and strands memory until a reboot. The sysctl resets at
-  # boot, so a LaunchDaemon reapplies it; it is also set now.
+  # The GPU-wired cap sets the model size omlx can load. One pool for every GPU
+  # user and nothing refused below it, so a cap near RAM freezes the machine when
+  # the pool fills. WIRED_LIMIT_MB (gza module) leaves the host room; the sysctl
+  # resets at boot, so a LaunchDaemon reapplies it.
   W="${WIRED_LIMIT_MB:?WIRED_LIMIT_MB is not set; add it to the gza module}"
   WIRED="sysctl -w iogpu.wired_limit_mb=${W}"
   sudo tee /Library/LaunchDaemons/dev.mise.wired-limit.plist >/dev/null <<EOF
@@ -311,15 +290,9 @@ EOF
 
   ##### Screen Sharing ########################################################
   #
-  # vnc://gza.local or the tailnet name. Access: System Settings > General >
-  # Sharing > Screen Sharing (admins by default).
-  #
-  # bootout before bootstrap: bootstrap on a job that is already loaded
-  # no-ops, so a job that has gone disabled (macOS updates reset launchd
-  # state) would never be cleared and every connection dies with
-  # "Screen Sharing is not permitted". If a client still gets denied,
-  # toggle it once by hand in System Settings: the UI click grants the
-  # authorization the launchctl path alone does not.
+  # bootout first: bootstrap no-ops on a loaded job, so a job a macOS update left
+  # disabled would never clear and every connection dies as "not permitted". If a
+  # client is still denied, toggle Screen Sharing once in System Settings.
   sudo launchctl bootout system/com.apple.screensharing 2>/dev/null || true
   sudo launchctl enable system/com.apple.screensharing >/dev/null || true
   sudo launchctl bootstrap system /System/Library/LaunchDaemons/com.apple.screensharing.plist 2>/dev/null || true
@@ -327,12 +300,9 @@ EOF
 
   ##### Remote Login (SSH) ####################################################
   #
-  # Also the way back after a power cut: on Apple silicon with macOS 26+, a
-  # minimal sshd runs before FileVault unlocks. `ssh dolf@gza.local` with the
-  # account password (keys don't work there) unlocks the disk; SSH drops and
-  # the Mac boots normally. See `man apple_ssh_and_filevault`. So password
-  # auth must stay on. launchctl, as `systemsetup -setremotelogin on` needs
-  # Full Disk Access.
+  # Password auth stays on for the pre-unlock sshd: on macOS 26+ ssh with the
+  # account password unlocks FileVault after a power cut (man
+  # apple_ssh_and_filevault). launchctl because `systemsetup` needs FDA.
   sudo launchctl enable system/com.openssh.sshd >/dev/null || true
   sudo launchctl bootstrap system /System/Library/LaunchDaemons/ssh.plist 2>/dev/null || true
 

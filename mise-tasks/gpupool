@@ -1,15 +1,11 @@
 #!/usr/bin/env bash
 #MISE tags=["gza"]
-# gza's GPU pool is single-tenant. The 96 GiB wired pool (system-check's
-# iogpu fuse) holds ONE model server: flash-fn (86G), the 27B (30G), or the
-# server omlx spawns for its own models (~30G per engine). Below the fuse the
-# kernel refuses no allocation, so two resident tenants do not queue -- their
+# gza's GPU pool is single-tenant. The 96 GiB wired pool (system-check's iogpu fuse)
+# holds ONE server: flash-fn (86G), the 27B (30G), or omlx's own engines (~30G). Below
+# the fuse the kernel refuses nothing, so two resident tenants do not queue -- their
 # Metal clients die: watchdog panics, server OOM crashloops, the GUI renderer.
-#
-# The switched-out tenants stay unloaded rather than loaded-idle. Only
-# flash-fn, the default owner, is RunAtLoad, so neither the bootstrap
-# self-heal nor a login resurrects a tenant this task switched out. omlx
-# loads its engine the moment a request arrives, so idle is not enough for it.
+# Switched-out tenants stay unloaded, not loaded-idle: only flash-fn, the default, is
+# RunAtLoad, so no login or self-heal resurrects one, and omlx spawns on request.
 #
 # usage: mise run gpupool fn|27|mlx|status
 #   fn    flash-fn on :8100, the default (drops 27B + omlx sessions)
