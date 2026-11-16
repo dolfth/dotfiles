@@ -51,7 +51,8 @@ kickstart = false
 
 # No pinned Dock tiles: the empty apps list removes every app tile mise
 # recognises, leaving only running applications (and the Trash; folder and
-# other tiles in persistent-others are outside mise's apps feature).
+# other tiles in persistent-others are outside mise's apps feature -- the
+# Downloads tile there is kept by the system-check task instead).
 # Deliberately the named dock section, not a raw persistent-apps value --
 # mise keeps each tile's bookmark while managing the layout, and its status
 # reports the layout instead of the raw archive.

@@ -51,6 +51,21 @@ fi
 # regardless of the account name (declarative defaults cannot interpolate).
 defaults write com.apple.finder NewWindowTargetPath -string "file:///$USER/"
 
+# Dock: the Downloads folder tile. Folder tiles live in persistent-others,
+# which mise's dock.apps feature never touches, and the tile needs $HOME plus
+# a binary form a TOML value cannot carry -- so ensure it here. The check
+# matches the stored file-data URL, so a hand-dragged tile of the same folder
+# counts too. The text file-data is all the tile needs to load: the Dock
+# adds its own bookmark and mod-dates when it next reads the list. A
+# converged Dock is a no-op; the restart leg below reloads the Dock when
+# this write changed the domain.
+if ! defaults read com.apple.dock persistent-others 2>/dev/null \
+    | grep -q "file://${HOME}/Downloads"; then
+  defaults write com.apple.dock persistent-others -array-add \
+    "<dict><key>tile-data</key><dict><key>file-data</key><dict><key>_CFURLString</key><string>file://${HOME}/Downloads/</string><key>_CFURLStringType</key><integer>8</integer></dict><key>file-label</key><string>Downloads</string></dict><key>tile-type</key><string>file-tile</string></dict>"
+  echo "  Dock: added the Downloads tile"
+fi
+
 # Menu bar: show the Bluetooth item. Module visibility is a per-module int
 # in the per-host controlcenter domain (2 = menu bar visible; the observed
 # end state of a System-Settings enable), read by the snapshot's
