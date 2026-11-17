@@ -9,6 +9,9 @@ defaultThinkingLevel: medium
 task:
   maxRecursionDepth: 0
   maxConcurrency: 4
+  isolation:
+    # Parallel agents get APFS-cloned worktrees; patches merge back on success.
+    enabled: true
 compaction:
   asyncEnabled: true
 bash:
