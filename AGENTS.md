@@ -9,4 +9,4 @@
   comparisons.
 - Check the mise release notes now and then for features this repo could
   use, and bump the floor in mise.toml when one is worth pinning.
-  Last checked: 2026.11.5 (2026-11-10).
+  Last checked: 2026.11.9 (2026-11-17).
