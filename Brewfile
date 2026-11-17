@@ -77,6 +77,7 @@ cask "whatcable"
 # Store and the app must be in that account's purchase history, or the entry fails. The
 # explicit `id:` form is what current homebrew-bundle accepts: a positional-ID line
 # ("mas 361285480") aborts the whole bundle.
+mas "Discrete", id: 6746067740
 mas "Keynote", id: 361285480
 mas "Numbers", id: 361304891
 mas "Obsidian Web Clipper", id: 6720708363
