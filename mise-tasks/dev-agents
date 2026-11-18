@@ -89,6 +89,12 @@ check() {
   command -v nono >/dev/null || fail "nono not installed (Brewfile entry; run the bootstrap or brew install nono)"
   command -v jq >/dev/null || fail "jq not installed"
 
+  # nono matches a probe at the deepest existing ancestor, so a granted path
+  # that never existed reads as ungranted and the ALLOW probes below would
+  # fail on a fresh machine before install_stack ever runs. Seatbelt itself
+  # ignores existence; the same dirs are created again after the install.
+  mkdir -p "$HOME/.tsk" "$HOME/.omp/agent" "$HOME/.omp/profiles/local/agent/memories/mnemopi"
+
   nono profile validate "$profile_src" >/dev/null || fail "profile does not validate"
 
   # R2: exactly the three herdr control vars denied.
