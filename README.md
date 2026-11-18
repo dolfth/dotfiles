@@ -60,6 +60,13 @@ Pitfalls:
 - mise reads `miserc.local.toml` only from `~/.config/mise/`. A copy one
   level up is silently ignored: the vars fall back to the base values and
   the host module's dotfiles never deploy.
+- On mise 2026.11.8 the selection is honored only when the command runs
+  with `~/.config/mise` as the working directory. From any other cwd the
+  vars fall back to the base values: a bare `mise dotfiles apply` from
+  the home directory rewrote the templated files with base values (the
+  fallback host icon, the FQDN `omp_base`). Run every repo mise command
+  from inside the repo. A plain `ssh host mise ...` (cwd = home) is the
+  same trap.
 - A mise below the `min_version` floor in `mise.toml` refuses every
   command with an upgrade hint. `brew upgrade mise` and re-run.
 - Do not `chsh` to fish. `~/.zshrc` starts fish for interactive sessions,
