@@ -185,7 +185,7 @@ mise bootstrap remote --adopt '…' --host newbox.ts.net --remote-env mac
 | File | Loads when | Holds |
 |---|---|---|
 | `mise.toml` | always | per-host fallback vars (accent/icon/tailnet/sshKeys), the shared dotfiles (incl. the omp agent config and aerospace), the syncthing LaunchAgent for both Macs, the bootstrap hooks, the fleet inventory (`[bootstrap.remote]`) |
-| `mise.mac.toml` | `mac` selected | both Macs: the declarative macOS defaults, `$EDITOR`/`$VISUAL` (helix), `~/.zshrc`, `~/.ssh/config`, the fish functions, linearmouse |
+| `mise.mac.toml` | `mac` selected | both Macs: the declarative macOS defaults, `$EDITOR`/`$VISUAL` (helix), `~/.zshenv`, `~/.zshrc`, `~/.ssh/config`, the fish functions, linearmouse |
 | `mise.mca.toml` | `mca` selected | the laptop: host identity vars (host/accent/icon, HOST/KIND) |
 | `mise.gza.toml` | `gza` selected | the desktop: the omlx and splash LaunchAgents, the omlx, pi and herdr configs; its brew entries are in `Brewfile.gza` |
 | `mise.nwa.toml` | `nwa` selected | the pi and herdr configs (mise itself comes from Nix, not a package list) |
@@ -222,6 +222,7 @@ release itself.
 
 | Source | Target | Notes |
 |---|---|---|
+| `zshenv` | `~/.zshenv` | both Macs; the brew PATH and `$EDITOR` for `$SHELL -c` child shells -- the only zsh file they read, so it is where mosh's ssh finds `mosh-server`. Copied, same reason as `~/.zshrc` |
 | `zshrc` | `~/.zshrc` | both Macs; starts fish. Copied -- the omp sandbox's `~/.zshrc` deny follows a symlink into the repo, which would deny the repo's own copy from the sandboxed agent |
 | `ssh_config` | `~/.ssh/config` | copied at 0600 -- a symlink would expose the repo file's permissions to ssh; key passphrases live in the Keychain |
 | `ssh/authorized_keys.tera` | `~/.ssh/authorized_keys` | the Macs; the `sshKeys` var rendered, 0600. The file is mise's: hand-added keys need to go into the var. Not on nwa -- its flake writes it |

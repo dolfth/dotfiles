@@ -28,6 +28,8 @@ brew "jq"
 brew "mas"
 brew "mise"
 brew "mole"
+# Flaky-link ssh replacement. No daemon: the client starts mosh-server through a
+# one-off ssh (`$SHELL -c`), whose PATH comes from ~/.zshenv (mac module).
 brew "mosh"
 # The sandbox for the coding agents. On the Macs `omp` on PATH is a root-owned nono
 # wrapper the dev-agents task installs (herdr launches agents by PATH name, so every

@@ -5,19 +5,8 @@
 # fish for interactive use only, which the fish docs recommend:
 #   https://fishshell.com/docs/current/index.html#default-shell
 
-# helix as $EDITOR/$VISUAL here too, not just in fish: `zsh -c` skips the
-# hand-off below entirely.
-export EDITOR=hx
-export VISUAL=hx
-
-# The Homebrew prefix's bin on PATH, as a static path rather than
-# `brew shellenv` (see config.fish): a fresh machine has no Homebrew yet.
-for p in /opt/homebrew /usr/local; do
-  if [ -d "$p/bin" ]; then
-    PATH="$p/bin:$PATH"
-    break
-  fi
-done
+# PATH and $EDITOR come from zshenv, the one file `zsh -c` reads; they would be
+# dead weight here.
 
 # Three guards, all load-bearing:
 #   parent != fish        -- `zsh` typed in fish must stay zsh. macOS ps prints comm as a
