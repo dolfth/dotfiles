@@ -21,7 +21,8 @@ if command -v timeout >/dev/null 2>&1; then
 else
   lc() { launchctl "$@"; }
 fi
-for agent in dev.mise.omlx dev.mise.splash dev.mise.splash-fn dev.mise.pin-check; do
+for agent in dev.mise.omlx dev.mise.splash dev.mise.splash-fn dev.mise.pin-check \
+             dev.mise.ha-monitor dev.mise.ha-monitor-report; do
   plist="${HOME}/Library/LaunchAgents/${agent}.plist"
   if [ ! -f "$plist" ]; then
     continue   # agents not declared on this machine (the gza module owns them)
@@ -44,6 +45,13 @@ for agent in dev.mise.omlx dev.mise.splash dev.mise.splash-fn dev.mise.pin-check
   lc bootstrap "$gui" "$plist" 2>/dev/null || true
   lc kickstart "$gui/$agent" 2>/dev/null || echo "  ${agent}: kickstart failed or timed out (missing binary? check the brew-bundle warnings above)" >&2
 done
+
+# The ha-monitor state tree. Its first run would create it too, but the
+# secrets are copied before that run, so the target dirs must already exist.
+if [ -f "${HOME}/Library/LaunchAgents/dev.mise.ha-monitor.plist" ]; then
+  mkdir -p "${HOME}/.local/state/agent-jobs/ha-monitor/work"
+  echo "  ha-monitor: state tree at ~/.local/state/agent-jobs/ha-monitor"
+fi
 
 # Report without touching: a port still held by another process (an interactive `splash
 # serve` in a terminal) is left to its owner -- KeepAlive picks the agent up when that
