@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #MISE tags=["macos"]
 # The repo's own self-test, wired automatic: the pre-commit/pre-push hooks
-# (mise-tasks/hooks, gated by core.hooksPath, which the pre-packages hook sets) reject
-# unchecked trees, and the final hook ends every bootstrap with this task. Four legs:
+# hooks (mise-tasks/hooks, gated by core.hooksPath, which the pre-packages hook sets) reject
+# unchecked trees, and the final hook ends every bootstrap with this task. Five legs:
 #
 #   1. config gate   -- the pre-packages assertion (mise.toml) at commit-time: `mise
 #                       env` IS the config load and a typo'd key only warns, so the
@@ -13,6 +13,10 @@
 #   4. heartbeat     -- the weekly pin-check agent is loaded and its log written within
 #                       8 days (pin-check's result is in the log; this leg proves the
 #                       alarm clock runs).
+#   5. ha-monitor    -- gza only (gated on the plist): the run and report agents
+#                       are loaded and the daily ha-monitor heartbeat is at most
+#                       2 days old. The ntfy report is the human-facing alarm;
+#                       this leg catches a dead clock that cannot alarm itself.
 #
 # The omp sandbox denies the dotfiles' target paths, so leg 3 self-skips there with a
 # note -- run this task from a normal shell for it to mean anything.
@@ -95,6 +99,36 @@ else
     echo "  last run ${age}d ago: $last_line"
     if [ "$age" -gt 8 ]; then
       rc=1; echo "  weekly heartbeat stale (>8d): the agent is not firing" >&2
+    fi
+  else
+    rc=1; echo "  heartbeat line carries no parseable date: $last_line" >&2
+  fi
+fi
+
+echo "== 5. ha-monitor heartbeat (gza)"
+# Gated on the plist, the way the gza-only agents are absent from the laptops.
+hm_plist="$HOME/Library/LaunchAgents/dev.mise.ha-monitor.plist"
+hm_log="$HOME/Library/Logs/ha-monitor.log"
+if [ ! -f "$hm_plist" ]; then
+  echo "  not gza (no dev.mise.ha-monitor.plist): skipped"
+elif ! launchctl print "gui/$(id -u)/dev.mise.ha-monitor" >/dev/null 2>&1 \
+  || ! launchctl print "gui/$(id -u)/dev.mise.ha-monitor-report" >/dev/null 2>&1; then
+  rc=1; echo "  ha-monitor agents not loaded -- mise bootstrap macos launchd-agents apply" >&2
+elif [ ! -f "$hm_log" ]; then
+  if [ -n "$(find "$hm_plist" -mtime -2 2>/dev/null)" ]; then
+    echo "  agents installed, first heartbeat pending -- seed the log with: mise run ha-monitor"
+  else
+    rc=1; echo "  agents loaded but $(basename "$hm_log") missing -- they have never run: mise run ha-monitor" >&2
+  fi
+else
+  last_line=$(grep -E '^[0-9]{4}-[0-9]{2}-[0-9]{2} ' "$hm_log" | tail -1)
+  if [ -z "$last_line" ]; then
+    rc=1; echo "  log holds no dated heartbeat line: $(tail -1 "$hm_log")" >&2
+  elif last_epoch=$(date -j -f '%Y-%m-%d' "${last_line%% *}" +%s 2>/dev/null); then
+    age=$(( ($(date +%s) - last_epoch) / 86400 ))
+    echo "  last run ${age}d ago: $last_line"
+    if [ "$age" -gt 2 ]; then
+      rc=1; echo "  daily heartbeat stale (>2d): the agent is not firing" >&2
     fi
   else
     rc=1; echo "  heartbeat line carries no parseable date: $last_line" >&2
