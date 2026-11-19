@@ -87,10 +87,12 @@ kickstart = true
 # the run agent starts the omp job, the report agent sends the ntfy message
 # (mise-tasks/ha-monitor). Calendar clocks only, like pin-check: bootstrap
 # loads them, never starts them -- an off-schedule start would fake a
-# heartbeat. The run's sandbox reaches only this host's model ports and Home
-# Assistant at 192.168.0.253; the report leg runs unsandboxed and is the only
-# piece that can post to ntfy. Secrets are plain files (the run needs
-# work/.ha_token, the report the ntfy topic); both are copied from nwa once.
+# heartbeat. The job's work dir is the HA repo (its AGENTS.md and MCP config
+# are the context; the run may write only its notes and draft there), its
+# sandbox reaches only this host's model ports and Home Assistant at
+# 192.168.0.253, and the report leg runs unsandboxed and is the only piece
+# that can post to ntfy. Secrets are plain files (the repo's .ha_token, the
+# ntfy topic); both are copied from nwa once.
 [bootstrap.macos.launchd.agents.ha-monitor]
 program = "{{ system_brew_prefix }}/bin/mise"
 args = ["run", "ha-monitor"]

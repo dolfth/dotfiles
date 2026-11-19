@@ -15,21 +15,29 @@
 #   run 04:38, report 12:03). launchd coalesces a missed calendar fire into
 #   one start on wake; the report's 24 h check still calls a dead clock dead.
 # - State -> ~/.local/state/agent-jobs/ha-monitor: started, skipped, quiet,
-#   summary.md, result, failures, runs/<ts>/ archives (30 days). The agent's
-#   work dir is work/ inside it -- never the state dir itself, or the agent
-#   could rewrite the result the report reads. Its draft and notes live in
-#   work/ too, so they survive a run that is killed.
+#   summary.md, result, failures, runs/<ts>/ archives (30 days). The agent
+#   gets no write there at all: it could otherwise rewrite the result the
+#   report reads.
+# - workDir -> ~/Documents/code/homeassistant, the HA repo, like nwa's
+#   ha-api.nix. That is the context: omp reads the repo's AGENTS.md at
+#   startup, the README is one open away, and .omp/mcp.json connects the
+#   read-only MCP server as real tools. The generated profile grants the
+#   repo READ and two files WRITE (monitor-notes.md, report-draft.md) --
+#   strictly less than the rw workDir nwa ran, so a chatty model cannot
+#   touch deployables. ~/Documents is TCC territory: a launchd agent may be
+#   denied where a terminal is allowed, so the preflight tells a missing
+#   repo apart from an unreadable one (the check task's probe idiom).
 # - The model preflight (is gza up?) is gone: the model server is local, and
 #   keep_alive brings it back on its own; a dead model now just fails the run,
 #   which the report marks as such.
 # - The sandbox is a nono profile generated at run time from nono/omp.json,
 #   enforced by `nono run` -- supervised, so the domain allow-list actually
-#   filters (invariant 8 of dev-agents). Grants: the work dir (--allow-cwd),
-#   read-only the websockets venv, deny the shared tsk store like local-omp.
-#   Network: the HA host only, plus the GPU-pool ports for the model.
-#   `nono why` is the static check; the proxy denies everything else.
-# - Secrets are plain files, not sops: work/.ha_token (the HA long-lived
-#   token) and ~/.local/state/agent-jobs/ntfy_topic (0600, shared by every
+#   filters (invariant 8 of dev-agents). Network: the HA host only, plus the
+#   GPU-pool ports for the model. `nono why` is the static check; the proxy
+#   denies everything else.
+# - Secrets are plain files, not sops: the repo's .ha_token (the HA
+#   long-lived token, untracked -- same file nwa's job read) and
+#   ~/.local/state/agent-jobs/ntfy_topic (0600, shared by every
 #   future agent job, like nwa's one ntfy topic). Both copied from nwa once;
 #   a missing token skips the run with a reason, a missing topic fails the
 #   report leg loudly.
@@ -49,8 +57,9 @@ if [ "$(uname -s)" != "Darwin" ]; then
 fi
 
 repo="$HOME/.config/mise"
+ha_repo="$HOME/Documents/code/homeassistant"
 state="$HOME/.local/state/agent-jobs/ha-monitor"
-work="$state/work"
+work="$ha_repo"
 notes="$work/monitor-notes.md"
 draft="$work/report-draft.md"
 token="$work/.ha_token"
@@ -109,13 +118,27 @@ archive() {
 }
 
 run_job() {
-  mkdir -p "$state/runs" "$work"
+  mkdir -p "$state/runs"
   trap archive EXIT
   rm -f "$state"/{skipped,quiet,summary.md,result,agent.err,killed}
   date +%s >"$state/started"
 
   # preflight (nwa: exit 3 quiet / other non-zero skip with stderr as reason;
-  # this job never has a nothing-to-do case, so only the skip path exists)
+  # this job never has a nothing-to-do case, so only the skip path exists).
+  # The repo probe separates missing from unreadable: a launchd job denied
+  # by TCC on ~/Documents sees EPERM where the terminal saw the files.
+  if [ ! -d "$ha_repo" ]; then
+    echo "HA repo missing at $ha_repo -- clone it, or move the job's context elsewhere" \
+      >"$state/skipped"
+    exit 0
+  fi
+  repo_probe=$(ls "$ha_repo" 2>&1 >/dev/null)
+  case $repo_probe in
+    *"Operation not permitted"*)
+      echo "HA repo unreadable: Operation not permitted on $ha_repo -- TCC denies the launchd job ~/Documents (grant FDA to /bin/bash, or move the repo)" \
+        >"$state/skipped"
+      exit 0 ;;
+  esac
   if [ ! -r "$token" ]; then
     echo "no HA token at $token -- copy it from nwa: scp nwa:Documents/code/homeassistant/.ha_token $token" \
       >"$state/skipped"
@@ -128,14 +151,21 @@ run_job() {
   rm -f "$state/skipped"
 
   # The job's nono profile, generated so it cannot drift from the daily one.
-  # Supervised `nono run` is what enforces the domain allow-list.
+  # Supervised `nono run` is what enforces the domain allow-list. The repo is
+  # granted read -- the agent's context -- with exactly two files writable;
+  # nwa gave the agent an rw workdir, this port does not.
   jq \
     --arg name "omp-job-ha-monitor" \
     --arg ha "$ha_host" \
-    --arg venv "$state/venv" '
+    --arg venv "$state/venv" \
+    --arg repo "$ha_repo" \
+    --arg notes "$notes" \
+    --arg draft "$draft" '
     .meta.name = $name
+    | .workdir = { "access": "read" }
     | .network = { "allow_domain": [$ha], "open_port": [8000, 8080, 8100] }
-    | .filesystem.read = ((.filesystem.read // []) + [$venv])
+    | .filesystem.read = ((.filesystem.read // []) + [$repo, $venv])
+    | .filesystem.allow_file = ((.filesystem.allow_file // []) + [$notes, $draft])
     | .filesystem.deny += ["$HOME/.tsk"]
   ' "$repo/nono/omp.json" >"$profile_out" || exit 1
   nono profile validate "$profile_out" >/dev/null || {
