@@ -12,6 +12,21 @@ to answer questions. Finish with the report described at the end.
     `config/entity_registry/list`, `repairs/list_issues`, `trace/list`).
     `$HA_PY` is a python3 with the `websockets` module for this.
 - No service calls, and no other POSTs or WebSocket commands.
+- HA also serves the MCP endpoint at `$HA_URL/api/mcp` (read-only by its
+  config entry). It is stateless: one JSON-RPC POST per call, no session,
+  so curl reaches it without an MCP client:
+
+  ```sh
+  mcp() { curl -fsS -X POST -H @<(printf 'Authorization: Bearer %s\n' "$(< .ha_token)") \
+    -H 'Content-Type: application/json' -H 'Accept: application/json' \
+    -H 'MCP-Protocol-Version: 2025-06-18' -d "$1" "$HA_URL/api/mcp"; }
+  mcp '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
+  mcp '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"system_log__get_entries","arguments":{"level":"error","limit":5}}}'
+  ```
+
+  Prefer `system_log__get_entries` and `history__get_history` to guessing
+  from `/api/states`; the server filters every tool to read-only, so the
+  contract -- change nothing -- holds even if a tool is misjudged.
 
 The sandbox only lets this run reach Home Assistant and the model server;
 anything else you curl dies with a proxy denial -- that is the sandbox
