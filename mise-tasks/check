@@ -13,10 +13,12 @@
 #   4. heartbeat     -- the weekly pin-check agent is loaded and its log written within
 #                       8 days (pin-check's result is in the log; this leg proves the
 #                       alarm clock runs).
-#   5. ha-monitor    -- gza only (gated on the plist): the run and report agents
-#                       are loaded and the daily ha-monitor heartbeat is at most
-#                       2 days old. The ntfy report is the human-facing alarm;
-#                       this leg catches a dead clock that cannot alarm itself.
+#   5. ha agent jobs -- gza only (gated on the plists): the run and report
+#                       agents of ha-monitor and ha-update are loaded and
+#                       their heartbeats are fresh -- ha-monitor daily (at
+#                       most 2 days), ha-update weekly (at most 8 days). The
+#                       ntfy reports are the human-facing alarms; this leg
+#                       catches a dead clock that cannot alarm itself.
 #
 # The omp sandbox denies the dotfiles' target paths, so leg 3 self-skips there with a
 # note -- run this task from a normal shell for it to mean anything.
@@ -105,35 +107,39 @@ else
   fi
 fi
 
-echo "== 5. ha-monitor heartbeat (gza)"
-# Gated on the plist, the way the gza-only agents are absent from the laptops.
-hm_plist="$HOME/Library/LaunchAgents/dev.mise.ha-monitor.plist"
-hm_log="$HOME/Library/Logs/ha-monitor.log"
-if [ ! -f "$hm_plist" ]; then
-  echo "  not gza (no dev.mise.ha-monitor.plist): skipped"
-elif ! launchctl print "gui/$(id -u)/dev.mise.ha-monitor" >/dev/null 2>&1 \
-  || ! launchctl print "gui/$(id -u)/dev.mise.ha-monitor-report" >/dev/null 2>&1; then
-  rc=1; echo "  ha-monitor agents not loaded -- mise bootstrap macos launchd-agents apply" >&2
-elif [ ! -f "$hm_log" ]; then
-  if [ -n "$(find "$hm_plist" -mtime -2 2>/dev/null)" ]; then
-    echo "  agents installed, first heartbeat pending -- seed the log with: mise run ha-monitor"
-  else
-    rc=1; echo "  agents loaded but $(basename "$hm_log") missing -- they have never run: mise run ha-monitor" >&2
-  fi
-else
-  last_line=$(grep -E '^[0-9]{4}-[0-9]{2}-[0-9]{2} ' "$hm_log" | tail -1)
-  if [ -z "$last_line" ]; then
-    rc=1; echo "  log holds no dated heartbeat line: $(tail -1 "$hm_log")" >&2
-  elif last_epoch=$(date -j -f '%Y-%m-%d' "${last_line%% *}" +%s 2>/dev/null); then
-    age=$(( ($(date +%s) - last_epoch) / 86400 ))
-    echo "  last run ${age}d ago: $last_line"
-    if [ "$age" -gt 2 ]; then
-      rc=1; echo "  daily heartbeat stale (>2d): the agent is not firing" >&2
+echo "== 5. ha agent jobs heartbeat (gza)"
+# Gated on the plists, the way the gza-only agents are absent from the laptops.
+# ha-monitor fires daily (fresh <=2d), ha-update weekly (fresh <=8d).
+for jm in "ha-monitor:2" "ha-update:8"; do
+  jm_name="${jm%%:*}"; jm_max="${jm##*:}"
+  jm_plist="$HOME/Library/LaunchAgents/dev.mise.${jm_name}.plist"
+  jm_log="$HOME/Library/Logs/${jm_name}.log"
+  if [ ! -f "$jm_plist" ]; then
+    echo "  ${jm_name}: not gza (no dev.mise.${jm_name}.plist): skipped"
+  elif ! launchctl print "gui/$(id -u)/dev.mise.${jm_name}" >/dev/null 2>&1 \
+    || ! launchctl print "gui/$(id -u)/dev.mise.${jm_name}-report" >/dev/null 2>&1; then
+    rc=1; echo "  ${jm_name} agents not loaded -- mise bootstrap macos launchd-agents apply" >&2
+  elif [ ! -f "$jm_log" ]; then
+    if [ -n "$(find "$jm_plist" -mtime -2 2>/dev/null)" ]; then
+      echo "  ${jm_name}: agents installed, first heartbeat pending -- seed the log with: mise run ${jm_name}"
+    else
+      rc=1; echo "  ${jm_name} agents loaded but $(basename "$jm_log") missing -- they have never run: mise run ${jm_name}" >&2
     fi
   else
-    rc=1; echo "  heartbeat line carries no parseable date: $last_line" >&2
+    last_line=$(grep -E '^[0-9]{4}-[0-9]{2}-[0-9]{2} ' "$jm_log" | tail -1)
+    if [ -z "$last_line" ]; then
+      rc=1; echo "  ${jm_name}: log holds no dated heartbeat line: $(tail -1 "$jm_log")" >&2
+    elif last_epoch=$(date -j -f '%Y-%m-%d' "${last_line%% *}" +%s 2>/dev/null); then
+      age=$(( ($(date +%s) - last_epoch) / 86400 ))
+      echo "  ${jm_name}: last run ${age}d ago: $last_line"
+      if [ "$age" -gt "$jm_max" ]; then
+        rc=1; echo "  ${jm_name} heartbeat stale (>${jm_max}d): the agent is not firing" >&2
+      fi
+    else
+      rc=1; echo "  ${jm_name}: heartbeat line carries no parseable date: $last_line" >&2
+    fi
   fi
-fi
+done
 
 if [ "$rc" -eq 0 ]; then
   echo "check: all legs pass"
