@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-#MISE tags=["macos"]
-# The Mac omp sandbox: nwa's dev-agents.nix ported from Landlock to
+#MISE tags=["gza"]
+# gza's omp sandbox: nwa's dev-agents.nix ported from Landlock to
 # nono/Seatbelt. Installs nono/omp.json and nono/omp-wrapper.sh under /usr/local,
-# root:wheel, and checks the invariants.
+# root:wheel, and checks the invariants. The agents live on gza alone; the other
+# hosts skip -- mca reaches omp over ssh/mosh.
 #
 #   mise run dev-agents          verify, then install (needs sudo)
 #   mise run dev-agents check    static checks only, no sudo
@@ -33,6 +34,11 @@ set -euo pipefail
 
 if [ "$(uname -s)" != "Darwin" ]; then
   echo "dev-agents is macOS-only; skipping."
+  exit 0
+fi
+
+if [ "${HOST:-}" != "gza" ]; then
+  echo "not gza (HOST=${HOST:-unset}); skipping."
   exit 0
 fi
 

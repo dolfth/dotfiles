@@ -39,13 +39,14 @@ mise bootstrap --adopt 'git@github.com:dolfth/dotfiles.git?ref=main' -E mac,gza 
 
 Step 5 clones the repo into `~/.config/mise` and runs the bootstrap:
 packages (`brew bundle` over the Brewfiles), dotfiles, the launchd
-agents, the system settings, the herdr and vscodium extensions, the omp
-sandbox, and the Apple Intelligence removal.
+agents, the system settings, the vscodium extensions, and, on gza, the
+herdr extensions and the omp sandbox. Then the Apple Intelligence
+removal.
 
 Three things need a terminal at the machine afterwards (ssh is skipped
 for the first):
 
-- `mise run dev-agents && mise run system-check` -- their sudo parts need a TTY.
+- `mise run dev-agents && mise run system-check` -- their sudo parts need a TTY. `dev-agents` skips off gza.
 - The Apple Intelligence task opens a profile in System Settings; click
   Install. One manual click per machine.
 - Tick "Start at Login" in LinearMouse -- a UI-only toggle; the system
@@ -175,8 +176,9 @@ just the Macs, `--tag nix` just nwa.
   inventory).
 - The nwa command passes `--force-dotfiles` because the apps on nwa
   rewrite their deployed configs (herdr's is a copy, not a symlink) and
-  the dotfiles apply aborts on drift. The Macs need nothing: their omp
-  config is a symlink into the repo and the pi entry merges.
+  the dotfiles apply aborts on drift. The Macs need nothing: their
+  rewriting configs are symlinked or merged, and the omp config that
+  would drift lives on gza alone.
 
 A brand-new machine lays its OS floor first -- a Mac: the steps above; a
 NixOS box: its flake plus a standalone mise install (give the host
@@ -191,13 +193,13 @@ mise bootstrap remote --adopt '…' --host newbox.ts.net --remote-env mac
 
 | File | Loads when | Holds |
 |---|---|---|
-| `mise.toml` | always | per-host fallback vars (accent/icon/tailnet/sshKeys), the shared dotfiles (incl. the omp agent config and aerospace), the syncthing LaunchAgent for both Macs, the bootstrap hooks, the fleet inventory (`[bootstrap.remote]`) |
+| `mise.toml` | always | per-host fallback vars (accent/icon/tailnet/sshKeys), the shared dotfiles (incl. the aerospace merge), the syncthing LaunchAgent for both Macs, the bootstrap hooks, the fleet inventory (`[bootstrap.remote]`) |
 | `mise.mac.toml` | `mac` selected | both Macs: the declarative macOS defaults, `$EDITOR`/`$VISUAL` (helix), `~/.zshenv`, `~/.zshrc`, `~/.ssh/config`, the fish functions, linearmouse |
 | `mise.mca.toml` | `mca` selected | the laptop: host identity vars (host/accent/icon, HOST/KIND) |
-| `mise.gza.toml` | `gza` selected | the desktop: the omlx and splash LaunchAgents, the omlx, pi and herdr configs; its brew entries are in `Brewfile.gza` |
-| `mise.nwa.toml` | `nwa` selected | the pi and herdr configs (mise itself comes from Nix, not a package list) |
+| `mise.gza.toml` | `gza` selected | the desktop: the omlx and splash LaunchAgents, the omp, omlx, pi and herdr configs; its brew entries, the agent stack included, are in `Brewfile.gza` |
+| `mise.nwa.toml` | `nwa` selected | the omp, pi and herdr configs (mise itself comes from Nix, not a package list) |
 | `miserc.local.toml` | never committed | this machine's selection: `env = ["mac", "<host>"]` |
-| `Brewfile`, `Brewfile.gza` | the brew-bundle task | the brew manifest: the shared entries, plus the desktop's servers |
+| `Brewfile`, `Brewfile.gza` | the brew-bundle task | the brew manifest: the shared entries, plus the desktop's servers and agent stack |
 
 The selection in `miserc.local.toml` decides which `mise.<env>.toml`
 modules load. Everything else is environment-neutral.
@@ -240,19 +242,19 @@ release itself.
 | `git/allowed_signers.tera` | `~/.config/git/allowed_signers` | every host's public key (the `sshKeys` var) |
 | `ghostty/config` | `~/.config/ghostty/config` | Nerd Font, so starship's glyphs render |
 | `aerospace/aerospace.toml` | `~/.config/aerospace/aerospace.toml` | both Macs; merged -- AeroSpace rewrites the file itself when the layout changes in-app |
-| `herdr/config.toml` | `~/.config/herdr/config.toml` | both Macs; copied -- herdr rewrites the file itself |
+| `herdr/config.toml` | `~/.config/herdr/config.toml` | gza + nwa; copied -- herdr rewrites the file itself |
 | `linearmouse.json` | `~/.config/linearmouse/linearmouse.json` | written only if absent, then LinearMouse owns it |
 | `handy/settings_store.json` | `~/Library/Application Support/com.pais.handy/settings_store.json` | Macs; symlinked -- Handy saves the store with a plain write, so in-app settings edits flow back into the repo: commit them. On a host where Handy already ran, `mise dot add` adopts the live file (it captures the source before linking) |
 | `pi/agent/settings.json` | `~/.pi/agent/settings.json` | gza + nwa; two pinned keys deep-merged into the file pi writes |
 | `omlx/*.json` | `~/.omlx/` | gza; the pinned settings deep-merged into the files omlx writes (auth keys stay omlx's), plus server aliases for the host's `.local` and Tailscale names |
-| `omp/agent/config.yml` | `~/.omp/agent/config.yml` | symlinked on every host: `/settings` changes flow back into the repo -- commit them |
-| `omp/agent/models.yml.tera` | `~/.omp/agent/models.yml` | the omlx + splash providers; `baseUrl` is `127.0.0.1` on gza, the gza tailnet FQDN elsewhere |
-| `nono/omp.json` | `/usr/local/etc/nono/omp.json` | Macs; the Seatbelt profile for omp, installed root:wheel by the `dev-agents` task -- by copy, never a repo symlink: the sandboxed agent must not be able to edit its own sandbox. Denies `~/.omp/profiles`, the state of the omp named profile `local`, so networked sessions cannot read sensitive work |
-| (generated from `nono/omp.json` + `vars.omp_base`) | `/usr/local/etc/nono/local-omp.json` | Macs; the offline profile for sensitive work, built by `dev-agents` instead of stored -- the two profiles cannot drift. Adds the model host's network allow-list (`network.block` would kill loopback too, invariant 8) and restores the state-tree deny carve-out |
-| `nono/omp-wrapper.sh` | `/usr/local/bin/omp` | Macs; root:wheel, so `omp` on PATH -- and every launch by name, `herdr agent start` included -- is sandboxed. Raw binary: `omp-unsandboxed`. Redirects Bun's install cache to `~/.omp/cache/bun-install` (`~/.bun` is denied; the memory embedder installs its runtime with Bun). The port of nwa's `dev-agents.nix`; requirements in the task's header |
-| `nono/local-omp-wrapper.sh` | `/usr/local/bin/local-omp` | Macs; root:wheel; the offline entry point for sensitive work. `OMP_PROFILE=local` relocates omp's state -- sessions, logs, the mnemopi store -- into `~/.omp/profiles/local`, which the daily profile denies; scratch lives there too. Runs `nono run`, not wrap: the domain allow-list is a proxy feature and the proxy needs the supervisor -- under wrap the same profile enforces nothing. `vars.omp_base` on the GPU-pool ports is the only reachable network |
-| `nono/AGENTS-sandbox.md` | `~/.omp/agent/AGENTS.md` | Macs; the note omp loads into every session, so a sandbox denial costs one line, not a token-spending investigation |
-| `nono/AGENTS-sandbox-local.md` | `~/.omp/profiles/local/agent/AGENTS.md` | Macs; the offline variant of the note, installed into the `local` omp profile the wrapper selects; the `local` agent dir also gets symlinks to the rendered `models.yml`/`config.yml` and the shared runtime caches |
+| `omp/agent/config.yml` | `~/.omp/agent/config.yml` | gza + nwa; symlinked -- `/settings` changes flow back into the repo -- commit them |
+| `omp/agent/models.yml.tera` | `~/.omp/agent/models.yml` | gza + nwa; the omlx + splash providers; `baseUrl` is `127.0.0.1` on gza, the gza tailnet FQDN on nwa |
+| `nono/omp.json` | `/usr/local/etc/nono/omp.json` | gza; the Seatbelt profile for omp, installed root:wheel by the `dev-agents` task -- by copy, never a repo symlink: the sandboxed agent must not be able to edit its own sandbox. Denies `~/.omp/profiles`, the state of the omp named profile `local`, so networked sessions cannot read sensitive work |
+| (generated from `nono/omp.json` + `vars.omp_base`) | `/usr/local/etc/nono/local-omp.json` | gza; the offline profile for sensitive work, built by `dev-agents` instead of stored -- the two profiles cannot drift. Adds the model host's network allow-list (`network.block` would kill loopback too, invariant 8) and restores the state-tree deny carve-out |
+| `nono/omp-wrapper.sh` | `/usr/local/bin/omp` | gza; root:wheel, so `omp` on PATH -- and every launch by name, `herdr agent start` included -- is sandboxed. Raw binary: `omp-unsandboxed`. Redirects Bun's install cache to `~/.omp/cache/bun-install` (`~/.bun` is denied; the memory embedder installs its runtime with Bun). The port of nwa's `dev-agents.nix`; requirements in the task's header |
+| `nono/local-omp-wrapper.sh` | `/usr/local/bin/local-omp` | gza; root:wheel; the offline entry point for sensitive work. `OMP_PROFILE=local` relocates omp's state -- sessions, logs, the mnemopi store -- into `~/.omp/profiles/local`, which the daily profile denies; scratch lives there too. Runs `nono run`, not wrap: the domain allow-list is a proxy feature and the proxy needs the supervisor -- under wrap the same profile enforces nothing. `vars.omp_base` on the GPU-pool ports is the only reachable network |
+| `nono/AGENTS-sandbox.md` | `~/.omp/agent/AGENTS.md` | gza; the note omp loads into every session, so a sandbox denial costs one line, not a token-spending investigation |
+| `nono/AGENTS-sandbox-local.md` | `~/.omp/profiles/local/agent/AGENTS.md` | gza; the offline variant of the note, installed into the `local` omp profile the wrapper selects; the `local` agent dir also gets symlinks to the rendered `models.yml`/`config.yml` and the shared runtime caches |
 
 Rows without a host apply to every machine. Files on disk that no loaded
 module declares are left alone; `mise dot prune` removes ones the repo
@@ -268,7 +270,7 @@ used to track. To delete a file the repo deployed, declare it
 | `bootstrap` | the `bootstrap` task slot | for each `dev.mise.*` LaunchAgent: a guarded `launchctl bootstrap` (loads only a not-yet-loaded job) plus a bare `kickstart` (starts a dead agent, no-op on a healthy one -- never kills a running server); then reports who holds each port; also seeds the ha-monitor state tree, since the token copy targets it before the first run. No-op off gza |
 | `herdr-plugins` | final | the herdr plugins the keybindings rely on: installs tab-rename, registers the tsk board plugin and installs the tsk agent skill (`tsk setup herdr`, `tsk setup agents --yes`, skipped where tsk is absent), reloads a running server; no-op where herdr is absent |
 | `vscode-extensions` | final | the vscodium extensions; no-op where codium is absent |
-| `dev-agents` | final | the Mac omp sandbox (nwa's dev-agents.nix ported to Seatbelt): checks the profile's invariants (herdr socket denied, HERDR control vars stripped, profile by path, root-owned, no `$HOME`/`~/.ssh` grants, personal documents unreachable through default-deny -- no deny rule there, which would outrank the workdir grant, the shared tsk store `$HOME/.tsk` granted to the daily profile and denied to local-omp), installs the pinned raw binary plus the root:wheel profile and wrapper under `/usr/local`, removes the brew omp that would shadow it, seeds the agent's `sign.pub`/`known_hosts` copies. `dev-agents check` is the sudo-free static half. The sudo part needs a TTY |
+| `dev-agents` | final (gza; skips elsewhere) | the gza omp sandbox (nwa's dev-agents.nix ported to Seatbelt): checks the profile's invariants (herdr socket denied, HERDR control vars stripped, profile by path, root-owned, no `$HOME`/`~/.ssh` grants, personal documents unreachable through default-deny -- no deny rule there, which would outrank the workdir grant, the shared tsk store `$HOME/.tsk` granted to the daily profile and denied to local-omp), installs the pinned raw binary plus the root:wheel profile and wrapper under `/usr/local`, removes the brew omp that would shadow it, seeds the agent's `sign.pub`/`known_hosts` copies. `dev-agents check` is the sudo-free static half. The sudo part needs a TTY |
 | `system-check` | final | the macOS system settings: FDA-gated app defaults, the Downloads Dock tile (`persistent-others` is outside mise's `dock.apps` and the tile needs `$HOME`, so like Finder's home target the task keeps it), the Bluetooth menu-bar item (volume has no public key -- private per-machine ControlCenter blobs, so it stays manual), hostname, firewall, the tailnet resolvers in resolv.conf, Touch ID, power, updates, the FileVault check, the GPU wired-limit daemon; the desktop also gets Screen Sharing and Remote Login. The sudo part needs a TTY. Dock/Finder/… restart only when a domain they read changed |
 | `apple-intelligence` | final | the Apple Intelligence removal via the pinned pared release: disables every feature in its catalog (Siri included), keeps the managed profile installed (one System Settings click per machine), removes downloaded models. Runs only on Apple-silicon macOS 27+ |
 | `finder-favorites` | final | Finder sidebar Favorites := exactly the visible `$HOME` directories, alphabetically -- hand-pinned tiles (the stock Applications one included) and stale bookmarks are removed, like the Dock rule. Favorites are an LSSharedFileList archive, not a defaults domain, so the task writes through that (deprecated, alive) API; Finder updates live and a converged list is a no-op. Bookmarks are only ever resolved with no-interaction/no-mount flags and the run has a 90 s watchdog, so a stale item can never block the bootstrap. No-op off macOS |

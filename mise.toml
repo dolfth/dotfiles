@@ -45,12 +45,6 @@ ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKORTGA2F28t4VWxuvjVPnX9sfZOnNjmR5LoB8uvcwFU
 # merge: our keys win, whatever AeroSpace or the user wrote elsewhere stays.
 "~/.config/aerospace/aerospace.toml/pinned" = { source = "aerospace/aerospace.toml", merge = true }
 
-# config.yml is a symlink, so /settings edits flow back into the repo instead of
-# resetting. models.yml is a whole-file template: vars.omp_base is 127.0.0.1 on gza,
-# the tailnet FQDN elsewhere.
-"~/.omp/agent/config.yml" = "omp/agent/config.yml"
-"~/.omp/agent/models.yml" = { source = "omp/agent/models.yml.tera", mode = "template" }
-
 [settings]
 # mise >= 2026.10.19 refuses tasks from an untrusted config, and trust is
 # per-machine. This global setting is read before any trust decision, so the entry

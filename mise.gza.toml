@@ -118,6 +118,11 @@ run_at_load = false
 kickstart = false
 
 [dotfiles]
+# The agent stack lives on gza (and nwa): mca reaches omp over ssh/mosh.
+# config.yml is a symlink, so /settings edits flow back into the repo instead of
+# resetting. models.yml is a whole-file template: vars.omp_base is 127.0.0.1 here.
+"~/.omp/agent/config.yml" = "omp/agent/config.yml"
+"~/.omp/agent/models.yml" = { source = "omp/agent/models.yml.tera", mode = "template" }
 # omlx writes these from its UI, so each entry deep-merges over the live file:
 # objects merge, arrays and scalars replace, so its auth secrets and model list
 # survive. Rendered as Tera first.

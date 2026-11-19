@@ -16,6 +16,10 @@ EDITOR = "nvim"
 VISUAL = "nvim"
 
 [dotfiles]
+# The agent stack lives on gza (and nwa); the laptop reaches omp over ssh/mosh.
+# models.yml is a template: vars.omp_base is the gza tailnet FQDN here.
+"~/.omp/agent/config.yml" = "omp/agent/config.yml"
+"~/.omp/agent/models.yml" = { source = "omp/agent/models.yml.tera", mode = "template" }
 # pi owns its settings file; the merge re-asserts the two pinned keys and
 # keeps whatever pi wrote for itself.
 "~/.pi/agent/settings.json/pinned" = { source = "pi/agent/settings.json", merge = true }

@@ -23,7 +23,6 @@ brew "ffmpeg"
 brew "FelixKratz/formulae/borders"
 brew "fish"
 brew "helix"
-brew "herdr"
 brew "jq"
 brew "mas"
 brew "mise"
@@ -31,11 +30,6 @@ brew "mole"
 # Flaky-link ssh replacement. No daemon: the client starts mosh-server through a
 # one-off ssh (`$SHELL -c`), whose PATH comes from ~/.zshenv (mac module).
 brew "mosh"
-# The sandbox for the coding agents. On the Macs `omp` on PATH is a root-owned nono
-# wrapper the dev-agents task installs (herdr launches agents by PATH name, so every
-# launch is sandboxed); the raw binary stays omp-unsandboxed. Brewfile carries the tool,
-# the task the policy.
-brew "nono"
 # Lints the repo's own task scripts; the mise-tasks/check task runs it.
 brew "shellcheck"
 brew "starship"
