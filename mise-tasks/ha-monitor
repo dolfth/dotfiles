@@ -197,19 +197,31 @@ run_job() {
 ## Notes size
 
 Keep \`monitor-notes.md\` under ${notes_limit} characters: it is read at the
-start of every run. Shorten and merge entries to stay under it. Keep no
-log of runs in it; each run is kept elsewhere.
+start of every run. Merge and shorten entries; no run log -- the single
+'Last run' line only. API mechanics you learned belong in the Environment
+section of the notes, or better, propose them to the user for this task file.
 
 ## Clock
 
 Started at $(date +%H:%M). You are killed at $(date -v+"${timeout_min}"M +%H:%M),
-and anything unsaved is lost. Check the time with \`date\`. Have your report
-ready 10 minutes before.
+and anything unsaved is lost. Check \`date\` at the start of each sweep step.
+Have the report ready by $(date -v+"$((timeout_min - 10))"M +%H:%M).
 
-Keep a draft of your report, in the same format, in \`${draft}\`. Update it
-after each part of the work. If you are killed, the draft is sent instead.
+Keep a draft of the report, in the same final format, in \`${draft}\`.
+Update it after each sweep step. If you are killed, the draft is sent instead.
 
-If there is nothing to report, your entire last message is: ${quiet_answer}"
+If there is nothing to report, your entire last message is: ${quiet_answer}
+
+## API gotchas (verified, do not rediscover)
+
+- WS registries: \`config/device_registry/list\`, \`config/entity_registry/list\`,
+  \`repairs/list_issues\`, \`config_entries/get\`. \`/api/error_log\` is gone (404)
+  -> \`system_log__get_entries\`.
+- \`trace/list\`: \`{\"domain\":\"automation\",\"item_id\":\"<id>\"}\` (string, one id);
+  \`trace/get\` adds \`run_id\`; \`result.trace\` is dict path->list, timestamps
+  are \`{start, finish}\`.
+- \`/api/\` answers 200 before integrations are warm after a restart: fresh
+  boot + silent log = wait and re-check, not 'healthy'."
 
   cd "$work" || {
     echo "cannot enter the work dir $work" >>"$state/skipped"; exit 0; }
