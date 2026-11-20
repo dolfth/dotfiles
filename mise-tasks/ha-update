@@ -17,8 +17,11 @@
 #   stale window is 8 days, not 24 h: a weekly job is not dead at 25 h.
 # - No websockets venv: everything this job does is REST.
 # - Secrets identical: the HA repo's .ha_token and the shared ntfy topic.
-# - The nwa OS/Supervisor image question has no ported answer: the brief
-#   defers image updates to the user and installs everything else.
+# - agent-jobs/ha-update.md IS nwa's brief (API facts, order, stop-on-fail,
+#   state diff), trimmed to what transfers: the draft file, the sandbox note
+#   and the 200-before-warm caveat are the gza additions; nwa keeps no notes
+#   file across runs, so neither does this port -- the agent writes the
+#   report draft and nothing else.
 #
 # A run that reports "did not run in the last 8 days" right after install
 # means Friday has not come yet: seed it with `mise run ha-update`.
@@ -34,7 +37,6 @@ repo="$HOME/.config/mise"
 ha_repo="$HOME/Documents/code/homeassistant"
 state="$HOME/.local/state/agent-jobs/ha-update"
 work="$ha_repo"
-notes="$work/update-notes.md"
 draft="$work/update-report-draft.md"
 token="$work/.ha_token"
 ntfy_file="$HOME/.local/state/agent-jobs/ntfy_topic"
@@ -48,7 +50,6 @@ ha_url="http://${ha_host}:8123"
 # says so -- switching the job's model is a deliberate edit.
 model="splash-fn/unsloth/Qwen3.8-Flash-Next-GGUF:UD-Q4_K_XL"
 timeout_min=90
-notes_limit=6000
 stale_days=8
 quiet_answer="No updates needed."
 
@@ -73,7 +74,6 @@ archive() {
     [ -e "$state/$f" ] && cp -p "$state/$f" "$run/"
   done
   [ -e "$draft" ] && cp -p "$draft" "$run/"
-  [ -e "$notes" ] && cp -p "$notes" "$run/"
   find "$state/runs" -mindepth 1 -maxdepth 1 -mtime +30 -exec rm -rf {} + 2>/dev/null
   if [ -e "$state/skipped" ]; then
     heartbeat "skipped: $(head -c 120 "$state/skipped" | tr '\n' ' ')"
@@ -118,19 +118,19 @@ run_job() {
 
   # The job's nono profile, generated so it cannot drift from the daily one.
   # Supervised `nono run` enforces the domain allow-list. The repo is read --
-  # the agent's context -- with exactly two files writable. The write guard
-  # here is the network: only HA and the model are reachable at all.
+  # the agent's context and token -- with exactly one file writable: the
+  # report draft. The write guard is the network: only HA and the model are
+  # reachable at all.
   jq \
     --arg name "omp-job-ha-update" \
     --arg ha "$ha_host" \
     --arg repo "$ha_repo" \
-    --arg notes "$notes" \
     --arg draft "$draft" '
     .meta.name = $name
     | .workdir = { "access": "read" }
     | .network = { "allow_domain": [$ha], "open_port": [8000, 8080, 8100] }
     | .filesystem.read = ((.filesystem.read // []) + [$repo])
-    | .filesystem.allow_file = ((.filesystem.allow_file // []) + [$notes, $draft])
+    | .filesystem.allow_file = ((.filesystem.allow_file // []) + [$draft])
     | .filesystem.deny += ["$HOME/.tsk"]
   ' "$repo/nono/omp.json" >"$profile_out" || exit 1
   nono profile validate "$profile_out" >/dev/null || {
@@ -149,13 +149,6 @@ run_job() {
   local prompt
   prompt="$(cat "$repo/agent-jobs/ha-update.md")
 
-## Notes size
-
-Keep \`update-notes.md\` under ${notes_limit} characters: it is read at the
-start of every run. Merge and shorten entries; the Applied section keeps about
-90 days. API mechanics you learned belong in the Environment section of the
-notes, or better, propose them to the user for this task file.
-
 ## Clock
 
 Started at $(date +%H:%M). You are killed at $(date -v+"${timeout_min}"M +%H:%M),
@@ -169,14 +162,11 @@ exactly where the work stopped.
 
 If there is nothing to report, your entire last message is: ${quiet_answer}
 
-## API gotchas (verified, do not rediscover)
+## API gotcha (verified, do not rediscover)
 
-- \`/api/\` answers 200 before integrations are warm after a restart: fresh
-  boot + silent state = wait and re-check, not 'failed install'.
-- An integration install without restart leaves the entity reporting the OLD
-  \`installed_version\` while pending clears; final verification is YOURS,
-  after the single restart, not the install call's return.
-- Core version after restart: \`GET /api/config\` -> \`version\`."
+- \`/api/\` answers 200 before integrations are warm after a restart: one
+  extra minute between 'API back' and the state comparison prevents a
+  false 'unavailable -> stop'."
 
   cd "$work" || {
     echo "cannot enter the work dir $work" >>"$state/skipped"; exit 0; }
@@ -218,8 +208,8 @@ report() {
     exit 1
   fi
   cd "$state" || exit 1
-  local attention="" quiet="" finished="" ran=""
-  local run="" failures recovered="" msg="" notes_err="" title="" priority=3
+  local attention="" quiet="" finished=""
+  local run="" failures recovered="" msg="" title="" priority=3
 
   if [ ! -e started ] || [ $(( $(date +%s) - $(<started) )) -gt $(( stale_days * 86400 )) ]; then
     run="did not run in the last ${stale_days} days"; attention=1
@@ -231,11 +221,11 @@ report() {
   elif [ -s skipped ]; then
     run="skipped: $(head -c 300 skipped)"; attention=1
   elif [ "$(cut -d' ' -f1 result 2>/dev/null)" = success ]; then
-    run="finished"; finished=1; ran=1
+    run="finished"; finished=1
     first=$(grep -m1 -v '^[[:space:]]*$' summary.md 2>/dev/null | tr -d '[:space:]*')
     [ "$first" = "Noupdatesneeded." ] && quiet=1
   else
-    run="failed ($(cat result 2>/dev/null || echo "no result"))"; attention=1; ran=1
+    run="failed ($(cat result 2>/dev/null || echo "no result"))"; attention=1
   fi
 
   # A run that keeps failing notifies loudly once, then quietly, and once
@@ -252,17 +242,7 @@ report() {
 
   msg="**Run:** $run"
 
-  # Small models say they updated a file without doing it.
-  if [ -n "$ran" ]; then
-    if [ ! "$notes" -nt started ]; then
-      notes_err="not rewritten in this run"
-    elif [ "$(wc -c <"$notes" 2>/dev/null || echo 0)" -gt "$notes_limit" ]; then
-      notes_err="$(wc -c <"$notes") characters, over the limit of $notes_limit"
-    fi
-    [ -n "$notes_err" ] && msg="$msg"$'\n\n'"**Notes:** $notes_err"
-  fi
-
-  if [ -n "$quiet" ] && [ -z "$attention" ] && [ -z "$recovered" ] && [ -z "$notes_err" ]; then
+  if [ -n "$quiet" ] && [ -z "$attention" ] && [ -z "$recovered" ]; then
     echo "$msg"
     echo "Nothing to report; no notification."
     exit 0

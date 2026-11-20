@@ -1,87 +1,66 @@
-Keep Home Assistant updated. Install pending updates over the API; change
-nothing else. No one is available to answer questions. Finish with the report
-described at the end.
-
-## Ground rules
-
-- The only files you write are `update-notes.md` and `update-report-draft.md`
-  in this folder.
-- This folder is a git repo: the config that runs on HA, plus the user's own
-  findings. `AGENTS.md` Gotchas and written decisions outrank your judgement:
-  a fix you would apply that contradicts one is wrong.
-- If reality contradicts a note, reality wins: update the note.
-- Tag every claim not directly observed in API output `[inference]`.
-- What you may install, in this order: custom integrations and other app
-  updates first, then Home Assistant Core -- all with one restart at the end.
-- You do NOT install the Home Assistant Operating System or Supervisor image
-  update: report what is available and stop there. Image updates are the
-  user's call.
-- `skipped` on an update entity is the user's explicit choice: never clear
-  the skip, never install it, do not relitigate it.
-- Never uninstall, never call services outside the API list below, never
-  touch the VM or host.
+Install the pending Home Assistant updates. No one is available to answer
+questions. Finish with the report described at the end.
 
 ## API
 
-- Token in `.ha_token` here; base URL `$HA_URL`. Never print the token.
-- Allowed: `GET /api/states`, `GET /api/config`, `POST /api/template`,
-  `POST /api/services/update/install`, `POST /api/services/homeassistant/restart`.
-  Anything else means you planned wrong -- stop and report.
-- Pending updates: `GET /api/states`, keep `update.*` entities whose
-  `attributes.pending_update` is true. Fields: `installed_version`,
-  `latest_version`, `skipped`, `title`.
-- Install one entity: `POST /api/services/update/install` with
-  `{"entity_id": "<id>"}`. After each install, re-read the entity; a
-  `400`/`500` answer is a failed install -- record it, retry once at most.
-- Restart once, after all installs: `POST /api/services/homeassistant/restart`.
+- Use the token in `.ha_token` in this folder. The base URL is `$HA_URL`.
+  Never print the token.
+- A pending update is an `update.*` entity with state `on`.
+- Install: `POST /api/services/update/install` with
+  `{"entity_id": "<id>", "backup": true}`. Leave out `backup` if
+  `supported_features & 8` is 0.
+- `skipped_version` set means the user chose to skip: do not install, and
+  never call `update.skip` or `update.clear_skipped`.
+- `update.install` is the only service you call. Never restart HA, change
+  configuration or restore backups.
 - The sandbox only lets this job reach HA and the model server; other curls
   die with proxy 403/502 -- the sandbox working, not an HA problem.
 
+## Order
+
+One at a time:
+
+1. `update.home_assistant_supervisor_update`
+2. `update.home_assistant_core_update`
+3. Add-ons
+4. HACS and other custom integrations
+5. Device firmware
+6. `update.home_assistant_operating_system_update`
+
+Supervisor, Core and OS installs restart HA. The API is down for a few
+minutes while that happens.
+
 ## Procedure
 
-1. **Reachability.** Proxy 502 / dead on every path = HA is down. That is the
-   entire finding: notes entry, report, draft -- stop. Never spend > 10 min
-   on an unreachable host.
-2. **Inventory.** List the `update.*` entities: queue = pending and not
-   skipped; note the skipped count and any OS/Supervisor image pending.
-3. **Empty queue?** Rewrite only the `Last run` line in the notes and end
-   with the quiet answer (below).
-4. **Install the queue**, integrations first, Core last. After each install
-   re-read the entity and confirm it no longer reports pending.
-5. **Restart once.** Then poll `$HA_URL/api/` until it answers 200, wait
-   another 60 s, and re-check: `/api/` answers before integrations are warm.
-   Confirm the Core version via `GET /api/config`.
-6. **Verify.** Every queued entity now reports `installed_version ==
-   latest_version` and no pending flag. Anything still pending is a failed
-   install: leave it, record the error.
-7. **Notes, then report.**
+1. Save `GET /api/states` before the first install.
+2. Before each install read `release_summary`, and `release_url` if it is
+   reachable. Skip the update if the notes show a breaking change for an
+   integration in `GET /api/config` -> `components`, or a needed manual
+   step. If the notes cannot be read, install anyway. `AGENTS.md` in this
+   folder outranks your judgement: its written decisions are not bugs to
+   fix.
+3. Poll the entity every 30 s until `in_progress` is false and the state is
+   `off`. Allow at most 20 min, or 45 min for device firmware.
+4. After Supervisor, Core or OS: wait until `GET /api/` answers (at most
+   10 min), then wait another 60 s before trusting any `unavailable` -- a
+   fresh restart answers 200 before integrations are warm. Then compare
+   `GET /api/states` with the saved states.
+5. Stop installing if an update fails or times out, if the API does not
+   come back, or if entities that worked before are now `unavailable`.
+   Do not fix: report.
 
-## Notes
+## Time
 
-`update-notes.md` is your memory between runs. Read it first; rewrite as you
-go so a killed run still leaves its findings. Sections:
-
-- **Applied**: date, entity, `installed -> latest`, verified yes/no. Keep
-  about 90 days; drop older lines.
-- **Failed**: entity, error, what was tried. Never retry across runs without
-  a change of cause.
-- **Skipped / deferred**: the user's skips, one line each -- never
-  re-litigated, never cleared. OS/Supervisor images you deferred live here
-  too, until applied or dismissed.
-- **Environment**: endpoints and API quirks that cost you time -- write them
-  down so the next run does not rediscover them.
-- **Last run**: one line, date + outcome (installed N / none pending / M
-  failed).
-
-No victory log: an applied update nobody needs to know about is one line.
+Start no install in the last 30 minutes before you are killed.
 
 ## Report
 
-Your last message is sent as a phone notification in Markdown. Under 1500
-characters, no preamble, no tables or code blocks.
+Your last message is sent as a phone notification in Markdown. Keep it under
+1500 characters and add no preamble.
 
-- Line 1: verdict, e.g. "3 updates applied (core 2025.11.1)." or "1 install
-  failed." or "1 image update deferred to you."
-- At most 5 bullets, worst first: failed installs, a Core that could not be
-  verified, a deferred image update, then what was applied in one bullet.
-- If there is nothing to report, your entire last message is: No updates needed.
+- Line 1: the verdict, e.g. "All 6 updates installed." or "Stopped after
+  Core failed."
+- One bullet per update: title, old -> new version, and one of: installed,
+  skipped (reason), failed (what happened), not reached.
+- If any action is needed, end with one line saying what it is.
+- If nothing was pending, your entire last message is: No updates needed.
