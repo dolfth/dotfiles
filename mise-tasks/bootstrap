@@ -21,9 +21,10 @@ if command -v timeout >/dev/null 2>&1; then
 else
   lc() { launchctl "$@"; }
 fi
-for agent in dev.mise.omlx dev.mise.splash dev.mise.splash-fn dev.mise.pin-check \
+for agent in dev.mise.omlx dev.mise.llama-swap dev.mise.pin-check \
              dev.mise.ha-monitor dev.mise.ha-monitor-report \
-             dev.mise.ha-update dev.mise.ha-update-report; do
+             dev.mise.ha-update dev.mise.ha-update-report \
+             dev.mise.nwa-health dev.mise.nwa-health-report; do
   plist="${HOME}/Library/LaunchAgents/${agent}.plist"
   if [ ! -f "$plist" ]; then
     continue   # agents not declared on this machine (the gza module owns them)
@@ -36,9 +37,8 @@ for agent in dev.mise.omlx dev.mise.splash dev.mise.splash-fn dev.mise.pin-check
     echo "  ${agent}: scheduled; (re)loaded, not started"
     continue
   fi
-  # No RunAtLoad means on demand by design (the 27B and omlx: one GPU pool tenant at a
-  # time, switched by `mise run gpupool`); self-healing it resurrects what the operator
-  # just took down.
+  # No RunAtLoad means on demand by design (omlx: out of the GPU pool, started by
+  # hand); self-healing it resurrects what the operator just took down.
   if ! plutil -extract RunAtLoad raw "$plist" 2>/dev/null | grep -qx true; then
     echo "  ${agent}: on demand; left alone (its own task starts it)"
     continue
@@ -57,11 +57,26 @@ if [ -f "${HOME}/Library/LaunchAgents/dev.mise.ha-update.plist" ]; then
   mkdir -p "${HOME}/.local/state/agent-jobs/ha-update"
   echo "  ha-update: state tree at ~/.local/state/agent-jobs/ha-update"
 fi
+if [ -f "${HOME}/Library/LaunchAgents/dev.mise.nwa-health.plist" ]; then
+  mkdir -p "${HOME}/.local/state/agent-jobs/nwa-health"
+  echo "  nwa-health: state tree at ~/.local/state/agent-jobs/nwa-health"
+fi
+# The llama-swap API key, outside the repo. Seeded before any template can use
+# it (README, "Desktop services"); on a fresh gza that ordering misses the first
+# apply, so a second bootstrap renders the key into llama-swap's config and
+# omp's catalog -- same re-run story as the miserc seed.
+if [ -f "${HOME}/Library/LaunchAgents/dev.mise.llama-swap.plist" ]; then
+  if [ ! -s "${HOME}/.config/llama-swap/api_key" ]; then
+    mkdir -p "${HOME}/.config/llama-swap"
+    (umask 077 && printf 'sk-%s\n' "$(openssl rand -hex 32)" >"${HOME}/.config/llama-swap/api_key")
+    echo "  llama-swap: API key seeded at ~/.config/llama-swap/api_key"
+  fi
+fi
 
 # Report without touching: a port still held by another process (an interactive `splash
-# serve` in a terminal) is left to its owner -- KeepAlive picks the agent up when that
-# process exits.
-for pair in "omlx:8080" "splash:8000" "splash-fn:8100"; do
+# serve` in a terminal, blocking the front door's preload) is left to its owner --
+# KeepAlive picks the agent up when that process exits.
+for pair in "omlx:8080" "llama-swap:9292"; do
   name="${pair%%:*}"
   port="${pair#*:}"
   pid=$(lsof -nP -iTCP:"$port" -sTCP:LISTEN -t 2>/dev/null | head -1)
@@ -77,4 +92,4 @@ for pair in "omlx:8080" "splash:8000" "splash-fn:8100"; do
   fi
 done
 
-echo "agent self-heal done (logs: ~/Library/Logs/omlx.log, ~/Library/Logs/splash.log, ~/Library/Logs/splash-fn.log)"
+echo "agent self-heal done (logs: ~/Library/Logs/omlx.log, ~/Library/Logs/llama-swap.log)"

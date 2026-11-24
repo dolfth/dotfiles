@@ -1,9 +1,9 @@
 # This local-omp runs offline in a nono sandbox (macOS Seatbelt)
 
-- Network is allow-listed to the model servers only (ports 8000/8080/8100 on
-  the model host). Everything else is dead: web search, URL reads, `git push`,
-  package downloads. A network error is the sandbox working, not a bug:
-  do not investigate, do not route around it.
+- Network is allow-listed to the model server only (port 9292, llama-swap's
+  single endpoint, on the model host). Everything else is dead: web search,
+  URL reads, `git push`, package downloads. A network error is the sandbox
+  working, not a bug: do not investigate, do not route around it.
 - Your documents are the directory tree you launched from (read+write).
   The rest of the home is closed, except `~/.omp`, `~/.cache`, `~/.local/bin`,
   the runtime dirs, and `/opt/homebrew`.

@@ -5,7 +5,7 @@ Three machines, configured by [mise](https://mise.jdx.dev) from this repo:
 | Host | OS | What it is |
 |---|---|---|
 | `mca` | macOS | laptop |
-| `gza` | macOS | desktop: always-on omlx and splash servers, omp host |
+| `gza` | macOS | desktop: always-on llama-swap front for the two splash pool models (omlx installed, out of pool), omp host |
 | `nwa` | NixOS | server |
 
 The checkout *is* the global mise config: `~/.config/mise` is this repo.
@@ -86,8 +86,9 @@ Commits signed by an unlisted key fail verification on the other hosts.
 The OS comes from nwa's NixOS flake (a separate repo). mise is a
 standalone install in `~/.local/bin` -- the flake does not carry it --
 and it reads this checkout once a bootstrap adopts it as
-`~/.config/mise`. The first bootstrap deploys the omp, pi, and herdr
-configs; after that nwa follows this repo like the Macs.
+`~/.config/mise`. What it deploys is the shared fish config: the agent
+stack (omp, pi, herdr) left nwa (2026-11-24) and lives on gza alone.
+After that nwa follows this repo like the Macs.
 
 Two gates:
 
@@ -151,7 +152,7 @@ One command takes the whole fleet from this repo:
 ```bash
 cd ~/.config/mise   # the repo; run it here
 mise bootstrap remote --adopt 'git@github.com:dolfth/dotfiles.git?ref=main' --tag mac --update
-mise bootstrap remote --adopt 'git@github.com:dolfth/dotfiles.git?ref=main' --host nwa --update --remote-mise /home/dolf/.local/bin/mise --force-dotfiles
+mise bootstrap remote --adopt 'git@github.com:dolfth/dotfiles.git?ref=main' --host nwa --update --remote-mise /home/dolf/.local/bin/mise
 ```
 
 It connects over SSH to every machine in the `[bootstrap.remote.hosts]`
@@ -174,11 +175,10 @@ just the Macs, `--tag nix` just nwa.
   mise will not substitute an official release binary for a non-official
   local one, so nwa runs under its own mise (`remote_mise` in the
   inventory).
-- The nwa command passes `--force-dotfiles` because the apps on nwa
-  rewrite their deployed configs (herdr's is a copy, not a symlink) and
-  the dotfiles apply aborts on drift. The Macs need nothing: their
-  rewriting configs are symlinked or merged, and the omp config that
-  would drift lives on gza alone.
+- nwa needs no `--force-dotfiles` since the agent configs left: what
+  remains deployed there (the fish config) is no app's file. The Macs
+  need nothing either: their rewriting configs are symlinked or merged,
+  and the omp config that would drift lives on gza alone.
 
 A brand-new machine lays its OS floor first -- a Mac: the steps above; a
 NixOS box: its flake plus a standalone mise install (give the host
@@ -196,8 +196,8 @@ mise bootstrap remote --adopt '…' --host newbox.ts.net --remote-env mac
 | `mise.toml` | always | per-host fallback vars (accent/icon/tailnet/sshKeys), the shared dotfiles (incl. the aerospace merge), the syncthing LaunchAgent for both Macs, the bootstrap hooks, the fleet inventory (`[bootstrap.remote]`) |
 | `mise.mac.toml` | `mac` selected | both Macs: the declarative macOS defaults, `$EDITOR`/`$VISUAL` (helix), `~/.zshenv`, `~/.zshrc`, `~/.ssh/config`, the fish functions, linearmouse |
 | `mise.mca.toml` | `mca` selected | the laptop: host identity vars (host/accent/icon, HOST/KIND) |
-| `mise.gza.toml` | `gza` selected | the desktop: the omlx and splash LaunchAgents, the omp, omlx, pi and herdr configs; its brew entries, the agent stack included, are in `Brewfile.gza` |
-| `mise.nwa.toml` | `nwa` selected | the omp, pi and herdr configs (mise itself comes from Nix, not a package list) |
+| `mise.gza.toml` | `gza` selected | the desktop: the llama-swap and omlx LaunchAgents, the omp, omlx, pi and herdr configs, the llama-swap front door's config; its brew entries, the agent stack included, are in `Brewfile.gza` |
+| `mise.nwa.toml` | `nwa` selected | the server: host identity vars and env only (the agent stack left nwa, 2026-11-24); mise here is a standalone install, not a package list |
 | `miserc.local.toml` | never committed | this machine's selection: `env = ["mac", "<host>"]` |
 | `Brewfile`, `Brewfile.gza` | the brew-bundle task | the brew manifest: the shared entries, plus the desktop's servers and agent stack |
 
@@ -209,7 +209,7 @@ modules load. Everything else is environment-neutral.
 | What | Where |
 |---|---|
 | the formulae, casks, and App Store apps both Macs share | `Brewfile` |
-| omlx + splash, desktop only | `Brewfile.gza` |
+| omlx + splash + llama-swap, desktop only | `Brewfile.gza` |
 
 `brew bundle` (the brew-bundle task) installs what is missing and never
 upgrades what is present; daily upgrades go through `up`. App Store
@@ -217,8 +217,8 @@ entries (`mas`) require the machine to be signed in to the App Store,
 and the app in the account's purchase history -- otherwise they fail and
 the task reports the missing IDs.
 
-Why brew owns the brew ecosystem: mise cannot install omlx, splash, and
-omp (its formula shim lacks their taps' brew DSL, and resolution is
+Why brew owns the brew ecosystem: mise cannot install omlx, splash,
+llama-swap and omp (its formula shim lacks their taps' brew DSL, and resolution is
 all-or-nothing per batch), while brew evaluates its own formulas
 natively. Everything else is mise's: dotfiles, tasks and hooks, launchd
 agents, the declarative macOS defaults, declared tool versions -- and
@@ -242,19 +242,23 @@ release itself.
 | `git/allowed_signers.tera` | `~/.config/git/allowed_signers` | every host's public key (the `sshKeys` var) |
 | `ghostty/config` | `~/.config/ghostty/config` | Nerd Font, so starship's glyphs render |
 | `aerospace/aerospace.toml` | `~/.config/aerospace/aerospace.toml` | both Macs; merged -- AeroSpace rewrites the file itself when the layout changes in-app |
-| `herdr/config.toml` | `~/.config/herdr/config.toml` | gza + nwa; copied -- herdr rewrites the file itself |
+| `herdr/config.toml` | `~/.config/herdr/config.toml` | gza; copied -- herdr rewrites the file itself |
 | `linearmouse.json` | `~/.config/linearmouse/linearmouse.json` | written only if absent, then LinearMouse owns it |
 | `handy/settings_store.json` | `~/Library/Application Support/com.pais.handy/settings_store.json` | Macs; symlinked -- Handy saves the store with a plain write, so in-app settings edits flow back into the repo: commit them. On a host where Handy already ran, `mise dot add` adopts the live file (it captures the source before linking) |
-| `pi/agent/settings.json` | `~/.pi/agent/settings.json` | gza + nwa; two pinned keys deep-merged into the file pi writes |
+| `pi/agent/settings.json` | `~/.pi/agent/settings.json` | gza; two pinned keys deep-merged into the file pi writes |
 | `omlx/*.json` | `~/.omlx/` | gza; the pinned settings deep-merged into the files omlx writes (auth keys stay omlx's), plus server aliases for the host's `.local` and Tailscale names |
-| `omp/agent/config.yml` | `~/.omp/agent/config.yml` | gza + nwa; symlinked -- `/settings` changes flow back into the repo -- commit them |
-| `omp/agent/models.yml.tera` | `~/.omp/agent/models.yml` | gza + nwa; the omlx + splash providers; `baseUrl` is `127.0.0.1` on gza, the gza tailnet FQDN on nwa |
-| `nono/omp.json` | `/usr/local/etc/nono/omp.json` | gza; the Seatbelt profile for omp, installed root:wheel by the `dev-agents` task -- by copy, never a repo symlink: the sandboxed agent must not be able to edit its own sandbox. Denies `~/.omp/profiles`, the state of the omp named profile `local`, so networked sessions cannot read sensitive work |
+| `omp/agent/config.yml` | `~/.omp/agent/config.yml` | gza; symlinked -- `/settings` changes flow back into the repo -- commit them |
+| `omp/agent/models.yml.tera` | `~/.omp/agent/models.yml` | gza; the splash provider behind llama-swap: both pool models on the one 9292 endpoint; `baseUrl` renders from `vars.omp_base` (`127.0.0.1` on gza); `apiKey` reads `~/.config/llama-swap/api_key` by `exec()` |
+| `llama-swap/config.yaml.tera` | `~/.config/llama-swap/config.yaml` | gza; the pool's front door: the two splash engines (the retired splash LaunchAgents' serve flags, loopback binds), the flash-next preload, the same API key rendered from `~/.config/llama-swap/api_key` |
+| `nono/omp.json` | `/usr/local/etc/nono/omp.json` | gza; the Seatbelt profile for omp, installed root:wheel by the `dev-agents` task -- by copy, never a repo symlink: the sandboxed agent must not be able to edit its own sandbox. Denies `~/.omp/profiles`, the state of the omp named profile `local`, so networked sessions cannot read sensitive work. Denies `/usr/bin/ssh`: the binary file deny is the only kernel-enforced ssh guard on macOS (Seatbelt cannot filter egress by port, the domain proxy cannot carry ssh), so the daily agent has no ssh transport at all -- push needs https; `ssh-keygen` survives for commit signing |
 | (generated from `nono/omp.json` + `vars.omp_base`) | `/usr/local/etc/nono/local-omp.json` | gza; the offline profile for sensitive work, built by `dev-agents` instead of stored -- the two profiles cannot drift. Adds the model host's network allow-list (`network.block` would kill loopback too, invariant 8) and restores the state-tree deny carve-out |
+| (generated from `nono/omp.json`) | `/usr/local/etc/nono/nwa-omp.json` | gza; the ssh-capable nwa-maintenance profile, generated like local-omp's: undoes the daily `/usr/bin/ssh` deny and denies `~/.tsk`; carries no network policy -- an allow-list could not survive `nono wrap` and could not carry ssh even supervised (nolabs-ai/nono#756), so `dev-agents` rejects a `network` key there as a lie (invariant 12) |
 | `nono/omp-wrapper.sh` | `/usr/local/bin/omp` | gza; root:wheel, so `omp` on PATH -- and every launch by name, `herdr agent start` included -- is sandboxed. Raw binary: `omp-unsandboxed`. Redirects Bun's install cache to `~/.omp/cache/bun-install` (`~/.bun` is denied; the memory embedder installs its runtime with Bun). The port of nwa's `dev-agents.nix`; requirements in the task's header |
 | `nono/local-omp-wrapper.sh` | `/usr/local/bin/local-omp` | gza; root:wheel; the offline entry point for sensitive work. `OMP_PROFILE=local` relocates omp's state -- sessions, logs, the mnemopi store -- into `~/.omp/profiles/local`, which the daily profile denies; scratch lives there too. Runs `nono run`, not wrap: the domain allow-list is a proxy feature and the proxy needs the supervisor -- under wrap the same profile enforces nothing. `vars.omp_base` on the GPU-pool ports is the only reachable network |
+| `nono/nwa-omp-wrapper.sh` | `/usr/local/bin/nwa-omp` | gza; root:wheel; the one omp entry point with ssh, exclusively for maintaining nwa: launch it from the nixos-config checkout, `--allow-cwd` makes that tree its whole document world. `OMP_PROFILE=nwa` relocates state into `~/.omp/profiles/nwa`, invisible to the daily sandbox; `~/.ssh` stays denied there too, so host keys live in the profile tree's own `known_hosts` (seeded from the `~/.config/git` copy, tailscale keys arriving accept-new) and `GIT_SSH_COMMAND` points git at the same file. Runs `nono wrap`: there is no network filter it could host, and wrap keeps the herdr foreground label |
 | `nono/AGENTS-sandbox.md` | `~/.omp/agent/AGENTS.md` | gza; the note omp loads into every session, so a sandbox denial costs one line, not a token-spending investigation |
 | `nono/AGENTS-sandbox-local.md` | `~/.omp/profiles/local/agent/AGENTS.md` | gza; the offline variant of the note, installed into the `local` omp profile the wrapper selects; the `local` agent dir also gets symlinks to the rendered `models.yml`/`config.yml` and the shared runtime caches |
+| `nono/AGENTS-sandbox-nwa.md` | `~/.omp/profiles/nwa/agent/AGENTS.md` | gza; the nwa-maintenance note, installed into the `nwa` omp profile: the ssh incantation with the profile-tree `known_hosts`, the Tailscale-SSH approval caveat (an unregistered key makes every connect wait on a browser URL), the E1 deploy path -- edit the flake, push, `nixos-rebuild switch --flake github:...#nwa` over ssh, nwa builds its own system; the `nwa` agent dir also gets the config and cache symlinks |
 
 Rows without a host apply to every machine. Files on disk that no loaded
 module declares are left alone; `mise dot prune` removes ones the repo
@@ -270,23 +274,23 @@ used to track. To delete a file the repo deployed, declare it
 | `bootstrap` | the `bootstrap` task slot | for each `dev.mise.*` LaunchAgent: a guarded `launchctl bootstrap` (loads only a not-yet-loaded job) plus a bare `kickstart` (starts a dead agent, no-op on a healthy one -- never kills a running server); then reports who holds each port; also seeds the ha-monitor state tree, since the token copy targets it before the first run. No-op off gza |
 | `herdr-plugins` | final | the herdr plugins the keybindings rely on: installs tab-rename, registers the tsk board plugin and installs the tsk agent skill (`tsk setup herdr`, `tsk setup agents --yes`, skipped where tsk is absent), reloads a running server; no-op where herdr is absent |
 | `vscode-extensions` | final | the vscodium extensions; no-op where codium is absent |
-| `dev-agents` | final (gza; skips elsewhere) | the gza omp sandbox (nwa's dev-agents.nix ported to Seatbelt): checks the profile's invariants (herdr socket denied, HERDR control vars stripped, profile by path, root-owned, no `$HOME`/`~/.ssh` grants, personal documents unreachable through default-deny -- no deny rule there, which would outrank the workdir grant, the shared tsk store `$HOME/.tsk` granted to the daily profile and denied to local-omp), installs the pinned raw binary plus the root:wheel profile and wrapper under `/usr/local`, removes the brew omp that would shadow it, seeds the agent's `sign.pub`/`known_hosts` copies. `dev-agents check` is the sudo-free static half. The sudo part needs a TTY |
+| `dev-agents` | final (gza; skips elsewhere) | the gza omp sandbox (nwa's dev-agents.nix ported to Seatbelt): checks the profile's invariants (herdr socket denied, HERDR control vars stripped, profile by path, root-owned, no `$HOME`/`~/.ssh` grants, personal documents unreachable through default-deny -- no deny rule there, which would outrank the workdir grant, the shared tsk store `$HOME/.tsk` granted to the daily profile and denied to local-omp, `/usr/bin/ssh` denied to the daily profile with the deny lifted in the generated `nwa-omp` profile alone -- invariants 11 and 12), installs the pinned raw binary plus the root:wheel profiles and wrappers (`omp`, `local-omp`, `nwa-omp`) under `/usr/local`, removes the brew omp that would shadow it, seeds the agent's `sign.pub`/`known_hosts` copies and the `local` and `nwa` state trees. `dev-agents check` is the sudo-free static half. The sudo part needs a TTY |
 | `system-check` | final | the macOS system settings: FDA-gated app defaults, the Downloads Dock tile (`persistent-others` is outside mise's `dock.apps` and the tile needs `$HOME`, so like Finder's home target the task keeps it), the Bluetooth menu-bar item (volume has no public key -- private per-machine ControlCenter blobs, so it stays manual), hostname, firewall, the tailnet resolvers in resolv.conf, Touch ID, power, updates, the FileVault check, the GPU wired-limit daemon; the desktop also gets Screen Sharing and Remote Login. The sudo part needs a TTY. Dock/Finder/… restart only when a domain they read changed |
 | `apple-intelligence` | final | the Apple Intelligence removal via the pinned pared release: disables every feature in its catalog (Siri included), keeps the managed profile installed (one System Settings click per machine), removes downloaded models. Runs only on Apple-silicon macOS 27+ |
 | `finder-favorites` | final | Finder sidebar Favorites := exactly the visible `$HOME` directories, alphabetically -- hand-pinned tiles (the stock Applications one included) and stale bookmarks are removed, like the Dock rule. Favorites are an LSSharedFileList archive, not a defaults domain, so the task writes through that (deprecated, alive) API; Finder updates live and a converged list is a no-op. Bookmarks are only ever resolved with no-interaction/no-mount flags and the run has a 90 s watchdog, so a stale item can never block the bootstrap. No-op off macOS |
-| `gpupool` | manual (gza) | the GPU pool is single-tenant -- pick its owner: `fn` flash-fn on :8100 (default), `27` the 27B splash server on :8000, `mlx` omlx on :8080, `status` who answers. Two tenants would OOM-crash each other's Metal clients, so the rest stay unloaded |
 | `tailscale-ssh` | manual (Macs) | advertise Tailscale SSH on the CLI tailscaled (`tailscale set --ssh`) and report; refuses from a tailnet SSH session (interception would hang it) and while the app variant is installed. Variant cutover itself is the README's manual sequence |
 | `inventory` | manual (Macs) | the diffable manifest of this Mac's app state -- Application Support dirs, sandboxed containers, Group Containers, non-Apple prefs domains, LaunchAgents, the accounts table -- saved to `~/Library/Logs/inventory-<host>.txt`, each line annotated with its owner: `repo` (a dotfiles target or a declarative domain), `brew:<token>` (an installed cask's bundle id or app name), `sync` (a syncthing share), `?` (nobody). The diff of the two Macs' manifests is the transfer backlog; a `?` row on one host alone is untransferred unowned state, and an account row it lacks means sign into it there (credentials stay in the first host's keychain). Sizes print to stdout only, keeping the saved files stable to diff. Refuses inside the omp sandbox, which denies the app-support trees -- run it in a terminal |
 | `check` | git hooks + final hook (Macs) | the repo self-test, wired automatic on both ends of every change: the pre-commit/pre-push hooks (`mise-tasks/hooks`; `core.hooksPath` set by the pre-packages hook, so adopting the repo adopts the gate) refuse unchecked trees -- a tree-hash marker lets already-checked ones through silently, `--no-verify` skips the commit and the push gate then catches it -- and the final hook ends every bootstrap with it, where the dot-diff leg is the run's own idempotence assertion. Legs: the config gate (the pre-packages hook's assertion at commit-time), shellcheck over the task scripts, `mise dot diff` emptiness (a non-empty diff is drift -- fail), and the weekly pin-check heartbeat's freshness (a log older than 8 days is a dead agent; nine days of grace after a fresh install), plus the gza-only ha-monitor heartbeat (both agents loaded, a dated line at most 2 days old; the leg skips where the plist is absent). The dot-diff leg self-skips inside the omp sandbox, whose profile denies the dotfiles' target paths |
 | `pin-check` | weekly agent + manual (Macs) | probe the pinned GitHub release URLs -- the omp binary of `dev-agents`, the pared tarball and checksum sidecar of `apple-intelligence` -- with the versions parsed from their single sources of truth, so a bump needs no edit here and a parse failure means those moved shape. The `dev.mise.pin-check` agent (`mise.mac.toml`, Wed 09:30) runs it; every run logs one line to `~/Library/Logs/pin-check.log` -- the log's age is the heartbeat's own liveness proof, which `check` reads -- and a broken pin raises a macOS notification and a non-zero exit |
 | `ha-monitor` | daily agents + manual (gza) | the Home Assistant health check, moved from nwa's `hosts/nwa/agent-jobs/`: an omp run looks for oddities in HA over the API, changing nothing (`agent-jobs/ha-monitor.md`); its work dir is the HA repo (`~/Documents/code/homeassistant`, like nwa's `ha-api.nix`), so omp loads the repo's `AGENTS.md` and `.omp/mcp.json` as context and keeps its notes and report draft there; the generated profile grants the repo read and only those two files write, and its preflight reports a TCC denial on `~/Documents` as *unreadable*, distinct from *missing*. The state machine (skipped/result/failures, 30 days of run archives) lives in `~/.local/state/agent-jobs/ha-monitor/`. `dev.mise.ha-monitor` (04:38) runs it under `nono run` -- only the local model ports and HA at 192.168.0.253 are reachable; `dev.mise.ha-monitor-report` (12:03) posts the outcome to ntfy, silent when there is nothing to report, loud once on a new failure and once on recovery. Secrets copied from nwa once: the repo's `.ha_token` and `~/.local/state/agent-jobs/ntfy_topic`; `HA_MONITOR_DRYRUN=1` prints instead of posting |
 | `ha-update` | weekly agents + manual (gza) | the Home Assistant updater, moved from nwa's `agent-job-ha-update`: an omp run installs pending HA updates over the API -- Supervisor, Core, add-ons, custom integrations, firmware, then OS, with `backup: true` where supported, release-notes gating, stopping at the first failure (`agent-jobs/ha-update.md` is nwa's brief, adapted). The ha-monitor pattern otherwise (HA repo as read work dir with only the report draft writable, state machine, 30-day archives, TCC-aware preflight) but this job MUTATES HA, so the network allow-list (HA + model ports only) is the write guard. `dev.mise.ha-update` (Fri 02:33, nwa's clock) runs it under `nono run`; `dev.mise.ha-update-report` (Fri 06:03) posts the outcome to ntfy. The heartbeat's stale window is 8 days: a weekly job is not dead at 25 h. Same secrets, same `HA_UPDATE_DRYRUN=1` |
+| `nwa-health` | daily agents + manual (gza) | nwa's health check, moved from nwa's `agent-job-nwa-health` -- external monitoring now: an omp run probes nwa from gza over Tailscale SSH, read-only, changing nothing (`agent-jobs/nwa-health.md`). Its work dir is the nixos-config flake repo (`~/Documents/code/nixos-config`; its `AGENTS.md` is the context), with only `health-notes.md` and `report-draft.md` writable -- they need a `.gitignore` entry there, to land with the T9 cutover commit. The sandbox is the nwa-omp shape: `nono wrap` on a profile generated from the installed `nwa-omp` profile, because ssh cannot pass a domain allow-list (dev-agents #12) -- the filesystem grants are the whole sandbox story, and the preflight skips with a reason when `nwa:22` does not answer. nwa's clocks (`dev.mise.nwa-health` 06:13, report 12:03), ha-monitor's state machine and 2-day heartbeat, the same pinned splash-fn model: a model pick elsewhere can evict the engine mid-run, and the job swaps it back on its next request. `mise run nwa-health seed` copies `health-notes.md` from nwa once; removing the systemd timers is the nixos-config side of T9 |
 
 They run on every `mise bootstrap` (plain, or with `--update` to refresh
 metadata and repositories first — `mise upgrade`, the `up` function, is tool
 upgrades, not an apply) and do nothing when
 there is nothing to do. The macOS-only tasks carry the `macos` tag and
-`gpupool` carries `gza` (mise >= 2026.11.2), so a group can be selected
+the gza agent jobs carry `gza` (mise >= 2026.11.2), so a group can be selected
 explicitly -- `mise run --tag macos`, `mise tasks ls --tag gza` -- instead
 of relying on the uname guards. `--output summary` collapses a multi-task
 run to one line per pass; with `task.logs = true` (mise >= 2026.11.3) a
@@ -298,28 +302,51 @@ and the slow phases would then run on a half-wrong config.
 
 ## Desktop services (gza)
 
-`omlx serve` (port 8080) and two splash servers -- the 27B model on
-8000, Flash-Next on 8100 -- run as user LaunchAgents declared in
-`mise.gza.toml`. The GPU wired pool (the 96 GiB fuse system-check
-installs) is **single-tenant**: below the fuse the kernel refuses
-nothing, so two resident servers OOM-crash each other's Metal clients
-instead of queueing. Only flash-fn (the default owner) is RunAtLoad; the
-27B and omlx start only when `mise run gpupool fn|27|mlx` swaps them in
--- which is also why their `RunAtLoad`/`KeepAlive`/`kickstart` stay off:
-a launchd apply starts any agent with `kickstart = true`, however idle.
+`llama-swap` (port 9292) is the GPU pool's front door: one always-on
+LaunchAgent that starts and stops the two splash servers -- the 27B
+model on 127.0.0.1:8000, Flash-Next on 127.0.0.1:8100 -- and keeps
+exactly one resident. A request naming the other model ID stops the
+running engine, loads the requested one, then answers; the serve flags
+are the retired splash LaunchAgents' own, moved into
+`llama-swap/config.yaml.tera`, minus their network flags -- the engines
+bind loopback, the front door faces the tailnet. The GPU wired pool
+(the 96 GiB fuse system-check installs) is **single-tenant**: below the
+fuse the kernel refuses nothing, so two resident servers OOM-crash each
+other's Metal clients instead of queueing -- llama-swap's
+one-model-at-a-time router is the guard the retired `gpupool` task held
+by hand, and a model pick is now the switch. Flash-Next, the default
+owner, is preloaded when llama-swap starts, so the ambient jobs answer
+without paying a load.
+
+omlx (port 8080) stays installed and declared, RunAtLoad off, but
+**out of the pool**: llama-swap cannot evict a tenant it does not own,
+so starting omlx beside a loaded engine is out of contract, and the
+catalog (`omp/agent/models.yml.tera`) lists no omlx provider until it
+rejoins.
 
 Bootstrap rewrites plists when definitions change, the `bootstrap` task
-restarts a dead flash-fn on every run, and `up` restarts a server whose
-keg was upgraded. Logs: `~/Library/Logs/{omlx,splash,splash-fn}.log`.
+restarts a dead llama-swap on every run and seeds the API key, and `up`
+restarts the front door when the llama-swap or splash keg moves. Logs:
+`~/Library/Logs/omlx.log`, `~/Library/Logs/llama-swap.log` (engine logs
+arrive there too; the UI streams them per model).
 
-All three bind beyond loopback on purpose: the other hosts' omp reaches
-them over the tailnet; omlx enforces its API key on non-loopback binds,
-and the catalog (`omp/agent/models.yml.tera`) carries the key. The chat
-pages are at <http://127.0.0.1:8000> and <http://127.0.0.1:8100>.
+9292 binds beyond loopback so tailnet clients -- another machine's
+browser on the UI, an ad-hoc API call -- can reach the pool; no fleet
+host uses it remotely today, the agent stack being gza-only. An API key
+guards the endpoint and its UI at <http://127.0.0.1:9292/ui> -- one key
+for everything it serves, kept in `~/.config/llama-swap/api_key` (0600,
+outside the repo; the `bootstrap` task seeds it) and read into
+llama-swap's config and the catalog by `exec()` at render time.
+
+The engines answer on loopback too, unauthenticated -- loopback is
+this host only; their chat pages are at <http://127.0.0.1:8000> and
+<http://127.0.0.1:8100> while an engine is up.
 
 The same box also hosts the scheduled omp agent jobs that nwa used to
-run: `ha-monitor` (04:38, reported 12:03 via ntfy) and `ha-update`
-(Fri 02:33, reported 06:03). Its model is now a
+run: `ha-monitor` (04:38, reported 12:03 via ntfy), `ha-update`
+(Fri 02:33, reported 06:03) and `nwa-health` (06:13, reported 12:03 --
+probes nwa from the outside, over Tailscale SSH). Their model is now a
 local server, so the run no longer depends on this box being awake --
-it does still depend on the pool: if `gpupool` has moved the GPU away
-from flash-fn, the run fails and the report says so.
+and the pool has no owner to lose: a model pick elsewhere can evict
+flash-next mid-run, and the job's next request swaps it back, paying
+the load once.

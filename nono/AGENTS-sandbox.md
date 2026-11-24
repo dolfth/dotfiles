@@ -10,10 +10,12 @@
 - A permission error outside those paths is the sandbox, not a bug: name the
   path, say what you needed, and move on. Do not retry the same read through
   other tools or paths, and do not guess at causes.
-- `~/.ssh` is unreadable, but `git commit -S` and `git push` still work
-  through the ssh-agent (signing uses `~/.config/git/sign.pub`, host keys use
-  the copy under `~/.config/git`). If they fail with "no agent" or "host key
-  verification failed", the agent has no key loaded -- report it; loading is a
-  one-time step in an unsandboxed shell.
+- `~/.ssh` is unreadable and `/usr/bin/ssh` is denied: every ssh transport
+  (push over `git@`, `scp`, `rsync`) dies here. `git commit -S` still works --
+  `ssh-keygen` signs through the ssh-agent with `~/.config/git/sign.pub`. A
+  signing failure with "no agent" means the agent has no key loaded; report
+  it, loading is a one-time step in an unsandboxed shell. Push from an
+  unsandboxed terminal; for nwa maintenance there is a dedicated `nwa-omp`
+  entry point with ssh, started by you, never from here.
 - Prefer `$TMPDIR` for scratch files.
 - You can read images yourself. Do not use OCR tools.

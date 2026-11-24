@@ -28,18 +28,16 @@ export BUN_INSTALL_CACHE_DIR="$HOME/.omp/cache/bun-install"
 PATH="$(printf '%s' "$HOME/.local/bin:__BREW_PREFIX__/bin:__BREW_PREFIX__/sbin:$PATH" | awk -v RS=: -v ORS=: '!seen[$0]++' | sed 's/:$//')"
 export PATH
 
-# ~/.ssh is denied, but git must still sign and push: ssh-keygen signs through the
-# ssh-agent given the PUBLIC key file, and ssh verifies hosts from a known_hosts copy
-# under ~/.config/git (both seeded by dev-agents). "no agent" or "host key verification
-# failed" means the agent simply has no key loaded -- one ssh-add, unsandboxed, per boot.
+# ~/.ssh is denied and so is /usr/bin/ssh (dev-agents #11): no ssh transport from
+# this sandbox -- push reaches a remote over https only. git must still sign
+# locally: ssh-keygen (not denied) signs through the ssh-agent given the PUBLIC key
+# file seeded by dev-agents. "no agent" means the agent simply has no key loaded --
+# one ssh-add, unsandboxed, per boot.
 if [ -r "$HOME/.config/git/sign.pub" ]; then
   GIT_CONFIG_COUNT=$(( ${GIT_CONFIG_COUNT:-0} + 1 ))
   export GIT_CONFIG_COUNT
   export "GIT_CONFIG_KEY_$(( GIT_CONFIG_COUNT - 1 ))"=user.signingkey
   export "GIT_CONFIG_VALUE_$(( GIT_CONFIG_COUNT - 1 ))"="$HOME/.config/git/sign.pub"
-fi
-if [ -r "$HOME/.config/git/known_hosts" ]; then
-  export GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=$HOME/.config/git/known_hosts"
 fi
 
 # --profile is a full path, never a name: names resolve at run time against the

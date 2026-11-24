@@ -31,7 +31,7 @@ description = "sandboxed oh-my-pi"
 # tsk task board (brew smarzban/tap/tsk). The herdr-plugins task registers the plugin
 # with `tsk setup herdr`, which leaves these bindings alone once present. prefix+t opens
 # or focuses this workspace's board, prefix+a quick-captures a task. Where tsk is absent
-# (nwa until its flake gains it) the keys do nothing.
+# the keys do nothing.
 [[keys.command]]
 key = "prefix+t"
 type = "plugin_action"

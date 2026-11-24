@@ -1,69 +1,24 @@
-# omp's model catalog: the provider list, rendered whole on every bootstrap. The one
-# host-specific bit is baseUrl: the servers run on gza, so vars.omp_base is "127.0.0.1"
-# there (the gza module) and the gza tailnet FQDN elsewhere (the base -- MagicDNS
-# resolves the FQDN, never the bare hostname).
+# omp's model catalog: the provider list, rendered whole on every bootstrap.
+# baseUrl renders from vars.omp_base, which the gza module sets to "127.0.0.1"
+# -- the catalog is gza-only: omp lives there alone (the base keeps the gza
+# tailnet FQDN for any host that later points at the pool).
 #
 # A model added or changed through an omp UI is a local change: the next
 # `mise bootstrap` resets this file. Edit this source instead.
 #
-# gza's GPU pool serves ONE provider at a time (flash-fn by default; `mise run gpupool
-# 27|mlx` switches); the other providers' baseUrls refuse connections meanwhile.
+# One provider, one endpoint: llama-swap on gza:9292 fronts the GPU pool. The pool
+# stays single-tenant -- a model pick that is not loaded stops the running engine
+# and loads the picked one before the request answers, so a pick can pay the load
+# once (Flash-Next is a 111 GB image); apiKey is the pool key, read from
+# ~/.config/llama-swap/api_key by exec(). omlx is out of the pool for now:
+# installed on gza, no provider here -- pick it again by adding its provider
+# block back.
 ---
 providers:
-  omlx:
-    api: openai-completions
-    apiKey: '1234'
-    baseUrl: http://{{ vars.omp_base }}:8080/v1
-    compat:
-      maxTokensField: max_tokens
-      streamFirstEventTimeoutMs: 0
-      streamIdleTimeoutMs: 600000
-      supportsDeveloperRole: false
-      thinkingFormat: qwen-chat-template
-    models:
-    - contextWindow: 157696
-      cost:
-        cacheRead: 0
-        cacheWrite: 0
-        input: 0
-        output: 0
-      id: Qwen3.8-27B-oQ4e-mtp:thinking
-      input:
-      - text
-      - image
-      maxTokens: 32768
-      name: Qwen3.8 27B (thinking)
-      reasoning: true
-    - contextWindow: 157696
-      cost:
-        cacheRead: 0
-        cacheWrite: 0
-        input: 0
-        output: 0
-      id: Qwen3.8-27B-oQ4e-mtp:instruct
-      input:
-      - text
-      - image
-      maxTokens: 8192
-      name: Qwen3.8 27B (instruct)
-      reasoning: false
-    - contextWindow: 157696
-      cost:
-        cacheRead: 0
-        cacheWrite: 0
-        input: 0
-        output: 0
-      id: Swift-Qwen3.8-27b-oQ4e-mtp
-      input:
-      - text
-      - image
-      maxTokens: 32768
-      name: Swift Qwen3.8 27B
-      reasoning: true
   splash:
     api: openai-completions
-    apiKey: local
-    baseUrl: http://{{ vars.omp_base }}:8000/v1
+    apiKey: '{{ exec(command="cat $HOME/.config/llama-swap/api_key 2>/dev/null || true") }}'
+    baseUrl: http://{{ vars.omp_base }}:9292/v1
     compat:
       streamFirstEventTimeoutMs: 0
       streamIdleTimeoutMs: 600000
@@ -82,15 +37,6 @@ providers:
       maxTokens: 32768
       name: Qwen3.8 27B (Splash)
       reasoning: true
-  splash-fn:
-    api: openai-completions
-    apiKey: local
-    baseUrl: http://{{ vars.omp_base }}:8100/v1
-    compat:
-      streamFirstEventTimeoutMs: 0
-      streamIdleTimeoutMs: 600000
-      thinkingFormat: qwen-chat-template
-    models:
     - contextWindow: 262144
       cost:
         cacheRead: 0

@@ -11,7 +11,11 @@ function up --description 'Upgrade macOS software: CLT, brew (the Brewfiles), Ap
     # loaded until restart: record each keg's target (the "/" sentinel keeps an absent
     # keg index-aligned) and kick the one that moved -- the launchctl print guard no-ops
     # where the agent is absent.
-    set -l servers omlx splash syncthing
+    # A keg maps to the agent whose restart re-executes from it: splash has no
+    # agent of its own anymore (llama-swap starts the engines), so a moved splash
+    # keg restarts the front door, which reloads its engines on demand.
+    set -l servers omlx splash llama-swap syncthing
+    set -l agents omlx llama-swap llama-swap syncthing
     set -l kegs_before
     if test -n "$brew_prefix"
         for s in $servers
@@ -35,8 +39,8 @@ function up --description 'Upgrade macOS software: CLT, brew (the Brewfiles), Ap
         end
         for i in (seq (count $servers))
             if test "$kegs_before[$i]" != "$kegs_after[$i]"
-                and launchctl print gui/(id -u)/dev.mise.$servers[$i] >/dev/null 2>&1
-                launchctl kickstart -k gui/(id -u)/dev.mise.$servers[$i]
+                and launchctl print gui/(id -u)/dev.mise.$agents[$i] >/dev/null 2>&1
+                launchctl kickstart -k gui/(id -u)/dev.mise.$agents[$i]
             end
         end
     end

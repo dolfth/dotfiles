@@ -45,10 +45,11 @@ profile_out="$state/job.json"
 
 ha_host="192.168.0.253"
 ha_url="http://${ha_host}:8123"
-# The splash-fn model, pinned like ha-monitor's. The pool is single-tenant;
-# if gpupool moves the pool to another server the run fails and the report
-# says so -- switching the job's model is a deliberate edit.
-model="splash-fn/unsloth/Qwen3.8-Flash-Next-GGUF:UD-Q4_K_XL"
+# The splash-fn model, pinned like ha-monitor's. The pool is single-tenant
+# behind llama-swap: another client's pick can evict the engine mid-run, and
+# the job's next request swaps it back, paying the load once -- switching the
+# job's model stays a deliberate edit.
+model="splash/unsloth/Qwen3.8-Flash-Next-GGUF:UD-Q4_K_XL"
 timeout_min=90
 stale_days=8
 quiet_answer="No updates needed."
@@ -128,7 +129,7 @@ run_job() {
     --arg draft "$draft" '
     .meta.name = $name
     | .workdir = { "access": "read" }
-    | .network = { "allow_domain": [$ha], "open_port": [8000, 8080, 8100] }
+    | .network = { "allow_domain": [$ha], "open_port": [9292] }
     | .filesystem.read = ((.filesystem.read // []) + [$repo])
     | .filesystem.allow_file = ((.filesystem.allow_file // []) + [$draft])
     | .filesystem.deny += ["$HOME/.tsk"]

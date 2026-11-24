@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 #MISE tags=["gza"]
 # gza's omp sandbox: nwa's dev-agents.nix ported from Landlock to
-# nono/Seatbelt. Installs nono/omp.json and nono/omp-wrapper.sh under /usr/local,
-# root:wheel, and checks the invariants. The agents live on gza alone; the other
-# hosts skip -- mca reaches omp over ssh/mosh.
+# nono/Seatbelt. Installs the omp entry points -- omp, local-omp, nwa-omp, each
+# a profile plus a root:wheel wrapper -- under /usr/local and checks the
+# invariants. The agents live on gza alone; the other hosts skip -- mca reaches
+# omp over ssh/mosh.
 #
 #   mise run dev-agents          verify, then install (needs sudo)
 #   mise run dev-agents check    static checks only, no sudo
@@ -29,6 +30,20 @@
 #    logs and memory there, and they must not reach a networked session.
 # 10. The daily profile grants ~/.tsk, the tsk store. One store serves every repo,
 #     so offline work must not reach the shared board.
+# 11. The daily profile denies /usr/bin/ssh. Seatbelt cannot filter outbound
+#     connections by port on macOS (nono's connect_port is Linux-only) and the
+#     domain proxy cannot tunnel SSH (nolabs-ai/nono#756), so a file deny of the
+#     binary is the only kernel-enforced ssh guard. It kills the whole ssh
+#     transport (ssh, scp, sftp, rsync, git-over-ssh); ssh-keygen stays, so
+#     commit signing survives. It cannot stop a raw-socket client: the guard
+#     removes the tool, not the wire.
+# 12. nwa-omp is the one ssh-capable entry point: nwa maintenance and the E1
+#     deploy over Tailscale SSH, nothing else. Its profile is generated like
+#     local-omp's, minus the ssh deny, and carries no network policy -- such a
+#     list cannot survive `nono wrap` (no proxy) and could not carry ssh even
+#     supervised (#11), so the check rejects a .network key as a lie. Its real
+#     isolation is state and files: a named profile tree invisible to the
+#     daily sandbox, no tsk store, workdir-bounded documents.
 
 set -euo pipefail
 
@@ -48,15 +63,22 @@ wrapper_src="$root/nono/omp-wrapper.sh"
 agents_md_src="$root/nono/AGENTS-sandbox.md"
 local_wrapper_src="$root/nono/local-omp-wrapper.sh"
 agents_local_src="$root/nono/AGENTS-sandbox-local.md"
+nwa_wrapper_src="$root/nono/nwa-omp-wrapper.sh"
+agents_nwa_src="$root/nono/AGENTS-sandbox-nwa.md"
 
 profile_dst=/usr/local/etc/nono/omp.json
 local_profile_dst=/usr/local/etc/nono/local-omp.json
+nwa_profile_dst=/usr/local/etc/nono/nwa-omp.json
 wrapper_dst=/usr/local/bin/omp
 local_wrapper_dst=/usr/local/bin/local-omp
+nwa_wrapper_dst=/usr/local/bin/nwa-omp
 raw_dst=/usr/local/bin/omp-unsandboxed
 
 # local-omp's state tree; invisible to the daily sandbox by the deny of #9.
 local_state="$HOME/.omp/profiles/local"
+
+# nwa-omp's state tree, invisible the same way; its known_hosts lives here (#12).
+nwa_state="$HOME/.omp/profiles/nwa"
 
 # Pinned release plus checksum; the wrapper needs a path brew never touches.
 omp_version="18.18.6"
@@ -79,7 +101,20 @@ gen_local_profile() {
     | .meta.description = "omp offline: model host only, state isolated from the daily sandbox"
     | .filesystem.deny -= ["$HOME/.omp/profiles"]
     | .filesystem.deny += ["$HOME/.tsk"]
-    | .network = { "allow_domain": [$base], "open_port": [8000, 8080, 8100] }
+    | .network = { "allow_domain": [$base], "open_port": [9292] }
+  ' "$profile_src"
+}
+
+# nwa-omp: the ssh-capable entry (#11, #12). Same derivation story as local-omp
+# -- generated, never a repo file -- but it must undo the daily ssh deny and it
+# gets no network section: nothing under wrap could enforce one for ssh (#12).
+gen_nwa_profile() {
+  jq '
+    .meta.name = "nwa-omp"
+    | .meta.description = "omp for nwa maintenance: the ssh-capable entry point, state isolated from the daily sandbox"
+    | .filesystem.deny -= ["/usr/bin/ssh"]
+    | .filesystem.deny -= ["$HOME/.omp/profiles"]
+    | .filesystem.deny += ["$HOME/.tsk"]
   ' "$profile_src"
 }
 
@@ -99,7 +134,8 @@ check() {
   # that never existed reads as ungranted and the ALLOW probes below would
   # fail on a fresh machine before install_stack ever runs. Seatbelt itself
   # ignores existence; the same dirs are created again after the install.
-  mkdir -p "$HOME/.tsk" "$HOME/.omp/agent" "$HOME/.omp/profiles/local/agent/memories/mnemopi"
+  mkdir -p "$HOME/.tsk" "$HOME/.omp/agent" "$HOME/.omp/profiles/local/agent/memories/mnemopi" \
+           "$HOME/.omp/profiles/nwa/agent/memories/mnemopi"
 
   nono profile validate "$profile_src" >/dev/null || fail "profile does not validate"
 
@@ -131,7 +167,7 @@ check() {
 
   # R8: the model host answers, the remote world does not.
   local net_why remote_why
-  net_why=$(nono why --profile "$gen" --host "$(omp_base)" --port 8100 2>&1 || true)
+  net_why=$(nono why --profile "$gen" --host "$(omp_base)" --port 9292 2>&1 || true)
   case "$net_why" in ALLOWED*) ;; *) fail "local-omp: model host not reachable (${net_why:-no output})" ;; esac
   remote_why=$(nono why --profile "$gen" --host api.openai.com 2>&1 || true)
   case "$remote_why" in DENIED*) ;; *) fail "local-omp: remote network not denied (${remote_why:-no output})" ;; esac
@@ -156,6 +192,34 @@ check() {
   local_tsk_why=$(nono why --profile "$gen" --workdir "$root" --path "$HOME/.tsk" 2>&1 || true)
   case "$local_tsk_why" in DENIED*) ;; *) fail "local-omp can reach the tsk store (${local_tsk_why:-no output})" ;; esac
 
+  # R11 + R12: ssh dies in the daily sandbox, lives in nwa-omp alone. The nwa
+  # profile sets no network policy -- nothing could enforce one for ssh (#12) --
+  # so a .network key there would be decoration, and decoration is a lie.
+  local gen_nwa
+  gen_nwa="$(mktemp)"
+  gen_nwa_profile > "$gen_nwa" || fail "cannot generate the nwa-omp profile"
+  nono profile validate "$gen_nwa" >/dev/null || fail "generated nwa-omp profile does not validate"
+  jq -e 'has("network") | not' "$gen_nwa" >/dev/null \
+    || fail "nwa-omp profile carries a network policy that nothing enforces"
+  local daily_ssh_why nwa_ssh_why nwa_key_why
+  daily_ssh_why=$(nono why --profile "$profile_src" --workdir "$root" --path /usr/bin/ssh 2>&1 || true)
+  case "$daily_ssh_why" in DENIED*) ;; *) fail "daily omp can exec ssh (${daily_ssh_why:-no output})" ;; esac
+  nwa_ssh_why=$(nono why --profile "$gen_nwa" --workdir "$root" --path /usr/bin/ssh 2>&1 || true)
+  case "$nwa_ssh_why" in ALLOWED*) ;; *) fail "nwa-omp cannot exec ssh (${nwa_ssh_why:-no output})" ;; esac
+  # Even here the key files stay shut: auth is the ssh-agent and the tailnet
+  # identity, never a readable private key (R6 holds for nwa-omp too).
+  nwa_key_why=$(nono why --profile "$gen_nwa" --workdir "$root" --path "$HOME/.ssh/id_ed25519" 2>&1 || true)
+  case "$nwa_key_why" in DENIED*) ;; *) fail "nwa-omp can read the private key (${nwa_key_why:-no output})" ;; esac
+  # R9/R10 hold for the nwa tree as they do for local's: daily is blind to it,
+  # it reads its own, and the shared board is out of reach.
+  local daily_nwa_state_why nwa_state_why nwa_tsk_why
+  daily_nwa_state_why=$(nono why --profile "$profile_src" --workdir "$root" --path "$nwa_state/agent/AGENTS.md" 2>&1 || true)
+  case "$daily_nwa_state_why" in DENIED*) ;; *) fail "daily omp can read nwa state (${daily_nwa_state_why:-no output})" ;; esac
+  nwa_state_why=$(nono why --profile "$gen_nwa" --workdir "$root" --path "$nwa_state/agent/AGENTS.md" 2>&1 || true)
+  case "$nwa_state_why" in ALLOWED*) ;; *) fail "nwa-omp cannot read its own state (${nwa_state_why:-no output})" ;; esac
+  nwa_tsk_why=$(nono why --profile "$gen_nwa" --workdir "$root" --path "$HOME/.tsk" 2>&1 || true)
+  case "$nwa_tsk_why" in DENIED*) ;; *) fail "nwa-omp can reach the tsk store (${nwa_tsk_why:-no output})" ;; esac
+
   # R6 as the engine sees it: extends and groups can grant more than these lists.
   local key_why
   key_why=$(nono why --profile "$profile_src" --path "$HOME/.ssh/id_ed25519" 2>&1 || true)
@@ -179,6 +243,22 @@ check() {
   grep -q "export OMP_PROFILE=local" "$local_wrapper_src" \
     || fail "local wrapper does not export OMP_PROFILE=local (state isolation, #9)"
 
+  # The nwa wrapper: wrap, not run -- there is no network filter to host (#12),
+  # and wrap keeps the herdr foreground label. Profile by path, own label,
+  # own named state, host keys into the profile tree.
+  grep -q -- "--profile $nwa_profile_dst" "$nwa_wrapper_src" \
+    || fail "nwa wrapper does not pass --profile $nwa_profile_dst (a full path)"
+  grep -q "nono wrap " "$nwa_wrapper_src" \
+    || fail "nwa wrapper does not use 'nono wrap' (it has no network policy to supervise)"
+  grep -q "export HERDR_AGENT=nwa-omp" "$nwa_wrapper_src" \
+    || fail "nwa wrapper does not export HERDR_AGENT=nwa-omp"
+  grep -q "export OMP_PROFILE=nwa" "$nwa_wrapper_src" \
+    || fail "nwa wrapper does not export OMP_PROFILE=nwa (state isolation, #12)"
+  # Literal on purpose: the wrapper text carries "$HOME/...", expanded at run time.
+  # shellcheck disable=SC2016
+  grep -q 'UserKnownHostsFile=$HOME/.omp/profiles/nwa/known_hosts' "$nwa_wrapper_src" \
+    || fail "nwa wrapper does not route host keys to the profile-tree known_hosts"
+
   # R9 as text: daily denies the tree, the generated profile must not.
   jq -e '.filesystem.deny | index("$HOME/.omp/profiles")' "$profile_src" >/dev/null \
     || fail "daily profile does not deny \$HOME/.omp/profiles"
@@ -191,9 +271,24 @@ check() {
   jq -e '.filesystem.deny | index("$HOME/.tsk")' "$gen" >/dev/null \
     || fail "local-omp profile does not deny the shared tsk store"
 
-  # R6: no $HOME, ~/.ssh or secret-manager grants in either profile.
+  # R11 as text: daily denies the ssh binary; nwa-omp undoes exactly that,
+  # local-omp inherits it (harmless there -- its network is blocked anyway).
+  jq -e '.filesystem.deny | index("/usr/bin/ssh")' "$profile_src" >/dev/null \
+    || fail "daily profile does not deny /usr/bin/ssh"
+  jq -e '.filesystem.deny | index("/usr/bin/ssh") | not' "$gen_nwa" >/dev/null \
+    || fail "nwa-omp profile still denies ssh"
+  jq -e '.filesystem.deny | index("/usr/bin/ssh")' "$gen" >/dev/null \
+    || fail "local-omp profile lost the inherited ssh deny"
+
+  # R12 as text: the nwa profile owns its state tree and stays off the board.
+  jq -e '.filesystem.deny | index("$HOME/.omp/profiles") | not' "$gen_nwa" >/dev/null \
+    || fail "nwa-omp profile still denies its own state tree"
+  jq -e '.filesystem.deny | index("$HOME/.tsk")' "$gen_nwa" >/dev/null \
+    || fail "nwa-omp profile does not deny the shared tsk store"
+
+  # R6: no $HOME, ~/.ssh or secret-manager grants in any profile.
   local pf grants
-  for pf in "$profile_src" "$gen"; do
+  for pf in "$profile_src" "$gen" "$gen_nwa"; do
     grants=$(jq -r '[.filesystem | (.allow // [])[], (.allow_file // [])[], (.read // [])[], (.read_file // [])[]] | join(" ")' "$pf")
     # Literals on purpose: they match $HOME text in the profile JSON.
     # shellcheck disable=SC2016
@@ -204,7 +299,8 @@ check() {
 
   # R5 on the installed copies: present, current, root:wheel.
   local p
-  for f in "$profile_dst" "$local_profile_dst" "$wrapper_dst" "$local_wrapper_dst" "$raw_dst"; do
+  for f in "$profile_dst" "$local_profile_dst" "$nwa_profile_dst" \
+           "$wrapper_dst" "$local_wrapper_dst" "$nwa_wrapper_dst" "$raw_dst"; do
     [ -e "$f" ] || { echo "  (not installed yet: $f)"; continue; }
     p=$(stat -f '%Su:%Sg' "$f")
     [ "$p" = "root:wheel" ] || fail "$f is owned by $p, want root:wheel (the agent could edit its own sandbox)"
@@ -220,6 +316,9 @@ check() {
   if [ -e "$local_profile_dst" ] && ! cmp -s "$gen" "$local_profile_dst"; then
     stale="${stale:+$stale, }$local_profile_dst"
   fi
+  if [ -e "$nwa_profile_dst" ] && ! cmp -s "$gen_nwa" "$nwa_profile_dst"; then
+    stale="${stale:+$stale, }$nwa_profile_dst"
+  fi
   if [ -n "$brew_prefix" ] && [ -e "$wrapper_dst" ] \
      && ! cmp -s <(sed "s|__BREW_PREFIX__|$brew_prefix|g" "$wrapper_src") "$wrapper_dst"; then
     stale="${stale:+$stale, }$wrapper_dst"
@@ -227,6 +326,10 @@ check() {
   if [ -n "$brew_prefix" ] && [ -e "$local_wrapper_dst" ] \
      && ! cmp -s <(sed "s|__BREW_PREFIX__|$brew_prefix|g" "$local_wrapper_src") "$local_wrapper_dst"; then
     stale="${stale:+$stale, }$local_wrapper_dst"
+  fi
+  if [ -n "$brew_prefix" ] && [ -e "$nwa_wrapper_dst" ] \
+     && ! cmp -s <(sed "s|__BREW_PREFIX__|$brew_prefix|g" "$nwa_wrapper_src") "$nwa_wrapper_dst"; then
+    stale="${stale:+$stale, }$nwa_wrapper_dst"
   fi
   if [ -e "$raw_dst" ] && ! "$raw_dst" --version 2>/dev/null | grep "$omp_version" >/dev/null; then
     stale="${stale:+$stale, }$raw_dst"
@@ -266,20 +369,31 @@ install_stack() {
   sudo mkdir -p /usr/local/etc/nono /usr/local/bin
   sudo install -o root -g wheel -m 644 "$profile_src" "$profile_dst"
 
+  tmp_wrapper="$(mktemp)"
+  sed "s|__BREW_PREFIX__|$brew_prefix|g" "$wrapper_src" > "$tmp_wrapper"
+  sudo install -o root -g wheel -m 755 "$tmp_wrapper" "$wrapper_dst"
+  rm -f "$tmp_wrapper"
+
   # local-omp.json is generated here, not stored in the repo (#8).
   local_profile="$(mktemp)"
   gen_local_profile > "$local_profile"
   sudo install -o root -g wheel -m 644 "$local_profile" "$local_profile_dst"
   rm -f "$local_profile"
 
-  tmp_wrapper="$(mktemp)"
-  sed "s|__BREW_PREFIX__|$brew_prefix|g" "$wrapper_src" > "$tmp_wrapper"
-  sudo install -o root -g wheel -m 755 "$tmp_wrapper" "$wrapper_dst"
-  rm -f "$tmp_wrapper"
+  # nwa-omp.json likewise (#12): generated, the daily ssh deny undone inside.
+  nwa_profile="$(mktemp)"
+  gen_nwa_profile > "$nwa_profile"
+  sudo install -o root -g wheel -m 644 "$nwa_profile" "$nwa_profile_dst"
+  rm -f "$nwa_profile"
 
   tmp_wrapper="$(mktemp)"
   sed "s|__BREW_PREFIX__|$brew_prefix|g" "$local_wrapper_src" > "$tmp_wrapper"
   sudo install -o root -g wheel -m 755 "$tmp_wrapper" "$local_wrapper_dst"
+  rm -f "$tmp_wrapper"
+
+  tmp_wrapper="$(mktemp)"
+  sed "s|__BREW_PREFIX__|$brew_prefix|g" "$nwa_wrapper_src" > "$tmp_wrapper"
+  sudo install -o root -g wheel -m 755 "$tmp_wrapper" "$nwa_wrapper_dst"
   rm -f "$tmp_wrapper"
 
   # The pinned raw binary.
@@ -304,8 +418,8 @@ install_stack() {
   mkdir -p "$HOME/.config/herdr" "$HOME/.omp/agent" "$HOME/.cache/nono-tmp/omp" \
            "$HOME/.local/share/uv" "$HOME/.local/bin" "$HOME/.config/git" "$HOME/.tsk"
 
-  # git's pieces with ~/.ssh denied: the public signing key and known_hosts the
-  # wrapper points git at.
+  # git's pieces with ~/.ssh denied: the public signing key ssh-keygen uses,
+  # and the known_hosts copy that seeds nwa-omp's profile-tree file.
   if [ -f "$HOME/.ssh/id_ed25519.pub" ]; then
     cmp -s "$HOME/.ssh/id_ed25519.pub" "$HOME/.config/git/sign.pub" \
       || command install -m 644 "$HOME/.ssh/id_ed25519.pub" "$HOME/.config/git/sign.pub"
@@ -329,7 +443,21 @@ install_stack() {
   cmp -s "$agents_local_src" "$local_state/agent/AGENTS.md" \
     || command install -m 644 "$agents_local_src" "$local_state/agent/AGENTS.md"
 
-  echo "==> Installed: $(/usr/local/bin/omp-unsandboxed --version), wrapped by $wrapper_dst and $local_wrapper_dst"
+  # Seed nwa-omp's named profile (#12): same runtime material, plus the
+  # profile-tree known_hosts -- seeded from the git copy so GitHub stays
+  # pinned on the first push, tailscale host keys arriving accept-new.
+  mkdir -p "$nwa_state/tmp" "$nwa_state/agent"
+  ln -sfn "$HOME/.omp/agent/models.yml" "$nwa_state/agent/models.yml"
+  ln -sfn "$HOME/.omp/agent/config.yml" "$nwa_state/agent/config.yml"
+  ln -sfn "$HOME/.omp/agent/cache" "$nwa_state/agent/cache"
+  ln -sfn "$HOME/.omp/cache" "$nwa_state/cache"
+  if [ ! -e "$nwa_state/known_hosts" ] && [ -f "$HOME/.config/git/known_hosts" ]; then
+    command install -m 600 "$HOME/.config/git/known_hosts" "$nwa_state/known_hosts"
+  fi
+  cmp -s "$agents_nwa_src" "$nwa_state/agent/AGENTS.md" \
+    || command install -m 644 "$agents_nwa_src" "$nwa_state/agent/AGENTS.md"
+
+  echo "==> Installed: $(/usr/local/bin/omp-unsandboxed --version), wrapped by $wrapper_dst, $local_wrapper_dst and $nwa_wrapper_dst"
 }
 
 case "${1:-all}" in

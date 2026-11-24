@@ -15,6 +15,10 @@ tap "incoai/homebrew-tap", trusted: true
 
 brew "omlx"
 brew "splash"
+# The pool's front door: one endpoint, one model resident at a time (same
+# trusted-tap note as above).
+tap "mostlygeek/llama-swap", trusted: true
+brew "llama-swap"
 
 # The agent stack, gza-only: the laptop reaches it over ssh/mosh instead of installing
 # it. `omp` on PATH is the root-owned wrapper the dev-agents task installs (herdr

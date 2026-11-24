@@ -13,12 +13,13 @@
 #   4. heartbeat     -- the weekly pin-check agent is loaded and its log written within
 #                       8 days (pin-check's result is in the log; this leg proves the
 #                       alarm clock runs).
-#   5. ha agent jobs -- gza only (gated on the plists): the run and report
-#                       agents of ha-monitor and ha-update are loaded and
-#                       their heartbeats are fresh -- ha-monitor daily (at
-#                       most 2 days), ha-update weekly (at most 8 days). The
-#                       ntfy reports are the human-facing alarms; this leg
-#                       catches a dead clock that cannot alarm itself.
+#   5. agent jobs -- gza only (gated on the plists): the run and report
+#                       agents of ha-monitor, ha-update and nwa-health are
+#                       loaded and their heartbeats are fresh -- the daily
+#                       jobs at most 2 days, ha-update weekly (at most 8
+#                       days). The ntfy reports are the human-facing alarms;
+#                       this leg catches a dead clock that cannot alarm
+#                       itself.
 #
 # The omp sandbox denies the dotfiles' target paths, so leg 3 self-skips there with a
 # note -- run this task from a normal shell for it to mean anything.
@@ -107,10 +108,10 @@ else
   fi
 fi
 
-echo "== 5. ha agent jobs heartbeat (gza)"
+echo "== 5. agent jobs heartbeat (gza)"
 # Gated on the plists, the way the gza-only agents are absent from the laptops.
-# ha-monitor fires daily (fresh <=2d), ha-update weekly (fresh <=8d).
-for jm in "ha-monitor:2" "ha-update:8"; do
+# ha-monitor and nwa-health fire daily (fresh <=2d), ha-update weekly (<=8d).
+for jm in "ha-monitor:2" "ha-update:8" "nwa-health:2"; do
   jm_name="${jm%%:*}"; jm_max="${jm##*:}"
   jm_plist="$HOME/Library/LaunchAgents/dev.mise.${jm_name}.plist"
   jm_log="$HOME/Library/Logs/${jm_name}.log"

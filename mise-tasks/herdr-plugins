@@ -19,7 +19,7 @@ fi
 echo "==> Installing herdr plugins"
 herdr plugin install lmilojevicc/herdr-tab-rename --yes || echo "  herdr-tab-rename: install failed"
 
-# Skipped where tsk is absent (nwa until its flake gains it): the bindings in the
+# Skipped where tsk is absent: the bindings in the
 # deployed config stay inert until the plugin registers. The agent skill needs no
 # plugin but rides the same guard -- every host here that runs an agent runs herdr.
 if command -v tsk >/dev/null 2>&1; then

@@ -17,8 +17,9 @@ icon = "\U000F033D"   # nf-md-linux
 # Tailscale MagicDNS domain: hosts are reachable as <host>.<tailnet>.
 tailnet = "foxhound-insen.ts.net"
 
-# omp's baseUrl, except on the omlx host where the gza module overrides with
-# 127.0.0.1. The FQDN: MagicDNS resolves <host>.<tailnet>, never the bare hostname.
+# omp's baseUrl, except on the host that runs the pool, where the gza module
+# overrides with 127.0.0.1. The FQDN: MagicDNS resolves <host>.<tailnet>, never
+# the bare hostname.
 omp_base = "gza.foxhound-insen.ts.net"
 
 # Mirrored from https://github.com/dolfth.keys, the canonical record; update both on

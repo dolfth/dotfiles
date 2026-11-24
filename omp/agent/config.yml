@@ -35,10 +35,10 @@ mnemopi:
 providers:
   cacheWarming: "off"
 modelRoles:
-  default: splash-fn/unsloth/Qwen3.8-Flash-Next-GGUF:UD-Q4_K_XL
+  default: splash/unsloth/Qwen3.8-Flash-Next-GGUF:UD-Q4_K_XL
   tiny: local/lfm2.5-230m
-  memory: splash-fn/unsloth/Qwen3.8-Flash-Next-GGUF:UD-Q4_K_XL
-  judge: splash-fn/unsloth/Qwen3.8-Flash-Next-GGUF:UD-Q4_K_XL
+  memory: splash/unsloth/Qwen3.8-Flash-Next-GGUF:UD-Q4_K_XL
+  judge: splash/unsloth/Qwen3.8-Flash-Next-GGUF:UD-Q4_K_XL
 title:
   generator: tiny
 update:
@@ -46,6 +46,5 @@ update:
 retry:
   fallbackChains:
     default:
-      - splash-fn/unsloth/Qwen3.8-Flash-Next-GGUF:UD-Q4_K_XL
-      - omlx/Qwen3.8-27B-oQ4e-mtp:thinking
+      - splash/unsloth/Qwen3.8-Flash-Next-GGUF:UD-Q4_K_XL
       - splash/unsloth/Qwen3.8-27B-GGUF:UD-Q4_K_XL
