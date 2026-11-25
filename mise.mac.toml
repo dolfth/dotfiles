@@ -8,9 +8,23 @@ EDITOR = "hx"
 VISUAL = "hx"
 
 [vars]
-# pared release for the apple-intelligence task: no brew formula, no mise backend.
-# pin-check (below) probes this URL weekly.
+# The pinned GitHub releases the tasks fetch, one table as the single source
+# of truth: the tasks read them with `mise vars --json`, and pin-check (below)
+# HEADs the asset URLs weekly. A bump is one edit here -- a missing var fails
+# the consumer loudly, never a silent stale default.
+# - omp: dev-agents installs the binary
+#   (https://github.com/can1357/oh-my-pi/releases, omp-darwin-arm64)
+# - pared: the apple-intelligence task installs the tarball; no brew formula,
+#   no mise backend (https://github.com/4evy/pared/releases, .sha256 sidecar)
+# - luxmini: the luxmini task installs the DMG -- upstream publishes no tap
+#   and brew 7 loads casks by name only, so no brew entry is possible; the
+#   sha256 comes from the release's SHA256SUMS.txt
+#   (https://github.com/bastiencantet/luxmini-public/releases)
 pared_version = "2.2.0"
+omp_version = "18.18.6"
+omp_sha256 = "ed2e63eb43888eb76cb1409b245b1db4557c94dfad52dc545c9aaca01ebce82d"  # omp-darwin-arm64
+luxmini_version = "0.5.4"
+luxmini_sha256 = "a293408a2ce21101e2526a19515e40f8323d7d0d2e5046a984558362929d3532"
 
 # The weekly pin heartbeat (see the pin-check task). Calendar schedule, not
 # KeepAlive, and no RunAtLoad or kickstart: a login or bootstrap must not start it

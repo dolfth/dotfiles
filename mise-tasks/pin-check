@@ -2,7 +2,7 @@
 #MISE tags=["macos"]
 # The pinned release URLs, probed. The three places that fetch a pinned GitHub
 # release (dev-agents: the omp binary; apple-intelligence: the pared tarball +
-# checksum sidecar; the luxmini task: the DMG its vendored cask names) fail the
+# checksum sidecar; the luxmini task: the pinned DMG) fail the
 # moment upstream removes or renames an asset, and the only way to discover
 # that is to fetch it for real -- possibly during a bootstrap on the one box
 # that matters. This task HEADs every pinned asset so the breakage is announced
@@ -14,10 +14,10 @@
 # `mise run check` calls a log older than 8 days dead; a failing run raises a macOS
 # notification in unsandboxed agent sessions, else the exit code is the signal.
 #
-# Versions are parsed from their single sources of truth -- the omp_version line in
-# mise-tasks/dev-agents, pared_version in mise.mac.toml, the version line in
-# casks/luxmini.rb -- so a bump needs no change here, and a parse failure means
-# those moved shape, itself worth failing on.
+# Versions are read from their single sources of truth -- the pin table in
+# mise.mac.toml [vars], consumed by dev-agents, apple-intelligence and the
+# luxmini task -- so a bump needs no change here, and a missing var means the
+# pin moved out from under a consumer, itself worth failing on.
 
 set -uo pipefail   # no -e: check every pin, report all of them
 
@@ -26,19 +26,19 @@ if [ "$(uname -s)" != "Darwin" ]; then
   exit 0
 fi
 
-repo="$HOME/.config/mise"
 log="$HOME/Library/Logs/pin-check.log"
 failures=()
 checked=0
 
-# The pinned versions, from their owning files. A missing line is a format
-# change in the source -- fail loudly, the pin went unchecked.
-omp_version=$(sed -n 's/^omp_version="\([^"]*\)"/\1/p' "$repo/mise-tasks/dev-agents" | head -1)
-[ -n "$omp_version" ] || failures+=("omp: no omp_version line in mise-tasks/dev-agents")
-pared_version=$(sed -n 's/^pared_version = "\([^"]*\)"/\1/p' "$repo/mise.mac.toml" | head -1)
-[ -n "$pared_version" ] || failures+=("pared: no pared_version in mise.mac.toml")
-luxmini_version=$(sed -n 's/^  version "\([^"]*\)"/\1/p' "$repo/casks/luxmini.rb" | head -1)
-[ -n "$luxmini_version" ] || failures+=("luxmini: no version line in casks/luxmini.rb")
+# The pinned versions, from the config itself. A missing var means a consumer
+# would fail too -- fail loudly, the pin went unchecked.
+mise_vars_json=$(mise vars --json)
+omp_version=$(printf '%s' "$mise_vars_json" | jq -r '.omp_version // empty')
+[ -n "$omp_version" ] || failures+=("omp: no omp_version var (mise.mac.toml)")
+pared_version=$(printf '%s' "$mise_vars_json" | jq -r '.pared_version // empty')
+[ -n "$pared_version" ] || failures+=("pared: no pared_version var (mise.mac.toml)")
+luxmini_version=$(printf '%s' "$mise_vars_json" | jq -r '.luxmini_version // empty')
+[ -n "$luxmini_version" ] || failures+=("luxmini: no luxmini_version var (mise.mac.toml)")
 
 # HEAD a pinned asset; GitHub answers 404 (redirect-followed) for removed
 # releases and assets alike.
@@ -58,7 +58,7 @@ if [ -n "${pared_version:-}" ]; then
   probe "pared $pared_version" "$pared_base"
   probe "pared $pared_version sha256" "$pared_base.sha256"
 fi
-# The pinned DMG's asset: casks/luxmini.rb interpolates the version
+# The pinned DMG's asset: the luxmini task builds the URL from the version
 # into this exact URL shape, same as pared builds it from its version line.
 [ -n "${luxmini_version:-}" ] && \
   probe "luxmini $luxmini_version" \

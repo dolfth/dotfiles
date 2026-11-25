@@ -2,13 +2,13 @@
 #MISE tags=["gza"]
 # gza's LuxMini: the front-LED menu-bar app. Homebrew 7 loads casks by name
 # only -- "Loading casks from paths, URLs or Ruby source is not supported"
-# (cask/cask_loader.rb) -- and upstream publishes no tap, only a draft cask
-# for one that does not exist, so neither a Brewfile entry nor
-# `brew install --cask <file>` can carry this app. The install is the task's,
-# like dev-agents' omp binary: the pin -- version, sha256, URL shape -- lives
-# in casks/luxmini.rb, the task fetches and verifies the DMG itself, and
-# pin-check probes the pinned asset weekly. Should upstream ever ship the tap,
-# the cask file is the drop-in and this task retires.
+# (cask/cask_loader.rb) -- and upstream publishes no tap, so neither a
+# Brewfile entry nor `brew install --cask <file>` can carry this app. The
+# install is the task's, like dev-agents' omp binary: the pin -- vars.
+# luxmini_version + luxmini_sha256 in mise.mac.toml, which pin-check probes
+# weekly -- and the task fetches and verifies the DMG itself. Bump from the
+# release's SHA256SUMS.txt: https://github.com/bastiencantet/luxmini-public/
+# releases. Should upstream ever ship the tap, this task retires to brew.
 #
 # The app self-updates via Sparkle, so the task never downgrades: only a pin
 # ahead of the installed version reinstalls. The version's live source is the
@@ -28,18 +28,15 @@ if [ "${HOST:-}" != "gza" ]; then
   exit 0
 fi
 
-root="$(cd "$(dirname "$0")/.." && pwd)"
-cask="$root/casks/luxmini.rb"
-
 # Warn and exit 0 like brew-bundle: this runs in the bootstrap's package
 # phase, where a failed entry must not stop the dotfiles and agents.
 warn() { echo "WARNING: luxmini: $*" >&2; exit 0; }
 
-[ -f "$cask" ] || warn "pin file missing: $cask"
-pinned=$(sed -n 's/^  version "\([^"]*\)"/\1/p' "$cask" | head -1)
-[ -n "$pinned" ] || warn "no version line in $cask"
-pin_sha=$(sed -n 's/^  sha256 "\([^"]*\)"/\1/p' "$cask" | head -1)
-[ -n "$pin_sha" ] || warn "no sha256 line in $cask"
+mise_vars_json=$(mise vars --json)
+pinned=$(printf '%s' "$mise_vars_json" | jq -r '.luxmini_version // empty')
+[ -n "$pinned" ] || warn "vars.luxmini_version not set (mise.mac.toml)"
+pin_sha=$(printf '%s' "$mise_vars_json" | jq -r '.luxmini_sha256 // empty')
+[ -n "$pin_sha" ] || warn "vars.luxmini_sha256 not set (mise.mac.toml)"
 
 app_dir="/Applications/LuxMini.app"
 
