@@ -5,7 +5,7 @@ theme:
   light: light
 setupVersion: 3
 symbolPreset: nerd
-defaultThinkingLevel: medium
+defaultThinkingLevel: xhigh
 task:
   maxRecursionDepth: 0
   maxConcurrency: 4
