@@ -3,14 +3,15 @@
 # The HA updater, ported from nwa's nixos-config hosts/nwa/agent-jobs/
 # (agent-job-ha-update, Fri 02:33). An omp run installs pending Home
 # Assistant updates over the API (agent-jobs/ha-update.md); a second leg
-# reports the outcome over ntfy. The state machine, sandbox generation,
-# archive and heartbeat are the ha-monitor pattern; what differs is in
-# that brief -- this job MUTATES HA, the monitor reads it.
+# reports the outcome over ntfy.
 #
 #   mise run ha-update            the agent run  (agent: dev.mise.ha-update)
 #   mise run ha-update report     the ntfy report (agent: dev.mise.ha-update-report)
+#   mise run ha-update profile    the generated job profile, for the eye
 #
-# Deltas from ha-monitor, and why:
+# The state machine, the archive, the heartbeat, the watchdog and the report
+# live in mise-tasks/_agent-job.sh -- the ha-monitor pattern. What differs,
+# and why:
 #
 # - Weekly clock: run Fri 02:33 (nwa's), report Fri 06:03 -- 90 min of run
 #   plus restart margin before the report reads the state. The report's
@@ -22,6 +23,9 @@
 #   and the 200-before-warm caveat are the gza additions; nwa keeps no notes
 #   file across runs, so neither does this port -- the agent writes the
 #   report draft and nothing else.
+# - This job MUTATES HA: the network allow-list (HA + model ports only) is
+#   the write guard, and the draft-after-each-install rule makes a killed
+#   run's report name exactly where the work stopped.
 #
 # A run that reports "did not run in the last 8 days" right after install
 # means Friday has not come yet: seed it with `mise run ha-update`.
@@ -34,17 +38,21 @@ if [ "$(uname -s)" != "Darwin" ]; then
 fi
 
 repo="$HOME/.config/mise"
+# shellcheck source=mise-tasks/_agent-job.sh
+. "$(dirname "$0")/_agent-job.sh"
+
+job_name="ha-update"
 ha_repo="$HOME/Documents/code/homeassistant"
+ha_host="192.168.0.253"
+ha_url="http://${ha_host}:8123"
+repo_label="HA repo"
+repo_dir="$ha_repo"
 state="$HOME/.local/state/agent-jobs/ha-update"
 work="$ha_repo"
 draft="$work/update-report-draft.md"
 token="$work/.ha_token"
 ntfy_file="$HOME/.local/state/agent-jobs/ntfy_topic"
 log="$HOME/Library/Logs/ha-update.log"
-profile_out="$state/job.json"
-
-ha_host="192.168.0.253"
-ha_url="http://${ha_host}:8123"
 # The splash-fn model, pinned like ha-monitor's. The pool is single-tenant
 # behind llama-swap: another client's pick can evict the engine mid-run, and
 # the job's next request swaps it back, paying the load once -- switching the
@@ -53,75 +61,15 @@ model="splash/unsloth/Qwen3.8-Flash-Next-GGUF:UD-Q4_K_XL"
 timeout_min=90
 stale_days=8
 quiet_answer="No updates needed."
+quiet_norm="Noupdatesneeded."
 
-heartbeat() { # one dated line per run: check leg 5 parses these
-  mkdir -p "$(dirname "$log")"
-  printf '%s ha-update %s\n' "$(date '+%Y-%m-%d %H:%M')" "$1" >>"$log"
-  if [ "$(wc -l <"$log")" -gt 250 ]; then
-    tail -n 200 "$log" >"$log.tmp" && mv "$log.tmp" "$log"
-  fi
-}
+job_preflight() { agent_ha_preflight; }
 
-##### run -- preflight, the sandboxed agent, the archive ######################
-
-# The archive runs on every exit, including a preflight skip, so runs/ holds
-# every attempt and the stale check has truth.
-archive() {
-  local rc=$?
-  local run f
-  run="$state/runs/$(date -r "$(cat "$state/started" 2>/dev/null || date +%s)" +%F_%H%M)"
-  mkdir -p "$run"
-  for f in result skipped quiet summary.md agent.err; do
-    [ -e "$state/$f" ] && cp -p "$state/$f" "$run/"
-  done
-  [ -e "$draft" ] && cp -p "$draft" "$run/"
-  find "$state/runs" -mindepth 1 -maxdepth 1 -mtime +30 -exec rm -rf {} + 2>/dev/null
-  if [ -e "$state/skipped" ]; then
-    heartbeat "skipped: $(head -c 120 "$state/skipped" | tr '\n' ' ')"
-  elif [ "$(cut -d' ' -f1 "$state/result" 2>/dev/null)" = success ]; then
-    heartbeat "ok: $(grep -m1 -v '^[[:space:]]*$' "$state/summary.md" 2>/dev/null | head -c 120)"
-  else
-    heartbeat "failed: $(cat "$state/result" 2>/dev/null || echo "no result (killed) rc=$rc")"
-  fi
-}
-
-run_job() {
-  mkdir -p "$state/runs"
-  trap archive EXIT
-  rm -f "$state"/{skipped,quiet,summary.md,result,agent.err,killed}
-  date +%s >"$state/started"
-
-  # preflight: the repo probe separates missing from unreadable (a launchd
-  # job denied by TCC on ~/Documents sees EPERM where a terminal saw files).
-  if [ ! -d "$ha_repo" ]; then
-    echo "HA repo missing at $ha_repo -- clone it, or move the job's context elsewhere" \
-      >"$state/skipped"
-    exit 0
-  fi
-  repo_probe=$(ls "$ha_repo" 2>&1 >/dev/null)
-  case $repo_probe in
-    *"Operation not permitted"*)
-      echo "HA repo unreadable: Operation not permitted on $ha_repo -- TCC denies the launchd job ~/Documents (grant FDA to /bin/bash, or move the repo)" \
-        >"$state/skipped"
-      exit 0 ;;
-  esac
-  if [ ! -r "$token" ]; then
-    echo "no HA token at $token -- copy it from nwa: scp nwa:Documents/code/homeassistant/.ha_token $token" \
-      >"$state/skipped"
-    exit 0
-  fi
-  if ! curl -fsS -m 60 -H @<(printf 'Authorization: Bearer %s\n' "$(< "$token")") \
-      "$ha_url/api/" >/dev/null 2>"$state/skipped"; then
-    echo "Home Assistant API not reachable at $ha_url" >>"$state/skipped"
-    exit 0
-  fi
-  rm -f "$state/skipped"
-
-  # The job's nono profile, generated so it cannot drift from the daily one.
-  # Supervised `nono run` enforces the domain allow-list. The repo is read --
-  # the agent's context and token -- with exactly one file writable: the
-  # report draft. The write guard is the network: only HA and the model are
-  # reachable at all.
+# Supervised `nono run` enforces the domain allow-list. The repo is read --
+# the agent's context and token -- with exactly one file writable: the
+# report draft. The write guard is the network: only HA and the model are
+# reachable at all.
+job_profile() {
   jq \
     --arg name "omp-job-ha-update" \
     --arg ha "$ha_host" \
@@ -133,22 +81,17 @@ run_job() {
     | .filesystem.read = ((.filesystem.read // []) + [$repo])
     | .filesystem.allow_file = ((.filesystem.allow_file // []) + [$draft])
     | .filesystem.deny += ["$HOME/.tsk"]
-  ' "$repo/nono/omp.json" >"$profile_out" || exit 1
-  nono profile validate "$profile_out" >/dev/null || {
-    echo "the generated job profile does not validate" >"$state/skipped"; exit 1; }
+  ' "$repo/nono/omp.json"
+}
 
-  # The sandboxed omp needs the same env the interactive wrappers export: the
-  # tool PATH (the profile denies the shell configs that would set it), the
-  # Bun cache under the granted ~/.omp, a granted temp dir.
-  PATH="$HOME/.local/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/bin:/bin:/usr/sbin:/sbin"
-  export PATH
-  TMPDIR="$HOME/.cache/nono-tmp/omp"
-  mkdir -p "$TMPDIR"; export TMPDIR
-  export BUN_INSTALL_CACHE_DIR="$HOME/.omp/cache/bun-install"
+job_setup() {
   export HA_URL="$ha_url"
+}
 
-  local prompt
-  prompt="$(cat "$repo/agent-jobs/ha-update.md")
+job_prompt() {
+  cat "$repo/agent-jobs/ha-update.md"
+
+  cat <<EOF
 
 ## Clock
 
@@ -167,118 +110,8 @@ If there is nothing to report, your entire last message is: ${quiet_answer}
 
 - \`/api/\` answers 200 before integrations are warm after a restart: one
   extra minute between 'API back' and the state comparison prevents a
-  false 'unavailable -> stop'."
-
-  cd "$work" || {
-    echo "cannot enter the work dir $work" >>"$state/skipped"; exit 0; }
-  rm -f "$draft"
-  nono run --allow-cwd --profile "$profile_out" -- \
-    /usr/local/bin/omp-unsandboxed -p --no-session --approval-mode=yolo \
-    --model "$model" "$prompt" \
-    >"$state/summary.md" 2>"$state/agent.err" &
-  local job=$! elapsed=0 limit=$((timeout_min * 60)) rc=0
-  # launchd has no TimeoutStartSec: this loop is the kill switch. A marker
-  # file keeps a timeout distinguishable from a crash in the report.
-  while kill -0 "$job" 2>/dev/null && [ "$elapsed" -lt "$limit" ]; do
-    sleep 10; elapsed=$((elapsed + 10))
-  done
-  if kill -0 "$job" 2>/dev/null; then
-    : >"$state/killed"
-    kill -TERM "$job" 2>/dev/null
-    sleep 30
-    kill -KILL "$job" 2>/dev/null
-  fi
-  wait "$job"; rc=$?
-
-  if [ -e "$state/killed" ]; then
-    echo "timeout $rc" >"$state/result"
-  elif [ "$rc" -eq 0 ]; then
-    echo "success $rc" >"$state/result"
-    rm -f "$draft"
-  else
-    echo "failed $rc" >"$state/result"
-  fi
-  exit "$rc"
+  false 'unavailable -> stop'.
+EOF
 }
 
-##### report -- the ntfy notification leg ####################################
-
-report() {
-  if [ ! -d "$state" ]; then
-    echo "No state directory at $state -- the job has never run; mise run ha-update" >&2
-    exit 1
-  fi
-  cd "$state" || exit 1
-  local attention="" quiet="" finished=""
-  local run="" failures recovered="" msg="" title="" priority=3
-
-  if [ ! -e started ] || [ $(( $(date +%s) - $(<started) )) -gt $(( stale_days * 86400 )) ]; then
-    run="did not run in the last ${stale_days} days"; attention=1
-  elif launchctl print "gui/$(id -u)/dev.mise.ha-update" 2>/dev/null \
-      | grep -q 'state = running'; then
-    run="still running"; attention=1
-  elif [ -e quiet ]; then
-    run="nothing to do ($(head -c 300 quiet))"; quiet=1
-  elif [ -s skipped ]; then
-    run="skipped: $(head -c 300 skipped)"; attention=1
-  elif [ "$(cut -d' ' -f1 result 2>/dev/null)" = success ]; then
-    run="finished"; finished=1
-    first=$(grep -m1 -v '^[[:space:]]*$' summary.md 2>/dev/null | tr -d '[:space:]*')
-    [ "$first" = "Noupdatesneeded." ] && quiet=1
-  else
-    run="failed ($(cat result 2>/dev/null || echo "no result"))"; attention=1
-  fi
-
-  # A run that keeps failing notifies loudly once, then quietly, and once
-  # more when it recovers.
-  failures=$(cat failures 2>/dev/null || echo 0)
-  if [ -n "$attention" ]; then
-    failures=$((failures + 1)); echo "$failures" >failures
-    [ "$failures" -gt 1 ] && run="$run; $failures runs in a row"
-  elif [ "${failures:-0}" -gt 0 ]; then
-    run="$run; recovered after $failures failed runs"; recovered=1
-    rm -f failures
-    failures=0
-  fi
-
-  msg="**Run:** $run"
-
-  if [ -n "$quiet" ] && [ -z "$attention" ] && [ -z "$recovered" ]; then
-    echo "$msg"
-    echo "Nothing to report; no notification."
-    exit 0
-  fi
-
-  if [ -s summary.md ] && [ -n "$finished" ]; then
-    msg="$msg"$'\n\n'"**Agent:**"$'\n'"$(head -c 2000 summary.md)"
-  elif [ -s "$draft" ] && [ "$draft" -nt started ]; then
-    msg="$msg"$'\n\n'"**Agent's draft (unfinished):**"$'\n'"$(head -c 2000 "$draft")"
-  fi
-
-  if [ "${failures:-0}" -gt 1 ]; then
-    title="ha-update: still failing"; priority=2
-  elif [ -n "$attention" ]; then
-    title="ha-update: needs attention"; priority=4
-  else
-    title="ha-update"; priority=3
-  fi
-
-  if [ "${HA_UPDATE_DRYRUN:-}" = 1 ]; then
-    printf 'dry-run (title: %s, priority: %s):\n%s\n' "$title" "$priority" "$msg"
-    exit 0
-  fi
-  if [ ! -r "$ntfy_file" ]; then
-    echo "no ntfy topic at $ntfy_file -- copy it from nwa (sops secret ntfy_topic)" >&2
-    exit 1
-  fi
-  printf '%s' "$msg" | head -c 3900 | curl -fsS \
-    -H "Title: $title" -H "Priority: $priority" -H "Markdown: yes" \
-    --data-binary @- \
-    "https://ntfy.sh/$(<"$ntfy_file")"
-}
-
-case "${1:-run}" in
-  run) run_job ;;
-  report) report ;;
-  *) echo "usage: mise run ha-update [run|report]" >&2; exit 2 ;;
-esac
+agent_main "${1:-run}"
