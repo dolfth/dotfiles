@@ -4,13 +4,18 @@
 # present (upgrades are up's job). A failed entry warns and continues so the
 # bootstrap still deploys dotfiles and agents.
 set -euo pipefail
+
+# shellcheck source=mise-tasks/_path.sh
+. "$(dirname "${BASH_SOURCE[0]}")/_path.sh"
+
 if [ "$(uname -s)" != "Darwin" ]; then
   exit 0
 fi
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 files=("$REPO/Brewfile")
-if [ -n "${HOST:-}" ] && [ -f "$REPO/Brewfile.$HOST" ]; then
-  files+=("$REPO/Brewfile.$HOST")
+h="$(host_id)"
+if [ -n "$h" ] && [ -f "$REPO/Brewfile.$h" ]; then
+  files+=("$REPO/Brewfile.$h")
 fi
 # brew bundle reads exactly one --file (a repeated flag does not accumulate
 # -- the last one wins), so the manifest is the concatenation of the files.

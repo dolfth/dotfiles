@@ -26,6 +26,9 @@
 
 set -uo pipefail   # no -e: every leg runs and reports; the exit code sums up
 
+# shellcheck source=mise-tasks/_path.sh
+. "$(dirname "$0")/_path.sh"
+
 rc=0
 if [ "$(uname -s)" != "Darwin" ]; then
   echo "check is macOS-only (its dotfiles and launchd legs are); skipping."
@@ -130,10 +133,11 @@ echo "== 5. agent jobs heartbeat (gza)"
 # ~/Library/LaunchAgents, and a bare test read that denial as "not gza" -- on
 # gza. launchctl and ~/Library/Logs answer through the sandbox, as leg 4
 # proves. ha-monitor and nwa-health fire daily (fresh <=2d), ha-update weekly (<=8d).
-if [ -z "${HOST:-}" ]; then
+h="$(host_id)"
+if [ -z "$h" ]; then
   echo "  HOST unset -- run through mise (the host module sets it): skipped"
-elif [ "$HOST" != "gza" ]; then
-  echo "  not gza (HOST=${HOST}): skipped"
+elif [ "$h" != "gza" ]; then
+  echo "  not gza (HOST=${h}): skipped"
 else
 for jm in "ha-monitor:2" "ha-update:8" "nwa-health:2"; do
   jm_name="${jm%%:*}"; jm_max="${jm##*:}"

@@ -44,7 +44,7 @@ run_at_load = true
 keep_alive = true
 process_type = "Interactive"
 working_directory = "{{ env.HOME }}"
-environment = { "PATH" = "{{ system_brew_prefix }}/bin:{{ system_brew_prefix }}/sbin:/usr/bin:/bin:/usr/sbin:/sbin" }
+environment = { "PATH" = "{{ vars.launchd_path }}" }
 stdout_path = "{{ env.HOME }}/Library/Logs/llama-swap.log"
 stderr_path = "{{ env.HOME }}/Library/Logs/llama-swap.log"
 kickstart = true
@@ -56,7 +56,7 @@ run_at_load = false
 keep_alive = false
 process_type = "Interactive"
 working_directory = "{{ env.HOME }}/.omlx"
-environment = { "PATH" = "{{ system_brew_prefix }}/bin:{{ system_brew_prefix }}/sbin:/usr/bin:/bin:/usr/sbin:/sbin" }
+environment = { "PATH" = "{{ vars.launchd_path }}" }
 stdout_path = "{{ env.HOME }}/Library/Logs/omlx.log"
 stderr_path = "{{ env.HOME }}/Library/Logs/omlx.log"
 kickstart = false
@@ -83,7 +83,7 @@ args = ["run", "ha-monitor"]
 working_directory = "{{ env.HOME }}/.config/mise"
 start_calendar_interval = [{ hour = 4, minute = 38 }]
 process_type = "Background"
-environment = { "PATH" = "{{ system_brew_prefix }}/bin:{{ env.HOME }}/.local/bin:{{ system_brew_prefix }}/sbin:/usr/bin:/bin:/usr/sbin:/sbin" }
+environment = { "PATH" = "{{ vars.launchd_path }}" }
 stdout_path = "{{ env.HOME }}/Library/Logs/ha-monitor.out.log"
 stderr_path = "{{ env.HOME }}/Library/Logs/ha-monitor.out.log"
 run_at_load = false
@@ -95,7 +95,7 @@ args = ["run", "ha-monitor", "report"]
 working_directory = "{{ env.HOME }}/.config/mise"
 start_calendar_interval = [{ hour = 12, minute = 3 }]
 process_type = "Background"
-environment = { "PATH" = "{{ system_brew_prefix }}/bin:{{ system_brew_prefix }}/sbin:/usr/bin:/bin:/usr/sbin:/sbin" }
+environment = { "PATH" = "{{ vars.launchd_path }}" }
 stdout_path = "{{ env.HOME }}/Library/Logs/ha-monitor-report.out.log"
 stderr_path = "{{ env.HOME }}/Library/Logs/ha-monitor-report.out.log"
 run_at_load = false
@@ -113,7 +113,7 @@ args = ["run", "ha-update"]
 working_directory = "{{ env.HOME }}/.config/mise"
 start_calendar_interval = [{ weekday = 5, hour = 2, minute = 33 }]
 process_type = "Background"
-environment = { "PATH" = "{{ system_brew_prefix }}/bin:{{ env.HOME }}/.local/bin:{{ system_brew_prefix }}/sbin:/usr/bin:/bin:/usr/sbin:/sbin" }
+environment = { "PATH" = "{{ vars.launchd_path }}" }
 stdout_path = "{{ env.HOME }}/Library/Logs/ha-update.out.log"
 stderr_path = "{{ env.HOME }}/Library/Logs/ha-update.out.log"
 run_at_load = false
@@ -125,7 +125,7 @@ args = ["run", "ha-update", "report"]
 working_directory = "{{ env.HOME }}/.config/mise"
 start_calendar_interval = [{ weekday = 5, hour = 6, minute = 3 }]
 process_type = "Background"
-environment = { "PATH" = "{{ system_brew_prefix }}/bin:{{ system_brew_prefix }}/sbin:/usr/bin:/bin:/usr/sbin:/sbin" }
+environment = { "PATH" = "{{ vars.launchd_path }}" }
 stdout_path = "{{ env.HOME }}/Library/Logs/ha-update-report.out.log"
 stderr_path = "{{ env.HOME }}/Library/Logs/ha-update-report.out.log"
 run_at_load = false
@@ -146,7 +146,7 @@ args = ["run", "nwa-health"]
 working_directory = "{{ env.HOME }}/.config/mise"
 start_calendar_interval = [{ hour = 6, minute = 13 }]
 process_type = "Background"
-environment = { "PATH" = "{{ system_brew_prefix }}/bin:{{ env.HOME }}/.local/bin:{{ system_brew_prefix }}/sbin:/usr/bin:/bin:/usr/sbin:/sbin" }
+environment = { "PATH" = "{{ vars.launchd_path }}" }
 stdout_path = "{{ env.HOME }}/Library/Logs/nwa-health.out.log"
 stderr_path = "{{ env.HOME }}/Library/Logs/nwa-health.out.log"
 run_at_load = false
@@ -158,7 +158,7 @@ args = ["run", "nwa-health", "report"]
 working_directory = "{{ env.HOME }}/.config/mise"
 start_calendar_interval = [{ hour = 12, minute = 3 }]
 process_type = "Background"
-environment = { "PATH" = "{{ system_brew_prefix }}/bin:{{ system_brew_prefix }}/sbin:/usr/bin:/bin:/usr/sbin:/sbin" }
+environment = { "PATH" = "{{ vars.launchd_path }}" }
 stdout_path = "{{ env.HOME }}/Library/Logs/nwa-health-report.out.log"
 stderr_path = "{{ env.HOME }}/Library/Logs/nwa-health-report.out.log"
 run_at_load = false

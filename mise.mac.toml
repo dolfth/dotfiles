@@ -37,7 +37,7 @@ args = ["run", "pin-check"]
 working_directory = "{{ env.HOME }}/.config/mise"
 start_calendar_interval = [{ weekday = 3, hour = 9, minute = 30 }]
 process_type = "Background"
-environment = { "PATH" = "{{ system_brew_prefix }}/bin:/usr/bin:/bin:/usr/sbin:/sbin" }
+environment = { "PATH" = "{{ vars.launchd_path }}" }
 stdout_path = "{{ env.HOME }}/Library/Logs/pin-check.out.log"
 stderr_path = "{{ env.HOME }}/Library/Logs/pin-check.out.log"
 run_at_load = false

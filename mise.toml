@@ -31,6 +31,12 @@ ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEburPU7lpE3tnJac9R5jAbMTDqb0FA02Jqt0qVsVeUh
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKORTGA2F28t4VWxuvjVPnX9sfZOnNjmR5LoB8uvcwFU
 """
 
+# The PATH a launchd agent gets: a non-login job inherits exactly this and
+# nothing else. One canonical line for every agent -- brew's bin first (mise,
+# llama-swap, omlx live there), then ~/.local/bin (the user tools the
+# task-running agents invoke; inert for the servers), then the system dirs.
+launchd_path = "{{ system_brew_prefix }}/bin:{{ env.HOME }}/.local/bin:{{ system_brew_prefix }}/sbin:/usr/bin:/bin:/usr/sbin:/sbin"
+
 [dotfiles]
 "~/.config/git/config" = "git/config"
 "~/.config/git/allowed_signers" = { source = "git/allowed_signers.tera", mode = "template" }
@@ -62,9 +68,10 @@ task.logs = true
 # every machine. defaults-snapshot runs before bootstrap writes the declarative
 # defaults: the final system check compares against that snapshot.
 #
-# The prologue, repeated in both hooks: a non-login ssh session (`mise bootstrap
-# remote`) has only bare system dirs on PATH, so resolve mise (brew prefix, Nix
-# store, standalone) before `mise run`; that puts brew on PATH for brew-bundle too.
+# Both hooks open with mise-tasks/_path.sh: a non-login ssh session (`mise
+# bootstrap remote`) has only bare system dirs on PATH, so resolve mise (brew
+# prefix, Nix store, standalone) before `mise run`; this puts brew on PATH for
+# brew-bundle too.
 
 # Each hook gets its own subtable: the subtable holds `description` (mise >=
 # 2026.10.22), which `mise bootstrap` prints instead of the script's first line.
@@ -76,15 +83,9 @@ description = "Write the missing miserc (fresh Mac), gate the config parse, take
 # fields. A typo'd key only warns, so without this gate the slow phases run on a
 # half-wrong config.
 run = """
-resolve_mise() {
-  if ! command -v mise >/dev/null 2>&1; then
-    for d in /opt/homebrew/bin /run/current-system/sw/bin "$HOME"/.local/share/mise/bin "$HOME"/.local/bin "$HOME"/.cargo/bin /usr/local/bin; do
-      [ -x "$d/mise" ] && PATH="$d:$PATH" && break
-    done
-  fi
-}
-resolve_mise
 repo=$(git rev-parse --show-toplevel 2>/dev/null) || repo=$PWD
+. "$repo/mise-tasks/_path.sh"
+resolve_mise
 # The versioned git hooks gate every commit and push with the check task.
 # core.hooksPath lives in .git/config -- per-checkout, not in the repo --
 # so the bootstrap sets it on every machine that adopts this one.
@@ -124,13 +125,8 @@ mise run defaults-snapshot && mise run brew-bundle && mise run luxmini
 [bootstrap.hooks.final]
 description = "Deploy the herdr and vscodium extensions, install the omp sandbox, run the system check, remove Apple Intelligence, pin the Finder sidebar, and self-test the repo"
 run = """
-resolve_mise() {
-  if ! command -v mise >/dev/null 2>&1; then
-    for d in /opt/homebrew/bin /run/current-system/sw/bin "$HOME"/.local/share/mise/bin "$HOME"/.local/bin "$HOME"/.cargo/bin /usr/local/bin; do
-      [ -x "$d/mise" ] && PATH="$d:$PATH" && break
-    done
-  fi
-}
+repo=$(git rev-parse --show-toplevel 2>/dev/null) || repo=$PWD
+. "$repo/mise-tasks/_path.sh"
 resolve_mise
 # check last: its dot-diff leg is the idempotence assertion of this very
 # run -- applied and converged means nothing left to deploy.

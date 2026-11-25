@@ -19,12 +19,16 @@
 
 set -euo pipefail
 
+# shellcheck source=mise-tasks/_path.sh
+. "$(dirname "$0")/_path.sh"
+
 if [ "$(uname -s)" != "Darwin" ]; then
   echo "luxmini is macOS-only; skipping."
   exit 0
 fi
-if [ "${HOST:-}" != "gza" ]; then
-  echo "not gza (HOST=${HOST:-unset}); the front LED is desktop hardware; skipping."
+h="$(host_id)"
+if [ "$h" != "gza" ]; then
+  echo "not gza (HOST=${h:-unset}); the front LED is desktop hardware; skipping."
   exit 0
 fi
 
