@@ -13,7 +13,7 @@
 #   4. heartbeat     -- the weekly pin-check agent is loaded and its log written within
 #                       8 days (pin-check's result is in the log; this leg proves the
 #                       alarm clock runs).
-#   5. agent jobs -- gza only (gated on the plists): the run and report
+#   5. agent jobs -- gza only (gated on HOST): the run and report
 #                       agents of ha-monitor, ha-update and nwa-health are
 #                       loaded and their heartbeats are fresh -- the daily
 #                       jobs at most 2 days, ha-update weekly (at most 8
@@ -31,6 +31,14 @@ if [ "$(uname -s)" != "Darwin" ]; then
   echo "check is macOS-only (its dotfiles and launchd legs are); skipping."
   exit 0
 fi
+
+# The omp sandbox answers EPERM for ~/Library, and a bare test reads a denial
+# as absence -- ask ls what it saw: "visible", "absent", or "denied".
+file_state() {
+  local out
+  out=$(ls -d "$1" 2>&1) && { echo visible; return; }
+  case "$out" in *"Operation not permitted"*) echo denied ;; *) echo absent ;; esac
+}
 
 echo "== 1. config gate"
 gate_err=$(mktemp)
@@ -83,12 +91,21 @@ if ! launchctl print "$agent" >/dev/null 2>&1; then
 elif [ ! -f "$log" ]; then
   # Grace for a just-installed agent: the final hook runs check on every bootstrap and a
   # fresh install has not reached its first calendar time yet. Past the grace: dead.
+  # The sandbox denies ~/Library/LaunchAgents; an unreadable install date is
+  # reported as such, never asserted as "never run".
   plist="$HOME/Library/LaunchAgents/dev.mise.pin-check.plist"
-  if [ -n "$(find "$plist" -mtime -9 2>/dev/null)" ]; then
-    echo "  agent installed, first heartbeat pending -- seed the log with: mise run pin-check"
-  else
-    rc=1; echo "  agent loaded but $(basename "$log") missing -- it has never run: mise run pin-check" >&2
-  fi
+  case "$(file_state "$plist")" in
+    visible)
+      if [ -n "$(find "$plist" -mtime -9 2>/dev/null)" ]; then
+        echo "  agent installed, first heartbeat pending -- seed the log with: mise run pin-check"
+      else
+        rc=1; echo "  agent loaded but $(basename "$log") missing -- it has never run: mise run pin-check" >&2
+      fi ;;
+    denied)
+      echo "  log missing and the install date is unreadable in the sandbox -- unverifiable here; the bootstrap check run is the gate" ;;
+    *)
+      rc=1; echo "  agent loaded but the plist is absent -- $(basename "$log") cannot appear: mise bootstrap macos launchd-agents apply" >&2 ;;
+  esac
 else
   # The newest DATE-STAMPED line, not the newest line: pin-check's summary
   # is one dated line per run, and nothing else may pass as a heartbeat
@@ -109,23 +126,39 @@ else
 fi
 
 echo "== 5. agent jobs heartbeat (gza)"
-# Gated on the plists, the way the gza-only agents are absent from the laptops.
-# ha-monitor and nwa-health fire daily (fresh <=2d), ha-update weekly (<=8d).
+# The host gate is HOST, not plist readability: the sandbox denies
+# ~/Library/LaunchAgents, and a bare test read that denial as "not gza" -- on
+# gza. launchctl and ~/Library/Logs answer through the sandbox, as leg 4
+# proves. ha-monitor and nwa-health fire daily (fresh <=2d), ha-update weekly (<=8d).
+if [ -z "${HOST:-}" ]; then
+  echo "  HOST unset -- run through mise (the host module sets it): skipped"
+elif [ "$HOST" != "gza" ]; then
+  echo "  not gza (HOST=${HOST}): skipped"
+else
 for jm in "ha-monitor:2" "ha-update:8" "nwa-health:2"; do
   jm_name="${jm%%:*}"; jm_max="${jm##*:}"
   jm_plist="$HOME/Library/LaunchAgents/dev.mise.${jm_name}.plist"
   jm_log="$HOME/Library/Logs/${jm_name}.log"
-  if [ ! -f "$jm_plist" ]; then
-    echo "  ${jm_name}: not gza (no dev.mise.${jm_name}.plist): skipped"
-  elif ! launchctl print "gui/$(id -u)/dev.mise.${jm_name}" >/dev/null 2>&1 \
+  if ! launchctl print "gui/$(id -u)/dev.mise.${jm_name}" >/dev/null 2>&1 \
     || ! launchctl print "gui/$(id -u)/dev.mise.${jm_name}-report" >/dev/null 2>&1; then
     rc=1; echo "  ${jm_name} agents not loaded -- mise bootstrap macos launchd-agents apply" >&2
   elif [ ! -f "$jm_log" ]; then
-    if [ -n "$(find "$jm_plist" -mtime -2 2>/dev/null)" ]; then
-      echo "  ${jm_name}: agents installed, first heartbeat pending -- seed the log with: mise run ${jm_name}"
-    else
-      rc=1; echo "  ${jm_name} agents loaded but $(basename "$jm_log") missing -- they have never run: mise run ${jm_name}" >&2
-    fi
+    # The grace window is the job's own freshness bound, not a flat 2 days:
+    # ha-update's weekly clock may legitimately not have fired yet. Denial
+    # says "unverifiable here" instead of asserting: the bootstrap final-hook
+    # check (unsandboxed) is where this branch has teeth.
+    case "$(file_state "$jm_plist")" in
+      visible)
+        if [ -n "$(find "$jm_plist" -mtime "-$((jm_max + 1))" 2>/dev/null)" ]; then
+          echo "  ${jm_name}: agents installed, first heartbeat pending -- seed the log with: mise run ${jm_name}"
+        else
+          rc=1; echo "  ${jm_name} agents loaded but $(basename "$jm_log") missing -- they have never run: mise run ${jm_name}" >&2
+        fi ;;
+      denied)
+        echo "  ${jm_name}: log missing and the install date is unreadable in the sandbox -- unverifiable here; the bootstrap check run is the gate" ;;
+      *)
+        rc=1; echo "  ${jm_name} agents loaded but the plist is absent -- $(basename "$jm_log") cannot appear: mise bootstrap macos launchd-agents apply" >&2 ;;
+    esac
   else
     last_line=$(grep -E '^[0-9]{4}-[0-9]{2}-[0-9]{2} ' "$jm_log" | tail -1)
     if [ -z "$last_line" ]; then
@@ -141,6 +174,7 @@ for jm in "ha-monitor:2" "ha-update:8" "nwa-health:2"; do
     fi
   fi
 done
+fi
 
 if [ "$rc" -eq 0 ]; then
   echo "check: all legs pass"
