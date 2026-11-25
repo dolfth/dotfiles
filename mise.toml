@@ -160,11 +160,3 @@ tags = ["mac"]
 [bootstrap.remote.hosts.gza]
 host = "gza.foxhound-insen.ts.net"
 tags = ["mac"]
-
-[bootstrap.remote.hosts.nwa]
-host = "nwa.foxhound-insen.ts.net"
-remote_mise = "/home/dolf/.local/bin/mise"
-tags = ["nix"]
-# nwa runs Tailscale SSH: visit the one-off approval URL it prints for the
-# first connection, then approve the key persistently in the admin console
-# for unattended runs (README, "Bootstrap nwa").

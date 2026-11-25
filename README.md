@@ -1,12 +1,16 @@
 # dotfiles
 
-Three machines, configured by [mise](https://mise.jdx.dev) from this repo:
+Two Macs, configured by [mise](https://mise.jdx.dev) from this repo:
 
 | Host | OS | What it is |
 |---|---|---|
 | `mca` | macOS | laptop |
 | `gza` | macOS | desktop: always-on llama-swap front for the two splash pool models (omlx installed, out of pool), omp host |
-| `nwa` | NixOS | server |
+
+nwa, the NixOS server, left the mise fleet (2026-11-25): no mise there,
+its flake owns the whole machine. gza still monitors it -- the
+`nwa-health` job probes it over Tailscale SSH -- and maintains its
+flake over ssh through the `nwa-omp` entry point.
 
 The checkout *is* the global mise config: `~/.config/mise` is this repo.
 Packages, dotfiles, and the tasks bootstrap runs all live here, so the git
@@ -81,24 +85,6 @@ two live `gza`s split MagicDNS. Then swap the host key: the new
 <https://github.com/dolfth.keys>, and the old key comes out of both.
 Commits signed by an unlisted key fail verification on the other hosts.
 
-## Bootstrap nwa
-
-The OS comes from nwa's NixOS flake (a separate repo). mise is a
-standalone install in `~/.local/bin` -- the flake does not carry it --
-and it reads this checkout once a bootstrap adopts it as
-`~/.config/mise`. What it deploys is the shared fish config: the agent
-stack (omp, pi, herdr) left nwa (2026-11-24) and lives on gza alone.
-After that nwa follows this repo like the Macs.
-
-Two gates:
-
-- nwa runs Tailscale SSH. The first connection prints an approval URL;
-  visit it once, then approve the key persistently in the Tailscale
-  admin console so unattended runs need no more URLs.
-- After a commit that raises the `min_version` floor, run
-  `~/.local/bin/mise self-update` (or `nix build .#mise` for the flake's
-  copy) before bootstrapping again.
-
 ## SSH between hosts
 
 The mac module renders the `sshKeys` var to `~/.ssh/authorized_keys` on
@@ -107,10 +93,14 @@ password. The var is the list at <https://github.com/dolfth.keys>; to
 retire a machine, drop its key from both and bootstrap. Keys added by
 hand on a host do not survive the next bootstrap.
 
-nwa is different: it runs Tailscale SSH ("Bootstrap nwa") and its flake
-owns authorized_keys. The Macs stay on the Tailscale app variant: it
-cannot serve Tailscale SSH (variant matrix), and keys cover the paths
-where that would matter, LAN included. gza keeps password auth for one
+nwa is not bootstrapped from here, but connecting to it has a quirk:
+it runs Tailscale SSH, whose first connection from a new key prints an
+approval URL -- approve the key persistently in the Tailscale admin
+console, or every unattended probe (the `nwa-health` agent) waits on a
+browser. Its flake owns authorized_keys. The Macs stay on the Tailscale
+app variant: it cannot serve Tailscale SSH (variant matrix), and keys
+cover the paths where that would matter, LAN included. gza keeps
+password auth for one
 case only: the pre-unlock FileVault login window
 (`man apple_ssh_and_filevault`) takes a password, no keys -- after a
 power cut that is the way back in. Keep the Tailscale app current: the
@@ -152,7 +142,6 @@ One command takes the whole fleet from this repo:
 ```bash
 cd ~/.config/mise   # the repo; run it here
 mise bootstrap remote --adopt 'git@github.com:dolfth/dotfiles.git?ref=main' --tag mac --update
-mise bootstrap remote --adopt 'git@github.com:dolfth/dotfiles.git?ref=main' --host nwa --update --remote-mise /home/dolf/.local/bin/mise
 ```
 
 It connects over SSH to every machine in the `[bootstrap.remote.hosts]`
@@ -164,25 +153,19 @@ that fails is reported at the end while the others proceed.
 
 Any machine can orchestrate. gza is the default because it is always on
 and reachable; mca only while awake on the tailnet. `--tag mac` targets
-just the Macs, `--tag nix` just nwa.
+both Macs.
 
 - The remote run loads each host's own `miserc.local.toml` -- the same
   file local runs use, so there is one selection per machine. A
   brand-new host has none: pass `--remote-env mac` on the one-time
   onboarding command; on a Mac the bootstrap then writes `["mac"]`
   plus a nudge to add the host module, for the box's later local runs.
-- nwa is cross-platform and the orchestrator's mise is a Homebrew build;
-  mise will not substitute an official release binary for a non-official
-  local one, so nwa runs under its own mise (`remote_mise` in the
-  inventory).
-- nwa needs no `--force-dotfiles` since the agent configs left: what
-  remains deployed there (the fish config) is no app's file. The Macs
-  need nothing either: their rewriting configs are symlinked or merged,
-  and the omp config that would drift lives on gza alone.
+- The Macs need no `--force-dotfiles`: their rewriting configs are
+  symlinked or merged, and the omp config that would drift lives on
+  gza alone.
 
-A brand-new machine lays its OS floor first -- a Mac: the steps above; a
-NixOS box: its flake plus a standalone mise install (give the host
-`remote_mise` in the inventory). Then, from anywhere, with no session on
+A brand-new machine lays its OS floor first -- the Mac steps above.
+Then, from anywhere, with no session on
 the box:
 
 ```bash
@@ -197,7 +180,6 @@ mise bootstrap remote --adopt '…' --host newbox.ts.net --remote-env mac
 | `mise.mac.toml` | `mac` selected | both Macs: the declarative macOS defaults, `$EDITOR`/`$VISUAL` (helix), `~/.zshenv`, `~/.zshrc`, `~/.ssh/config`, the fish functions, linearmouse |
 | `mise.mca.toml` | `mca` selected | the laptop: host identity vars (host/accent/icon, HOST/KIND) |
 | `mise.gza.toml` | `gza` selected | the desktop: the llama-swap and omlx LaunchAgents, the omp, omlx, pi and herdr configs, the llama-swap front door's config; its brew entries, the agent stack included, are in `Brewfile.gza` |
-| `mise.nwa.toml` | `nwa` selected | the server: host identity vars and env only (the agent stack left nwa, 2026-11-24); mise here is a standalone install, not a package list |
 | `miserc.local.toml` | never committed | this machine's selection: `env = ["mac", "<host>"]` |
 | `Brewfile`, `Brewfile.gza` | the brew-bundle task | the brew manifest: the shared entries, plus the desktop's servers and agent stack |
 
@@ -234,9 +216,9 @@ release itself.
 | `zshenv` | `~/.zshenv` | both Macs; the brew PATH and `$EDITOR` for `$SHELL -c` child shells -- the only zsh file they read, so it is where mosh's ssh finds `mosh-server`. Copied, same reason as `~/.zshrc` |
 | `zshrc` | `~/.zshrc` | both Macs; starts fish. Copied -- the omp sandbox's `~/.zshrc` deny follows a symlink into the repo, which would deny the repo's own copy from the sandboxed agent |
 | `ssh_config` | `~/.ssh/config` | copied at 0600 -- a symlink would expose the repo file's permissions to ssh; key passphrases live in the Keychain |
-| `ssh/authorized_keys.tera` | `~/.ssh/authorized_keys` | the Macs; the `sshKeys` var rendered, 0600. The file is mise's: hand-added keys need to go into the var. Not on nwa -- its flake writes it |
-| `fish/config.fish` | `~/.config/fish/config.fish` | all machines; the mise activation block |
-| `fish/functions/*.fish` | `~/.config/fish/functions/` | Macs; nwa's home-manager owns its own functions. `up` upgrades everything, `mkd` makes and enters a directory, `tstat` lists the tailnet peers, `port` shows who holds a port |
+| `ssh/authorized_keys.tera` | `~/.ssh/authorized_keys` | the Macs; the `sshKeys` var rendered, 0600. The file is mise's: hand-added keys need to go into the var |
+| `fish/config.fish` | `~/.config/fish/config.fish` | both Macs; the mise activation block |
+| `fish/functions/*.fish` | `~/.config/fish/functions/` | Macs. `up` upgrades everything, `mkd` makes and enters a directory, `tstat` lists the tailnet peers, `port` shows who holds a port |
 | `starship.toml.tera` | `~/.config/starship.toml` | per-host accent and icon from the vars |
 | `git/config` | `~/.config/git/config` | signs commits and tags with `~/.ssh/id_ed25519` |
 | `git/allowed_signers.tera` | `~/.config/git/allowed_signers` | every host's public key (the `sshKeys` var) |

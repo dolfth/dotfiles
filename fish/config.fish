@@ -9,21 +9,14 @@ for p in /opt/homebrew /usr/local
         break
     end
 end
-# mise on nwa is a standalone install in ~/.local/bin. Appended, not
-# prepended: on the Macs the Homebrew prefix above sorts ahead of it, so
-# brew's mise wins there.
+# ~/.local/bin on PATH. Appended, not prepended: the Homebrew prefix
+# above sorts ahead of it, so brew's mise wins.
 if test -d $HOME/.local/bin
     set -gx PATH $PATH $HOME/.local/bin
 end
-# On the nix box the standalone must win over the store's mise, which lags releases and
-# sits below the mise.toml floor (every command refused): prepend ~/.local/bin when the
-# nix system store is present. The Macs never match, so the append above stands there.
-if test -d /run/current-system/sw/bin
-    set -gx PATH $HOME/.local/bin $PATH
-end
 
-# mise: activation. It is on PATH by here (brew on the Macs, ~/.local/bin on nwa); the
-# guard keeps the block a no-op where mise is absent.
+# mise: activation. It is on PATH by here (the brew prefix or
+# ~/.local/bin); the guard keeps the block a no-op where mise is absent.
 if type -q mise
     if status is-interactive
         mise activate fish | source
