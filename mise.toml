@@ -69,7 +69,7 @@ task.logs = true
 # Each hook gets its own subtable: the subtable holds `description` (mise >=
 # 2026.10.22), which `mise bootstrap` prints instead of the script's first line.
 [bootstrap.hooks.pre-packages]
-description = "Write the missing miserc (fresh Mac), gate the config parse, take the defaults snapshot, and bundle the Brewfiles"
+description = "Write the missing miserc (fresh Mac), gate the config parse, take the defaults snapshot, bundle the Brewfiles, and install LuxMini (gza)"
 # Seeds and gates, in order: writes a missing miserc.local.toml (uncommitted, so a
 # fresh checkout has none; the module loads on the *next* invocation), then runs
 # `mise env` and fails the bootstrap if the config does not parse or has unknown
@@ -115,7 +115,10 @@ if grep -qE 'unknown field|did you mean' "$tmp"; then
   exit 1
 fi
 rm -f "$tmp"
-mise run defaults-snapshot && mise run brew-bundle
+# luxmini rides the package phase: brew cannot carry the app (upstream
+# publishes no tap, and brew 7 loads casks by name only). It warns instead of
+# failing, so the hook still exits 0 when the download breaks.
+mise run defaults-snapshot && mise run brew-bundle && mise run luxmini
 """
 
 [bootstrap.hooks.final]

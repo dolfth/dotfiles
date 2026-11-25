@@ -1,0 +1,91 @@
+#!/usr/bin/env bash
+#MISE tags=["gza"]
+# gza's LuxMini: the front-LED menu-bar app. Homebrew 7 loads casks by name
+# only -- "Loading casks from paths, URLs or Ruby source is not supported"
+# (cask/cask_loader.rb) -- and upstream publishes no tap, only a draft cask
+# for one that does not exist, so neither a Brewfile entry nor
+# `brew install --cask <file>` can carry this app. The install is the task's,
+# like dev-agents' omp binary: the pin -- version, sha256, URL shape -- lives
+# in casks/luxmini.rb, the task fetches and verifies the DMG itself, and
+# pin-check probes the pinned asset weekly. Should upstream ever ship the tap,
+# the cask file is the drop-in and this task retires.
+#
+# The app self-updates via Sparkle, so the task never downgrades: only a pin
+# ahead of the installed version reinstalls. The version's live source is the
+# app's own Info.plist, so a Sparkle update is visible with no brew metadata.
+# First launch asks for an administrator password once so the app can install
+# its privileged LED helper -- that approval is interactive and cannot live
+# in a bootstrap.
+
+set -euo pipefail
+
+if [ "$(uname -s)" != "Darwin" ]; then
+  echo "luxmini is macOS-only; skipping."
+  exit 0
+fi
+if [ "${HOST:-}" != "gza" ]; then
+  echo "not gza (HOST=${HOST:-unset}); the front LED is desktop hardware; skipping."
+  exit 0
+fi
+
+root="$(cd "$(dirname "$0")/.." && pwd)"
+cask="$root/casks/luxmini.rb"
+
+# Warn and exit 0 like brew-bundle: this runs in the bootstrap's package
+# phase, where a failed entry must not stop the dotfiles and agents.
+warn() { echo "WARNING: luxmini: $*" >&2; exit 0; }
+
+[ -f "$cask" ] || warn "pin file missing: $cask"
+pinned=$(sed -n 's/^  version "\([^"]*\)"/\1/p' "$cask" | head -1)
+[ -n "$pinned" ] || warn "no version line in $cask"
+pin_sha=$(sed -n 's/^  sha256 "\([^"]*\)"/\1/p' "$cask" | head -1)
+[ -n "$pin_sha" ] || warn "no sha256 line in $cask"
+
+app_dir="/Applications/LuxMini.app"
+
+# The live version off the bundle itself, not brew metadata: Sparkle moves
+# this file when it updates, and the app is not brew's to know about.
+installed=""
+if [ -f "$app_dir/Contents/Info.plist" ]; then
+  installed=$(plutil -extract CFBundleShortVersionString raw "$app_dir/Contents/Info.plist" 2>/dev/null || true)
+fi
+
+# install VERSION: fetch, verify, stage. /Applications is admin-writable, so
+# no sudo here; the admin prompt belongs to the app's first launch.
+install() {
+  local version="$1" dmg attach_out mount ok=1
+  [ -w /Applications ] || warn "/Applications not writable (sandboxed shell?); LuxMini not installed"
+  dmg=$(mktemp "${TMPDIR:-/tmp}/LuxMini-$version.XXXXXX.dmg")
+  curl -fsL --retry 3 -o "$dmg" \
+    "https://github.com/bastiencantet/luxmini-public/releases/download/v$version/LuxMini-$version.dmg" \
+    || { rm -f "$dmg"; warn "download failed for $version"; }
+  ( cd "$(dirname "$dmg")" && echo "$pin_sha  $(basename "$dmg")" | shasum -a 256 -c --status ) \
+    || { rm -f "$dmg"; warn "checksum mismatch for $version; nothing installed"; }
+  # The last tab-separated column of the attach line is the mount point.
+  # hdiutil, not the `diskutil image attach` form its macOS 27 deprecation
+  # warning suggests: hdiutil still works there and reaches older macOS too.
+  attach_out=$(hdiutil attach -nobrowse "$dmg" | tail -1) \
+    || { rm -f "$dmg"; warn "could not mount the $version DMG"; }
+  mount=${attach_out##*$'\t'}
+  [ -d "$mount/LuxMini.app" ] || ok=0
+  if [ "$ok" = 1 ]; then
+    rm -rf "$app_dir"
+    cp -R "$mount/LuxMini.app" "$app_dir" || ok=0
+  fi
+  hdiutil detach "$mount" -quiet
+  rm -f "$dmg"
+  [ "$ok" = 1 ] || warn "could not stage LuxMini.app into /Applications"
+  echo "luxmini $version installed"
+}
+
+if [ -z "$installed" ]; then
+  echo "luxmini: installing $pinned (app not present)"
+  install "$pinned"
+elif [ "$installed" = "$pinned" ]; then
+  echo "luxmini $installed: at the pin"
+elif [ "$(printf '%s\n%s\n' "$pinned" "$installed" | sort -V | tail -1)" = "$installed" ]; then
+  echo "luxmini $installed: ahead of the pin ($pinned) via Sparkle; not downgrading"
+else
+  echo "luxmini $installed: behind the pin ($pinned); reinstalling"
+  install "$pinned"
+fi

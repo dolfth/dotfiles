@@ -48,4 +48,9 @@ function up --description 'Upgrade macOS software: CLT, brew (the Brewfiles), Ap
     # mise owns the declared tool versions (language runtimes and friends):
     # upgrade them; a no-op on a host whose modules declare no tools.
     mise upgrade
+
+    # LuxMini updates itself via Sparkle between pins; this only reinstalls
+    # when the vendored cask's pin moved ahead of the installed app. No-op
+    # off gza.
+    mise run luxmini
 end
