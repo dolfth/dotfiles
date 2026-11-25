@@ -164,6 +164,12 @@ stderr_path = "{{ env.HOME }}/Library/Logs/nwa-health-report.out.log"
 run_at_load = false
 kickstart = false
 
+[bootstrap.macos.defaults."com.bastiencantet.luxmini"]
+# Set-and-forget mode: the icon hides, the LED control stays. Relaunching
+# LuxMini (open -a LuxMini) re-shows the icon and opens Settings. The key is
+# the app's own ui.hide_icon pref, read off the live domain.
+"ui.hide_icon" = true
+
 [dotfiles]
 # The agent stack lives on gza: mca reaches omp over ssh/mosh.
 # config.yml is a symlink, so /settings edits flow back into the repo instead of

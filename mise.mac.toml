@@ -178,6 +178,14 @@ apps = []
 [bootstrap.macos.defaults."com.apple.commerce"]
 "AutoUpdate" = false
 
+# Third-party menu-bar player, hidden. The key is what noTunes itself writes
+# when its Settings toggle is flipped, read off the live domain; the app keeps
+# controlling Apple Music without the status item. The LuxMini counterpart
+# lives in mise.gza.toml, gza being the only machine that runs it.
+
+[bootstrap.macos.defaults."digital.twisted.noTunes"]
+"hideIcon" = true
+
 # Safari's search engine is per device -- iCloud syncs bookmarks and tabs, never
 # this -- and macOS 14+ resolves it from this system-scoped key. The path entry
 # keeps other provider dictionaries; Safari reads it at launch.
