@@ -1,30 +1,24 @@
 #!/usr/bin/env bash
 #MISE tags=["gza"]
-# The HA updater, ported from nwa's nixos-config hosts/nwa/agent-jobs/
-# (agent-job-ha-update, Fri 02:33). An omp run installs pending Home
-# Assistant updates over the API (agent-jobs/ha-update.md); a second leg
-# reports the outcome over ntfy.
+# The HA updater. An omp run installs pending Home Assistant updates over the
+# API (agent-jobs/ha-update.md); a second leg reports the outcome over ntfy.
 #
 #   mise run ha-update            the agent run  (agent: dev.mise.ha-update)
 #   mise run ha-update report     the ntfy report (agent: dev.mise.ha-update-report)
 #   mise run ha-update profile    the generated job profile, for the eye
 #
 # The state machine, the archive, the heartbeat, the watchdog and the report
-# live in mise-tasks/_agent-job.sh -- the ha-monitor pattern. What differs,
-# and why:
+# live in mise-tasks/_agent-job.sh. What differs from the ha-monitor pattern:
 #
-# - Weekly clock: run Fri 02:33 (nwa's), report Fri 06:03 -- 90 min of run
-#   plus restart margin before the report reads the state. The report's
-#   stale window is 8 days, not 24 h: a weekly job is not dead at 25 h.
+# - Weekly clock: run Fri 02:33, report Fri 06:03 -- 90 min of run plus
+#   restart margin before the report reads the state. The report's stale
+#   window is 8 days, not 24 h: a weekly job is not dead at 25 h.
 # - No websockets venv: everything this job does is REST.
 # - Secrets identical: the HA repo's .ha_token and the shared ntfy topic.
-# - agent-jobs/ha-update.md IS nwa's brief (API facts, order, stop-on-fail,
-#   state diff), trimmed to what transfers: the draft file, the sandbox note
-#   and the 200-before-warm caveat are the gza additions; nwa keeps no notes
-#   file across runs, so neither does this port -- the agent writes the
-#   report draft and nothing else.
-# - This job MUTATES HA: the network allow-list (HA + model ports only) is
-#   the write guard, and the draft-after-each-install rule makes a killed
+# - No cross-run notes file: the agent writes the report draft and nothing
+#   else.
+# - This job mutates HA: the network allow-list (HA and the model ports only)
+#   is the write guard, and the draft-after-each-install rule makes a killed
 #   run's report name exactly where the work stopped.
 #
 # A run that reports "did not run in the last 8 days" right after install

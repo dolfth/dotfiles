@@ -10,9 +10,8 @@
 # stays single-tenant -- a model pick that is not loaded stops the running engine
 # and loads the picked one before the request answers, so a pick can pay the load
 # once (Flash-Next is a 111 GB image); apiKey is the pool key, read from
-# ~/.config/llama-swap/api_key by exec(). omlx is out of the pool for now:
-# installed on gza, no provider here -- pick it again by adding its provider
-# block back.
+# ~/.config/llama-swap/api_key by exec(). omlx is out of the pool: installed
+# on gza, no provider here.
 ---
 providers:
   splash:

@@ -4,7 +4,8 @@
 # fallback on a fresh checkout. See README.md.
 
 # mise below this refuses every command with an upgrade hint, in a global config as
-# well as a project one. Raising it re-breaks every machine below the floor.
+# well as a project one. Bumping it breaks every host below the new floor:
+# upgrade mise on every host first (see AGENTS.md).
 min_version = "2026.11.3"
 
 [vars]

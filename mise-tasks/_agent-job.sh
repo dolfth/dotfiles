@@ -2,8 +2,7 @@
 # shellcheck disable=SC2154  # the parameters below are assigned by the sourcing job
 # Shared harness for gza's scheduled omp agent jobs: ha-monitor, ha-update
 # and nwa-health. Each job script sets the parameters, defines the hooks,
-# and calls agent_main. What lives here is the invariant the port kept from
-# nwa's systemd unit pairs (see the per-job headers for the deltas):
+# and calls agent_main. The invariants:
 #
 # - the state machine: $state holds started, skipped, quiet, summary.md,
 #   result, failures, and the runs/<ts>/ archives (30 days). The agent gets
@@ -11,7 +10,7 @@
 #   reads.
 # - the heartbeat: one dated line per run in ~/Library/Logs/<job>.log in the
 #   format "%Y-%m-%d %H:%M <job> <msg>" -- check leg 5 parses these.
-# - archive on every exit (nwa's ExecStopPost): a preflight skip is still a
+# - archive on every exit: a preflight skip is still a
 #   run, so runs/ holds every attempt and the stale check has truth.
 # - the watchdog: launchd has no TimeoutStartSec. A background agent plus a
 #   kill loop is the kill switch, and the killed marker keeps a timeout
@@ -62,8 +61,7 @@ agent_heartbeat() { # one dated line per run: check leg 5 parses these
   fi
 }
 
-# The archive mirrors nwa's ExecStopPost: it runs on every exit, including a
-# preflight skip.
+# The archive runs on every exit, including a preflight skip.
 agent_archive() {
   local rc=$?
   local run f

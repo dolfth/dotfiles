@@ -7,10 +7,10 @@ Two Macs, configured by [mise](https://mise.jdx.dev) from this repo:
 | `mca` | macOS | laptop |
 | `gza` | macOS | desktop: always-on llama-swap front for the two splash pool models (omlx installed, out of pool), omp host |
 
-nwa, the NixOS server, left the mise fleet (2026-11-25): no mise there,
-its flake owns the whole machine. gza still monitors it -- the
-`nwa-health` job probes it over Tailscale SSH -- and maintains its
-flake over ssh through the `nwa-omp` entry point.
+nwa, the NixOS server, is not configured from this repo: its flake owns
+the whole machine. gza monitors and maintains it: the `nwa-health` job
+probes it over Tailscale SSH, and its flake gets edits over ssh through
+the `nwa-omp` entry point.
 
 The checkout *is* the global mise config: `~/.config/mise` is this repo.
 Packages, dotfiles, and the tasks bootstrap runs all live here, so the git

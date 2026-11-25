@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #MISE tags=["gza"]
-# The HA health check, ported from nwa's nixos-config hosts/nwa/agent-jobs/.
-# An omp run looks for oddities in Home Assistant (agent-jobs/ha-monitor.md,
-# read-only against HA); a second leg reports the outcome over ntfy.
+# The HA health check. An omp run looks for oddities in Home Assistant
+# (agent-jobs/ha-monitor.md, read-only against HA); a second leg reports the
+# outcome over ntfy.
 #
 #   mise run ha-monitor            the agent run  (agent: dev.mise.ha-monitor)
 #   mise run ha-monitor report     the ntfy report (agent: dev.mise.ha-monitor-report)
@@ -10,33 +10,25 @@
 #
 # The state machine, the archive, the heartbeat, the watchdog and the report
 # live in mise-tasks/_agent-job.sh. This file is the job: its parameters,
-# its preflight, its profile, its prompt. The nwa original is a systemd unit
-# pair per job, with root-side IP filtering and sops secrets; the deltas of
-# the gza port and why:
+# its preflight, its profile, its prompt.
 #
-# - Timers -> the two calendar LaunchAgents in mise.gza.toml (same clocks:
-#   run 04:38, report 12:03). launchd coalesces a missed calendar fire into
-#   one start on wake; the report's 24 h check still calls a dead clock dead.
-# - workDir -> ~/Documents/code/homeassistant, the HA repo, like nwa's
-#   ha-api.nix. That is the context: omp reads the repo's AGENTS.md at
-#   startup, the README is one open away, and .omp/mcp.json connects the
-#   read-only MCP server as real tools. The generated profile grants the
-#   repo READ and two files WRITE (monitor-notes.md, report-draft.md) --
-#   strictly less than the rw workDir nwa ran, so a chatty model cannot
+# - The clocks are the two calendar LaunchAgents in mise.gza.toml (run 04:38,
+#   report 12:03). launchd coalesces a missed calendar fire into one start on
+#   wake; the report's 24 h check still calls a dead clock dead.
+# - The work dir is the HA repo ~/Documents/code/homeassistant: omp reads the
+#   repo's AGENTS.md at startup, and .omp/mcp.json connects the read-only MCP
+#   server as real tools. The generated profile grants the repo read and two
+#   files write (monitor-notes.md, report-draft.md), so a chatty model cannot
 #   touch deployables.
-# - The model preflight (is gza up?) is gone: the model server is local, and
-#   keep_alive brings it back on its own; a dead model now just fails the run,
-#   which the report marks as such.
 # - The sandbox is a nono profile generated at run time from nono/omp.json,
-#   enforced by `nono run` -- supervised, so the domain allow-list actually
-#   filters (invariant 8 of dev-agents). Network: the HA host only, plus the
+#   enforced by `nono run`: supervised, so the domain allow-list actually
+#   filters (dev-agents invariant 8). Network: the HA host only, plus the
 #   GPU-pool ports for the model. `nono why` is the static check; the proxy
 #   denies everything else.
-# - Secrets are plain files, not sops: the repo's .ha_token (the HA
-#   long-lived token, untracked -- same file nwa's job read) and
-#   ~/.local/state/agent-jobs/ntfy_topic (0600, shared by every agent job,
-#   like nwa's one ntfy topic). Both copied from nwa once; a missing token
-#   skips the run with a reason, a missing topic fails the report leg loudly.
+# - Secrets are plain files: the repo's .ha_token (the HA long-lived token,
+#   untracked) and ~/.local/state/agent-jobs/ntfy_topic (0600, shared by
+#   every agent job). A missing token skips the run with a reason; a missing
+#   topic fails the report leg loudly.
 #
 # A run that reports "did not run in the last 24 hours" right after install
 # means the clock has not reached 04:38 yet: seed it with `mise run ha-monitor`.
@@ -65,10 +57,10 @@ draft="$work/report-draft.md"
 token="$work/.ha_token"
 ntfy_file="$HOME/.local/state/agent-jobs/ntfy_topic"
 log="$HOME/Library/Logs/ha-monitor.log"
-# The splash-fn model, pinned like nwa's defaultModel. The pool is
-# single-tenant behind llama-swap: another client's model pick can evict this
-# engine mid-run, and the job's next request swaps it back -- paying the 111 GB
-# load once. Switching the job's model stays a deliberate edit.
+# The splash-fn model. The pool is single-tenant behind llama-swap: another
+# client's model pick can evict this engine mid-run, and the job's next
+# request swaps it back, paying the 111 GB load once. Switching the job's
+# model stays a deliberate edit.
 model="splash/unsloth/Qwen3.8-Flash-Next-GGUF:UD-Q4_K_XL"
 timeout_min=90
 notes_limit=6000
@@ -77,9 +69,8 @@ quiet_norm="Nothingtoreport."
 
 job_preflight() { agent_ha_preflight; }
 
-# Supervised `nono run` enforces the domain allow-list. The repo is granted
-# read -- the agent's context -- with exactly two files writable; nwa gave
-# the agent an rw workdir, this port does not.
+# Supervised `nono run` enforces the domain allow-list. The context repo is
+# granted read, with exactly two files writable.
 job_profile() {
   jq \
     --arg name "omp-job-ha-monitor" \

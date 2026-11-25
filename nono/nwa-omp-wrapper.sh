@@ -2,16 +2,17 @@
 # The nwa-maintenance omp: installed as /usr/local/bin/nwa-omp (root:wheel 755)
 # by `mise run dev-agents` (__BREW_PREFIX__ substituted at install). The one omp
 # entry point where ssh lives; the daily omp denies /usr/bin/ssh. Its only job is
-# maintaining nwa (nixos-config edits, the E1 deploy over Tailscale SSH), so start
+# maintaining nwa (nixos-config edits, the deploy over Tailscale SSH), so start
 # it from the nixos-config checkout: --allow-cwd makes that tree the agent's whole
 # document world, like local-omp's.
 #
 # Wrapped, not supervised: the network allow-list cannot carry ssh on macOS -- the
 # proxy tunnels HTTP(S) only (nolabs-ai/nono#756) and Seatbelt cannot filter
-# outbound by port -- so this profile sets no network policy at all and says so
-# (dev-agents #12). An allow-list here would be decoration. Outbound is what the
-# daily omp has always had; the isolation this profile owns is filesystem and
-# state: the named profile tree, no shared tsk store, and the launched workdir.
+# outbound by port -- so this profile sets no network policy at all
+# (dev-agents invariant 12). An allow-list here could not be enforced anyway.
+# Outbound is the same as the daily omp's; the isolation this profile owns is
+# filesystem and state: the named profile tree, no shared tsk store, and the
+# launched workdir.
 #
 # State: OMP_PROFILE=nwa moves omp's user base to ~/.omp/profiles/nwa, invisible
 # to the daily sandbox (it denies $HOME/.omp/profiles) and to local-omp (it

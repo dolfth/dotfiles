@@ -6,10 +6,10 @@
 
 # trusted: true -- Homebrew 6+ refuses to load formulae from untrusted taps and the
 # trust state is per-machine (~/.homebrew/trust.json), never the Brewfile.
-# url: -- the tap moved from the (now 404) homebrew-omlx repo into the main omlx repo,
-# which bare `brew tap jundot/omlx` does not clone by name; the formula ref stays plain.
+# url: -- the tap lives in the main omlx repo, which bare `brew tap jundot/omlx`
+# does not clone by name; the formula ref stays plain.
 tap "jundot/omlx", url: "https://github.com/jundot/omlx", trusted: true
-# Upstream renamed incoai/tap to incoai/homebrew-tap (old name 404s);
+# Upstream renamed the tap to incoai/homebrew-tap (old name 404s);
 # formula and keg names unchanged.
 tap "incoai/homebrew-tap", trusted: true
 

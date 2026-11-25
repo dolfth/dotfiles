@@ -4,10 +4,9 @@
 # edit this source instead.
 #
 # One model runs at a time (llama-swap's default router): a request for the other
-# ID stops the running splash, waits for the load, then answers. That is the
-# single-tenant rule the retired `gpupool` task enforced by hand -- the 96 GiB
-# wired fuse refuses nothing below it, so two resident servers would OOM-crash
-# each other's Metal clients.
+# ID stops the running splash, waits for the load, then answers. Single tenant:
+# the 96 GiB wired fuse refuses nothing below it, so two resident servers would
+# OOM-crash each other's Metal clients.
 #
 # The splash servers are internal: loopback only, no --allowed-host; this
 # listener is what faces the tailnet, and the API key is its guard. The key is
@@ -51,7 +50,7 @@ models:
 
 hooks:
   on_startup:
-    # The pool's default owner, warm like the old RunAtLoad splash-fn agent: the
-    # ambient jobs start without paying a load.
+    # The pool's default owner, preloaded: the ambient jobs start
+    # without paying a load.
     preload:
       - "unsloth/Qwen3.8-Flash-Next-GGUF:UD-Q4_K_XL"

@@ -3,14 +3,14 @@ everything you see of nwa arrives over Tailscale SSH (Environment below).
 Change nothing. No one is available to answer questions. Finish with the
 report described at the end.
 
-## Environment (gza port)
+## Environment
 
 Run every command over ssh:
 
     ssh -o UserKnownHostsFile=$HOME/.omp/profiles/nwa/known_hosts nwa.foxhound-insen.ts.net '<command>'
 
 The `localhost:...` endpoints below answer only on nwa: curl them inside the
-ssh. The ssh lands as dolf, not as nwa's old agent user: a probe that needs
+ssh. The ssh lands as dolf: a probe that needs
 root or a group dolf lacks is *unavailable*, not a problem on the server --
 write it once into the notes, say "probe unavailable" once in the report the
 first time, then stop repeating it. No sudo.
@@ -28,9 +28,8 @@ first time, then stop repeating it. No sudo.
 - SMART: scrutiny's API, `curl -s localhost:8687/api/summary` over the ssh.
 - Service checks: gatus, `curl -s localhost:8080/api/v1/endpoints/statuses`
   over the ssh.
-- `incus list`: the Home Assistant VM. The old job used an incus client
-  config it no longer has; if the command refuses dolf, treat it as an
-  unavailable probe.
+- `incus list`: the Home Assistant VM. If the command refuses dolf, treat it
+  as an unavailable probe.
 - Services that run but do not work: an arr app or slskd that has made no
   progress, a backup that has not produced a new file. Their journals show
   this.

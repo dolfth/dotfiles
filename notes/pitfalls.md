@@ -1,6 +1,6 @@
 # Pitfalls
 
-The traps this repo bites with: cheap to hit, expensive to diagnose.
+Known traps. Each is cheap to hit and expensive to diagnose.
 
 - `-E mac,gza` is written to `miserc.local.toml` and every later mise
   command on the machine uses it. Without `-E` the hook writes

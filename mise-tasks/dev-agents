@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
 #MISE tags=["gza"]
-# gza's omp sandbox: nwa's dev-agents.nix ported from Landlock to
-# nono/Seatbelt. Installs the omp entry points -- omp, local-omp, nwa-omp, each
-# a profile plus a root:wheel wrapper -- under /usr/local and checks the
-# invariants. The agents live on gza alone; the other hosts skip -- mca reaches
-# omp over ssh/mosh.
+# gza's omp sandbox. Installs the omp entry points -- omp, local-omp, nwa-omp,
+# each a profile plus a root:wheel wrapper -- under /usr/local, and checks the
+# invariants below. The agents live on gza alone; the other hosts skip (mca
+# reaches omp over ssh/mosh).
 #
 #   mise run dev-agents          verify, then install (needs sudo)
 #   mise run dev-agents check    static checks only, no sudo
@@ -37,13 +36,14 @@
 #     transport (ssh, scp, sftp, rsync, git-over-ssh); ssh-keygen stays, so
 #     commit signing survives. It cannot stop a raw-socket client: the guard
 #     removes the tool, not the wire.
-# 12. nwa-omp is the one ssh-capable entry point: nwa maintenance and the E1
+# 12. nwa-omp is the one ssh-capable entry point: nwa maintenance and the
 #     deploy over Tailscale SSH, nothing else. Its profile is generated like
 #     local-omp's, minus the ssh deny, and carries no network policy -- such a
 #     list cannot survive `nono wrap` (no proxy) and could not carry ssh even
-#     supervised (#11), so the check rejects a .network key as a lie. Its real
-#     isolation is state and files: a named profile tree invisible to the
-#     daily sandbox, no tsk store, workdir-bounded documents.
+#     supervised (#11), so the check rejects a .network key: the profile would
+#     promise a policy that nothing enforces. Its real isolation is state and
+#     files: a named profile tree invisible to the daily sandbox, no tsk
+#     store, workdir-bounded documents.
 
 set -euo pipefail
 
@@ -205,7 +205,7 @@ check() {
 
   # R11 + R12: ssh dies in the daily sandbox, lives in nwa-omp alone. The nwa
   # profile sets no network policy -- nothing could enforce one for ssh (#12) --
-  # so a .network key there would be decoration, and decoration is a lie.
+  # so a .network key there would promise a policy nothing enforces.
   local gen_nwa
   gen_nwa="$(mktemp)"
   gen_nwa_profile > "$gen_nwa" || fail "cannot generate the nwa-omp profile"

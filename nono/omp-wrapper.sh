@@ -28,8 +28,8 @@ export BUN_INSTALL_CACHE_DIR="$HOME/.omp/cache/bun-install"
 PATH="$(printf '%s' "$HOME/.local/bin:__BREW_PREFIX__/bin:__BREW_PREFIX__/sbin:$PATH" | awk -v RS=: -v ORS=: '!seen[$0]++' | sed 's/:$//')"
 export PATH
 
-# ~/.ssh is denied and so is /usr/bin/ssh (dev-agents #11): no ssh transport from
-# this sandbox -- push reaches a remote over https only. git must still sign
+# ~/.ssh is denied and so is /usr/bin/ssh (dev-agents invariant 11): no ssh transport
+# from this sandbox -- push reaches a remote over https only. git must still sign
 # locally: ssh-keygen (not denied) signs through the ssh-agent given the PUBLIC key
 # file seeded by dev-agents. "no agent" means the agent simply has no key loaded --
 # one ssh-add, unsandboxed, per boot.
@@ -41,8 +41,7 @@ if [ -r "$HOME/.config/git/sign.pub" ]; then
 fi
 
 # --profile is a full path, never a name: names resolve at run time against the
-# user-editable ~/.config/nono/profiles, and a `nono pull`ed registry pack can claim one
-# (nwa saw exactly that replace a profile with one granting ~/.claude and the network).
+# user-editable ~/.config/nono/profiles, and a `nono pull`ed registry pack can claim one.
 exec __BREW_PREFIX__/bin/nono wrap --allow-cwd \
   --profile /usr/local/etc/nono/omp.json \
   -- /usr/local/bin/omp-unsandboxed "$@"

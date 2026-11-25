@@ -10,7 +10,7 @@
   approved persistently in the Tailscale admin console, every fresh
   connection prints a browser approval URL and waits. Unattended runs need
   that approval; a hang at connect means approval, not a network bug.
-- The deploy path (E1): edit the flake, commit, push to GitHub, then on nwa
+- The deploy path: edit the flake, commit, push to GitHub, then on nwa
   `sudo nixos-rebuild switch --flake 'github:dolfth/nixos-config#nwa'` over
   ssh. nwa builds its own system; gza never compiles it. Roll back with the
   previous generation or the boot entry, never by editing nwa live.

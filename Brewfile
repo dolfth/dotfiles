@@ -2,9 +2,9 @@
 # concatenates this file with Brewfile.<host> (brew bundle reads one --file; the host
 # file is Brewfile.gza) and runs `brew bundle --no-upgrade`: plain `brew bundle` on
 # current Homebrew also upgrades installed entries, so this installs what is missing
-# and `up` (brew upgrade) does the upgrading. Why brew and not mise: README, "Why brew
-# + mise". mise itself is listed so a fresh machine is complete (bootstrap installs
-# Homebrew before it runs).
+# and `up` (brew upgrade) does the upgrading. Why brew and not mise: README,
+# "Packages (the Brewfiles)". mise itself is listed so a fresh machine is complete
+# (bootstrap installs Homebrew before it runs).
 
 # omp's tap. trusted: true, because Homebrew 6+ refuses formulae from untrusted taps
 # and trust is per-machine state (~/.homebrew/trust.json), so bundle records it (why in

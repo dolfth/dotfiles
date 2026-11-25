@@ -8,16 +8,16 @@
 # that matters. This task HEADs every pinned asset so the breakage is announced
 # first.
 #
-# The reminder surfaces, none needing a watching eye: the dev.mise.pin-check agent
+# Nothing needs to watch this: the dev.mise.pin-check agent
 # runs it weekly (mise.mac.toml); every run appends one line to
-# ~/Library/Logs/pin-check.log, so the log's age is the heartbeat's liveness proof and
+# ~/Library/Logs/pin-check.log, so the log's age shows whether the agent is alive and
 # `mise run check` calls a log older than 8 days dead; a failing run raises a macOS
 # notification in unsandboxed agent sessions, else the exit code is the signal.
 #
-# Versions are read from their single sources of truth -- the pin table in
-# mise.mac.toml [vars], consumed by dev-agents, apple-intelligence and the
-# luxmini task -- so a bump needs no change here, and a missing var means the
-# pin moved out from under a consumer, itself worth failing on.
+# Versions are read from the pin table in mise.mac.toml [vars], the same
+# table dev-agents, apple-intelligence and the luxmini task consume, so a bump
+# needs no change here. A missing var fails the check: the pin moved out from
+# under a consumer.
 
 set -uo pipefail   # no -e: check every pin, report all of them
 

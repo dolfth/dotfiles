@@ -25,7 +25,7 @@ why a symlink, why a merge or deep-merge. The gza omp sandbox installs
 | `omlx/*.json` | `~/.omlx/` | gza; the pinned settings deep-merged into the files omlx writes (auth keys stay omlx's), plus server aliases for the host's `.local` and Tailscale names |
 | `omp/agent/config.yml` | `~/.omp/agent/config.yml` | gza; symlinked -- `/settings` changes flow back into the repo -- commit them |
 | `omp/agent/models.yml.tera` | `~/.omp/agent/models.yml` | gza; the splash provider behind llama-swap: both pool models on the one 9292 endpoint; `baseUrl` renders from `vars.omp_base` (`127.0.0.1` on gza); `apiKey` reads `~/.config/llama-swap/api_key` by `exec()` |
-| `llama-swap/config.yaml.tera` | `~/.config/llama-swap/config.yaml` | gza; the pool's front door: the two splash engines (the retired splash LaunchAgents' serve flags, loopback binds), the flash-next preload, the same API key rendered from `~/.config/llama-swap/api_key` |
+| `llama-swap/config.yaml.tera` | `~/.config/llama-swap/config.yaml` | gza; the pool's front door: the two splash engines bound to loopback, the flash-next preload, and the API key rendered from `~/.config/llama-swap/api_key` |
 
 Rows without a host apply to every machine. Files on disk that no loaded
 module declares are left alone; `mise dot prune` removes ones the repo

@@ -1,41 +1,39 @@
 #!/usr/bin/env bash
 #MISE tags=["gza"]
-# The nwa health check, ported from nwa's agent-job-nwa-health (its brief:
-# hosts/nwa/agent-jobs/nwa-health.md in the nixos-config flake, mirrored here
-# as agent-jobs/nwa-health.md). An omp run on gza probes nwa over Tailscale
-# SSH (read-only, change nothing); a second leg reports over ntfy.
+# The external probe of nwa (brief: agent-jobs/nwa-health.md). An omp run on
+# gza probes nwa over Tailscale SSH (read-only, change nothing); a second leg
+# reports over ntfy.
 #
 #   mise run nwa-health            the agent run  (agent: dev.mise.nwa-health)
 #   mise run nwa-health report     the ntfy report (agent: dev.mise.nwa-health-report)
-#   mise run nwa-health seed       copy health-notes.md from nwa, once
+#   mise run nwa-health seed       copy health-notes.md from nwa
 #   mise run nwa-health profile    the generated job profile, for the eye
 #
 # The state machine, the archive, the heartbeat, the watchdog and the report
-# live in mise-tasks/_agent-job.sh -- the ha-monitor pattern. What is
-# specific to external monitoring of another machine:
+# live in mise-tasks/_agent-job.sh. What is specific to monitoring another
+# machine:
 #
-# - The probes run over ssh: the daily sandbox denies /usr/bin/ssh (dev-agents
-#   #11), so this job is the nwa-omp shape -- `nono wrap` on a profile
-#   generated from the installed /usr/local/etc/nono/nwa-omp.json, where ssh
-#   lives. No network allow-list: a domain proxy cannot carry ssh
-#   (nolabs-ai/nono#756), so under wrap the filesystem grants are the whole
-#   sandbox story: workdir READ and exactly two files WRITE (#12).
-# - workDir -> ~/Documents/code/nixos-config, nwa's own flake repo: its
-#   AGENTS.md is the context the agent loads, like ha-monitor's HA repo. The
-#   notes and the draft sit at its root; add both to that repo's .gitignore
-#   in the T9 cutover commit so the tree stays clean.
+# - The probes run over ssh. The daily sandbox denies /usr/bin/ssh
+#   (dev-agents invariant 11), so this job is the nwa-omp shape: `nono wrap`
+#   on a profile generated from the installed
+#   /usr/local/etc/nono/nwa-omp.json, where ssh lives. No network allow-list:
+#   a domain proxy cannot carry ssh (nolabs-ai/nono#756), so under wrap the
+#   filesystem grants are the whole sandbox: workdir READ, exactly two files
+#   WRITE (invariant 12).
+# - The work dir is ~/Documents/code/nixos-config, nwa's own flake repo; the
+#   agent loads its AGENTS.md as context. The notes and the draft sit at the
+#   repo root; both must stay gitignored in that repo.
 # - Preflight: the harness repo probe separates missing from TCC-unreadable,
 #   and nwa:22 must answer -- a down box is a skip with a reason, not a
 #   failed run full of timeouts.
-# - Timers keep nwa's clocks (run 06:13, report 12:03); timeout 60 min, nwa's
-#   TimeoutStartSec. The model is the pool's flash-next behind llama-swap;
-#   an eviction by another client's pick costs the job one swapped-back load,
-#   like ha-monitor.
+# - Run 06:13, report 12:03; timeout 60 min. The model is the pool's
+#   flash-next behind llama-swap; an eviction by another client's pick costs
+#   the job one swapped-back load, like ha-monitor.
 # - The report leg is unsandboxed plain bash, the only piece that posts to
-#   ntfy; the shared topic file ~/.local/state/agent-jobs/ntfy_topic.
+#   ntfy; the shared topic file is ~/.local/state/agent-jobs/ntfy_topic.
 #
-# First real run needs the notes: seed them from nwa (mise run nwa-health
-# seed); a run without notes simply treats every open problem as new.
+# The first real run needs the notes: seed them with `mise run nwa-health
+# seed`; a run without notes treats every open problem as new.
 
 set -uo pipefail
 
@@ -93,9 +91,9 @@ job_preflight() {
 }
 
 # Generated from the installed nwa-omp profile so it cannot drift: ssh
-# survives (the point of the port), the flake repo is granted READ with
+# survives (the point of this shape), the flake repo is granted READ with
 # exactly two files writable. No network key -- under wrap nothing could
-# enforce one, and none could carry ssh (#12).
+# enforce one, and none could carry ssh (invariant 12).
 job_profile() {
   jq \
     --arg name "omp-job-nwa-health" \
@@ -110,7 +108,7 @@ job_profile() {
   ' "$profile_base"
 }
 
-##### seed -- copy the notes over from nwa, once ##############################
+##### seed -- copy the notes over from nwa ####################################
 
 seed() {
   if [ ! -d "$nix_repo" ]; then

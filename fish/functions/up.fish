@@ -24,8 +24,9 @@ function up --description 'Upgrade macOS software: CLT, brew (the Brewfiles), Ap
         end
     end
 
-    # brew owns the brew-ecosystem packages (README "Why brew + mise"): one upgrade path
-    # for everything installed, including tap formulae current mise cannot evaluate.
+    # brew owns the brew-ecosystem packages (README "Packages (the Brewfiles)"):
+    # one upgrade path for everything installed, including tap formulae current
+    # mise cannot evaluate.
     brew update; and brew upgrade
 
     # App Store auto-updates are off (com.apple.commerce AutoUpdate).

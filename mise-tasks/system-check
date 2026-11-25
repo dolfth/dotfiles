@@ -245,8 +245,8 @@ sudo defaults write /Library/Preferences/SystemConfiguration/com.apple.smb.serve
 
 ##### Software Update #########################################################
 #
-# Check, never download or install unasked (that is how Tahoe arrived); install by
-# hand: `softwareupdate -l` / `-i <label>`. Security stays automatic through
+# Check, never download or install unasked; install by hand:
+# `softwareupdate -l` / `-i <label>`. Security stays automatic through
 # ConfigDataInstall (XProtect, Gatekeeper, no restart) and CriticalUpdateInstall
 # (Rapid Security Responses, a short restart at most) -- point releases count as
 # macOS updates, security-only ones included, so the install switch stays off.

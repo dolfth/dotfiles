@@ -14,8 +14,8 @@ fi
 
 gui="gui/$(id -u)"
 # A job whose binary is missing can never reach the running state and launchctl blocks
-# on its transitions (a dead omlx once hung this task for hours). Bound each call so one
-# broken agent cannot wedge the bootstrap; without `timeout`, the call runs unbounded.
+# on its transitions. Bound each call so one broken agent cannot wedge the bootstrap;
+# without `timeout`, the call runs unbounded.
 if command -v timeout >/dev/null 2>&1; then
   lc() { timeout 15 launchctl "$@"; }
 else
@@ -62,7 +62,7 @@ if [ -f "${HOME}/Library/LaunchAgents/dev.mise.nwa-health.plist" ]; then
   echo "  nwa-health: state tree at ~/.local/state/agent-jobs/nwa-health"
 fi
 # The llama-swap API key, outside the repo. Seeded before any template can use
-# it (README, "Desktop services"); on a fresh gza that ordering misses the first
+# it (notes/services.md); on a fresh gza that ordering misses the first
 # apply, so a second bootstrap renders the key into llama-swap's config and
 # omp's catalog -- same re-run story as the miserc seed.
 if [ -f "${HOME}/Library/LaunchAgents/dev.mise.llama-swap.plist" ]; then

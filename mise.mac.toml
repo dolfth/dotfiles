@@ -8,10 +8,10 @@ EDITOR = "hx"
 VISUAL = "hx"
 
 [vars]
-# The pinned GitHub releases the tasks fetch, one table as the single source
-# of truth: the tasks read them with `mise vars --json`, and pin-check (below)
-# HEADs the asset URLs weekly. A bump is one edit here -- a missing var fails
-# the consumer loudly, never a silent stale default.
+# The pinned GitHub releases the tasks fetch. The tasks read them with
+# `mise vars --json`, and pin-check (below) HEADs the asset URLs weekly.
+# A bump is one edit here; a missing var fails the consumer instead of
+# falling back to a stale default.
 # - omp: dev-agents installs the binary
 #   (https://github.com/can1357/oh-my-pi/releases, omp-darwin-arm64)
 # - pared: the apple-intelligence task installs the tarball; no brew formula,

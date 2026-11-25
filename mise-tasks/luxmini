@@ -8,7 +8,7 @@
 # luxmini_version + luxmini_sha256 in mise.mac.toml, which pin-check probes
 # weekly -- and the task fetches and verifies the DMG itself. Bump from the
 # release's SHA256SUMS.txt: https://github.com/bastiencantet/luxmini-public/
-# releases. Should upstream ever ship the tap, this task retires to brew.
+# releases. If upstream ships a tap, move this to brew.
 #
 # The app self-updates via Sparkle, so the task never downgrades: only a pin
 # ahead of the installed version reinstalls. The version's live source is the

@@ -9,7 +9,7 @@ mise.lock
 omp/agent/*.lock
 # omp's session lock for an in-memory db: the `<dbPath>.ses` sidecar derives
 # from SQLite's `:memory:` name without special-casing it, so it lands in the
-# cwd. Rewritten on every interactive run; upstream, not yet reported.
+# cwd. Rewritten on every interactive run.
 :memory:.ses
 # Finder's per-directory metadata; rewritten on every window visit.
 .DS_Store
