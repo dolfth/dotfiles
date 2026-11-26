@@ -10,9 +10,14 @@
   approved persistently in the Tailscale admin console, every fresh
   connection prints a browser approval URL and waits. Unattended runs need
   that approval; a hang at connect means approval, not a network bug.
-- The deploy path: edit the flake, commit, push to GitHub, then on nwa
-  `sudo nixos-rebuild switch --flake 'github:dolfth/nixos-config#nwa'` over
-  ssh. nwa builds its own system; gza never compiles it. Roll back with the
+- The deploy path: edit the flake, commit, push to GitHub, then over the
+  ssh `git -C /home/dolf/.config/nixos pull` and
+  `sudo nixos-rebuild switch --flake '/home/dolf/.config/nixos#nwa'`.
+  Rebuild takes the LOCAL checkout: the `github:` flake reference cannot
+  resolve on nwa, the repo is private and nwa holds no fetch token; the
+  config arrives with the pull, nothing else. The pull-to-rebuild gap is
+  the review point: read `git log`/`git diff` before rebuilding. nwa
+  builds its own system; gza never compiles it. Roll back with the
   previous generation or the boot entry, never by editing nwa live.
 - Auth runs through ssh-agent (keys are Secure Enclave stubs; ~/.ssh is
   denied). "no agent" means the agent has no key loaded: one `ssh-add` in an
