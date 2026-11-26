@@ -221,7 +221,7 @@ There are three ways to run omp in a nono sandbox: `omp`, `local-omp`,
 | `pin-check` | weekly agent (Macs) | HEADs every pinned release asset; one heartbeat line per run in `~/Library/Logs/pin-check.log`, whose age `check` reads as the agent's liveness |
 | `ha-monitor` | daily agents (gza) | the read-only Home Assistant check: the HA repo is the work dir (its AGENTS.md and read-only MCP are the context), only the notes and the report draft writable (brief: `agent-jobs/ha-monitor.md`). State and the shared harness (`report`, `profile`, dry-run) live in `~/.local/state/agent-jobs/` and `mise-tasks/_agent-job.sh` |
 | `ha-update` | weekly agents (gza) | installs pending HA updates over the API -- ordered, backup-first, stop at the first failure (brief: `agent-jobs/ha-update.md`). It mutates HA: the network allow-list is the write guard |
-| `nwa-health` | daily agents (gza) | probes nwa from gza over Tailscale SSH, read-only (brief: `agent-jobs/nwa-health.md`); the nwa-omp sandbox, where the filesystem grants are the whole sandbox (invariant 12). `mise run nwa-health seed` copies the notes from nwa |
+| `nwa-health` | daily agents (gza) | probes nwa from gza over Tailscale SSH, read-only (brief: `agent-jobs/nwa-health.md`); the probes are scripted ssh in the task, the model writes notes and report from the bundle only -- supervised, ssh denied, empty allow-list. `mise run nwa-health seed` copies the notes from nwa |
 
 Tasks run on every `mise bootstrap`. The macOS-only tasks carry the
 `macos` tag and the gza agent jobs carry `gza` (mise >= 2026.11.2), 

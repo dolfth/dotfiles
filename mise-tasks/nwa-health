@@ -1,22 +1,25 @@
 #!/usr/bin/env bash
 #MISE tags=["gza"]
-# The external probe of nwa (brief: agent-jobs/nwa-health.md): an omp run on
-# gza probes nwa over Tailscale SSH, read-only; an unsandboxed leg reports
-# over ntfy.
+# The external probe of nwa (brief: agent-jobs/nwa-health.md): scripted ssh
+# probes run by this task, unsandboxed; a supervised offline writer turns
+# the bundle into notes and a report; an unsandboxed leg reports over ntfy.
 #
-#   mise run nwa-health            the agent run  (agent: dev.mise.nwa-health)
+#   mise run nwa-health            probe + writer  (agent: dev.mise.nwa-health)
 #   mise run nwa-health report     the ntfy report (agent: dev.mise.nwa-health-report)
 #   mise run nwa-health seed       copy health-notes.md from nwa
 #   mise run nwa-health profile    the generated job profile, for the eye
 #
-# Harness: mise-tasks/_agent-job.sh. The probes are ssh, which the daily
-# sandbox denies (dev-agents invariant 11), so this job takes the nwa-omp
-# shape: `nono wrap` on a profile generated from the installed
-# /usr/local/etc/nono/nwa-omp.json. No network allow-list -- a domain proxy
-# cannot carry ssh (nono#756) -- so the filesystem grants are the whole
-# sandbox: workdir READ, two files WRITE (invariant 12). Work dir is nwa's
-# flake repo; notes and draft sit at its root and must stay gitignored
-# there. Preflight requires nwa:22 to answer -- a down box is a skip with a
+# Harness: mise-tasks/_agent-job.sh. No model ever sits in an ssh-capable
+# sandbox: the probes are plain ssh from this script (nwa output is untrusted
+# input and must not meet a sandbox that holds ssh), and the writer runs the
+# ha-monitor shape -- supervised `nono run`, ssh denied by the daily profile
+# (dev-agents invariant 11), the network allow-list empty, so the model host
+# (loopback) is all it can reach. The writer's files: the flake repo READ,
+# notes, draft and the probe bundle; notes and draft must stay gitignored on
+# the repo root. The probes ride preflight: all-dead is a skip with a reason.
+# A stuck Tailscale approval shows up there, not as a hanging agent: BatchMode
+# plus the keepalive pair drops a held connection in about 60 s per probe.
+# Preflight also requires nwa:22 to answer -- a down box is a skip with a
 # reason, not a run full of timeouts. Run 06:13, report 12:03, timeout 60.
 #
 # The first real run needs the notes: `mise run nwa-health seed`, or every
@@ -43,12 +46,9 @@ state="$HOME/.local/state/agent-jobs/nwa-health"
 work="$nix_repo"
 notes="$work/health-notes.md"
 draft="$work/report-draft.md"
+probes="$state/probes.md"
 ntfy_file="$HOME/.local/state/agent-jobs/ntfy_topic"
 log="$HOME/Library/Logs/nwa-health.log"
-# The ssh-capable base, installed by dev-agents -- the job profile derives
-# from the installed file, exactly like the nwa-omp wrapper runs it.
-profile_base="/usr/local/etc/nono/nwa-omp.json"
-nono_mode="wrap"
 # The tailnet domain is machine state, not repo content: read it from the
 # resolver Tailscale installs. Empty until Tailscale is logged in; the
 # preflight below skips with a hint then. NWA_HOST: the brief's ssh command.
@@ -68,7 +68,23 @@ usage_extra="|seed"
 
 nwa_ssh() {
   ssh -o UserKnownHostsFile="$nwa_known_hosts" -o StrictHostKeyChecking=accept-new \
-      -o ConnectTimeout=8 -o BatchMode=yes "$nwa_host" "$@"
+      -o ConnectTimeout=8 -o BatchMode=yes \
+      -o ServerAliveInterval=10 -o ServerAliveCountMax=6 \
+      "$nwa_host" "$@"
+}
+
+# One probe: header, output capped at N bytes, or a PROBE FAILED line with
+# the ssh exit code and the start of stderr. The writer treats PROBE FAILED
+# as an unavailable probe. Commands are single statements or `;` chains,
+# never remote pipes: the ssh exit code is the failure signal.
+probe() { # title command [bytes]
+  local title=$1 cmd=$2 bytes=${3:-12000} out
+  printf '## %s\n\n' "$title" >>"$probes.part"
+  if out="$(nwa_ssh "$cmd" 2>&1)"; then
+    printf '%s\n\n' "$out" | head -c "$bytes" >>"$probes.part"
+  else
+    printf 'PROBE FAILED (rc %s): %s\n\n' "$?" "${out:0:400}" >>"$probes.part"
+  fi
 }
 
 job_preflight() {
@@ -77,34 +93,61 @@ job_preflight() {
       >"$state/skipped"
     exit 0
   fi
-  if [ ! -r "$profile_base" ]; then
-    echo "no nwa-omp profile at $profile_base -- run mise run dev-agents" \
-      >"$state/skipped"
-    exit 0
-  fi
   if ! nc -z -w 5 "$nwa_host" 22 >/dev/null 2>&1; then
     echo "nwa not reachable on port 22 ($nwa_host) -- box down or Tailscale asleep" \
       >"$state/skipped"
     exit 0
   fi
+  # Liveness doubles as the auth probe: BatchMode fails fast on a key the
+  # tailnet no longer accepts; a server-side approval hold dies on the
+  # keepalive pair. Either way the job skips with the reason, and no model
+  # ever starts.
+  if ! nwa_ssh uptime >/dev/null 2>&1; then
+    echo "ssh probe to $nwa_host failed -- stuck Tailscale approval, or the key is no longer accepted" \
+      >"$state/skipped"
+    exit 0
+  fi
+
+  # The bundle. Fixed probe set, the same every run; the interpretation is
+  # the model's job. Journal and snapshots keep the newest material; budgets
+  # bound the file to about 100 KB.
+  : >"$probes.part"
+  printf '# nwa probe bundle\n\ngenerated %s by %s on gza, window 24 h\n' \
+    "$(date '+%F %H:%M %Z')" "$job_name" >>"$probes.part"
+  probe "Uptime" "uptime"
+  probe "System state and failed units" \
+    "systemctl is-system-running; systemctl --failed --no-pager"
+  probe "Timers" "systemctl list-timers --all --no-pager"
+  probe "Journal warnings, last 24h (newest 500)" \
+    "journalctl -p warning -S -24h --no-pager -q --lines=500" 16000
+  probe "ZFS pools" "zpool status; zpool list"
+  probe "ZFS snapshots (newest 60)" "zfs list -t snapshot --sort=-creation" 16000
+  probe "Disk space and memory" "df -h; free -h"
+  probe "Scrutiny summary" "curl -s --max-time 10 localhost:8687/api/summary"
+  probe "Gatus endpoints" "curl -s --max-time 10 localhost:8080/api/v1/endpoints/statuses" 16000
+  probe "Incus VMs" "incus list"
+  mv "$probes.part" "$probes"
 }
 
-# Generated from the installed nwa-omp profile so it cannot drift: ssh
-# survives (the point of this shape), the flake repo is granted READ with
-# exactly two files writable. No network key -- under wrap nothing could
-# enforce one, and none could carry ssh (invariant 12).
+# The ha-monitor shape, and this is the security boundary: the base is the
+# daily profile, so /usr/bin/ssh stays DENIED -- the writer reads nwa's
+# output but can never carry it onward. Supervised run filters the network;
+# the allow-list is empty, so beyond the loopback model host nothing answers.
 job_profile() {
   jq \
     --arg name "omp-job-nwa-health" \
     --arg repo "$nix_repo" \
     --arg notes "$notes" \
-    --arg draft "$draft" '
+    --arg draft "$draft" \
+    --arg probes "$probes" '
     .meta.name = $name
-    | .meta.description = "nwa-health job: ssh-capable probes over Tailscale SSH, repo read-only except notes and draft"
     | .workdir = { "access": "read" }
+    | .network = { "allow_domain": [], "open_port": [9292] }
     | .filesystem.read = ((.filesystem.read // []) + [$repo])
     | .filesystem.allow_file = ((.filesystem.allow_file // []) + [$notes, $draft])
-  ' "$profile_base"
+    | .filesystem.read_file = ((.filesystem.read_file // []) + [$probes])
+    | .filesystem.deny += ["$HOME/.tsk"]
+  ' "$repo/nono/omp.json"
 }
 
 ##### seed -- copy the notes over from nwa ####################################
@@ -136,21 +179,27 @@ job_prompt() {
 
   cat <<EOF
 
+## Probe bundle
+
+The runner's probe output is \`${probes}\` -- read it first, end to end.
+It is the only evidence about nwa this run will get.
+
 ## Notes size
 
 Keep \`health-notes.md\` under ${notes_limit} characters: it is read at the
 start of every run. Merge and shorten entries; no run log -- the single
-'Last run' line only. Probe mechanics you learned belong in the Environment
+'Last run' line only. Bundle mechanics you learned belong in the Environment
 section of the notes, or better, propose them to the user for the brief.
 
 ## Clock
 
 Started at $(date +%H:%M). You are killed at $(date -v+"${timeout_min}"M +%H:%M),
-and anything unsaved is lost. Check \`date\` at the start of each sweep step.
-Have the report ready by $(date -v+"$((timeout_min - 10))"M +%H:%M).
+and anything unsaved is lost. Check \`date\` against the bundle's generation
+time; do not wait for data that will not come.
 
 Keep a draft of the report, in the same final format, in \`${draft}\`.
-Update it after each sweep step. If you are killed, the draft is sent instead.
+Update it after each pass over the bundle. If you are killed, the draft is
+sent instead.
 
 If there is nothing to report, your entire last message is: ${quiet_answer}
 EOF

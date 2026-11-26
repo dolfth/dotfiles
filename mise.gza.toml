@@ -106,8 +106,9 @@ run_at_load = false
 kickstart = false
 
 # External probe of nwa over Tailscale SSH, read-only (mise-tasks/nwa-health):
-# ha-monitor's state machine; the nwa-omp sandbox shape, ssh surviving an
-# allow-list is impossible (dev-agents invariant 12).
+# ha-monitor's state machine; the probes are scripted ssh in the task itself,
+# the model only ever writes the report from the bundle -- no model in an
+# ssh-capable sandbox (dev-agents invariant 12 leaves no other shape).
 [bootstrap.macos.launchd.agents.nwa-health]
 program = "{{ system_brew_prefix }}/bin/mise"
 args = ["run", "nwa-health"]

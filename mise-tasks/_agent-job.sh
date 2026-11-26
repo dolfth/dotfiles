@@ -24,7 +24,7 @@
 # notes_limit (set when the job keeps cross-run notes; the report then
 # audits that they were rewritten), profile_base=$repo/nono/omp.json,
 # nono_mode=run (supervised: the network allow-list filters) or wrap (no
-# proxy; ssh survives -- the nwa-health shape), usage_extra.
+# proxy; ssh survives -- keep it away from any job), usage_extra.
 #
 # Hooks the job defines: job_preflight (write $state/skipped and exit 0 to
 # skip), job_profile (print the generated nono profile), job_setup (job
