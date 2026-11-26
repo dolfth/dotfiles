@@ -133,7 +133,7 @@ then runs the full `mise bootstrap` there.
 
 | File | Loads when | Holds |
 |---|---|---|
-| `mise.toml` | always | the config both Macs share: fallback identity vars (host/accent/icon), `omp_base`, tailnet and `ssh_keys`, the pinned release versions the fetching tasks and pin-check read, macOS defaults, `$EDITOR`/`$VISUAL` (helix), shared dotfiles, the syncthing and pin-check LaunchAgents, the bootstrap hooks, the fleet inventory for sync |
+| `mise.toml` | always | the config both Macs share: fallback identity vars (host/accent/icon), `omp_base`, tailnet and `ssh_keys`, the pinned release versions the fetching tasks and pin-check read, macOS defaults, `$EDITOR`/`$VISUAL` (helix), shared dotfiles, the syncthing, tailscale and pin-check LaunchAgents, the bootstrap hooks, the fleet inventory for sync |
 | `mise.mca.toml` | `mca` selected | the laptop: host identity vars |
 | `mise.gza.toml` | `gza` selected | the desktop: the llama-swap and omlx LaunchAgents plus the six agent-job clocks, the herdr, llama-swap, omp, omlx and pi configs, `WIRED_LIMIT_MB`, `LLAMA_SWAP_KEY`, the LuxMini pref |
 | `miserc.local.toml` | never committed | this machine's selection: `env = ["<host>"]`; the pre-packages hook writes it on a fresh checkout |

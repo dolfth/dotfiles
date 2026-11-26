@@ -165,6 +165,21 @@ stdout_path = "{{ env.HOME }}/Library/Logs/syncthing.log"
 stderr_path = "{{ env.HOME }}/Library/Logs/syncthing.log"
 kickstart = true
 
+# Tailscale autostart, both Macs. The macsys app opens its own login
+# item only from the menu; its CLI has no flag for it. launchd opens
+# the app at login instead and the app reconnects the VPN itself.
+# -g: no window grab at login. open exits once the app is up, so the
+# job ends immediately; kickstart makes every bootstrap ensure the
+# app runs. Tailscale SSH and the nwa legs ride on it.
+[bootstrap.macos.launchd.agents.tailscale]
+program = "/usr/bin/open"
+args = ["-g", "-a", "Tailscale"]
+run_at_load = true
+working_directory = "{{ env.HOME }}"
+stdout_path = "{{ env.HOME }}/Library/Logs/tailscale.out.log"
+stderr_path = "{{ env.HOME }}/Library/Logs/tailscale.out.log"
+kickstart = true
+
 # Weekly pin heartbeat; calendar-only, so no login or bootstrap starts it
 # off-schedule. check reads the log's age. The cwd must be the repo or mise
 # finds no tasks; stdout goes to its own file, out of check's summary.
