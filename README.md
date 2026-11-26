@@ -67,11 +67,15 @@ the Pitfalls section at the end.
 
 ## SSH between hosts
 
-The main module renders the `ssh_keys` var to `~/.ssh/authorized_keys`
-on both Macs, so any fleet machine can `ssh <host>.<tailnet>` without a
-password. The var is the list at <https://github.com/dolfth.keys>. To
-retire a machine, drop its key from both GitHub and the var. Keys added
-by hand on a host do not survive the next bootstrap.
+The main module renders the `login_keys` var to `~/.ssh/authorized_keys`
+on both Macs: the two Mac keys. Any Mac can `ssh <host>.<tailnet>`
+passwordless, from anywhere in the fleet. nwa is a leaf: it accepts the
+Mac keys, but its own key is in no Mac's list, so owning nwa owns only
+nwa. The full three-host list is `vars.ssh_keys`, mirrored at
+<https://github.com/dolfth.keys>; it governs commit verification
+(`allowed_signers`), never login. To retire a machine, drop its key from
+both GitHub and the vars. Keys added by hand on a host do not survive
+the next bootstrap.
 
 The NixOS server nwa is not bootstrapped from this repo. Its flake owns
 authorized_keys. It runs Tailscale SSH, whose first connection from a
@@ -296,9 +300,11 @@ Replacing a machine under the same hostname: take the old box off the
 tailnet first -- power it off or have it leave -- *before* step 5. The
 system-check task sets the hostname and the agents register under it, so
 two live `gza`s split MagicDNS. Then swap the host key: the new
-`~/.ssh/id_ed25519.pub` goes into `vars.ssh_keys` (`mise.toml`) and onto
-<https://github.com/dolfth.keys>, and the old key comes out of both.
-Commits signed by an unlisted key fail verification on the other hosts.
+`~/.ssh/id_ed25519.pub` goes into `vars.ssh_keys` and `vars.login_keys`
+(`mise.toml`) and onto <https://github.com/dolfth.keys>, and the old key
+comes out of both. nwa's key belongs in `ssh_keys` only, never in
+`login_keys`. Commits signed by an unlisted key fail verification on the
+other hosts.
 
 If `mise bootstrap` refuses to run the `bootstrap` task as "not
 trusted": the checkout predates the `trusted_config_paths` entry in
