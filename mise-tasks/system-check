@@ -11,6 +11,9 @@ if [ "$(uname -s)" != "Darwin" ]; then
   exit 0
 fi
 
+# shellcheck source=mise-tasks/_path.sh
+. "$(dirname "$0")/_path.sh"
+
 ##### Sandboxed app defaults (need Full Disk Access) ##########################
 #
 # Sandboxed apps (Mail, TextEdit, Displays, Safari) keep their domain in a
@@ -194,9 +197,14 @@ sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setstealthmode on >/dev/n
 #
 # Programs that read the file (bun, Go without cgo) never see the Tailscale
 # supplemental resolver; declaring it survives clients that stop rewriting it.
-if ! grep -q '^nameserver 100\.100\.100\.100' /etc/resolv.conf 2>/dev/null; then
-  sudo tee /etc/resolv.conf >/dev/null <<'EOF'
-search foxhound-insen.ts.net localdomain
+# The search domain is the machine's tailnet name -- read from the resolver
+# Tailscale installed, never from a committed literal.
+tailnet="$(tailnet_domain)"
+if [ -z "$tailnet" ]; then
+  echo "  resolv.conf: no tailnet domain from scutil --dns (Tailscale not logged in?); skipped"
+elif ! grep -q '^nameserver 100\.100\.100\.100' /etc/resolv.conf 2>/dev/null; then
+  sudo tee /etc/resolv.conf >/dev/null <<EOF
+search $tailnet localdomain
 nameserver 100.100.100.100
 nameserver fd7a:115c:a1e0::53
 EOF

@@ -7,7 +7,7 @@ report described at the end.
 
 Run every command over ssh:
 
-    ssh -o UserKnownHostsFile=$HOME/.omp/profiles/nwa/known_hosts nwa.foxhound-insen.ts.net '<command>'
+    ssh -o UserKnownHostsFile=$HOME/.omp/profiles/nwa/known_hosts "$NWA_HOST" '<command>'
 
 The `localhost:...` endpoints below answer only on nwa: curl them inside the
 ssh. The ssh lands as dolf: a probe that needs

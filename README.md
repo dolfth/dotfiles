@@ -236,6 +236,12 @@ The pre-packages hook opens with a config gate:
 not parse or contains unknown fields -- normally a typo'd key only
 warns, and then brew, downloads and system check would run.
 
+Values the tasks need but the repo must not carry live outside it: the
+HA address at `~/.config/ha/host` (gza, copied from nwa's HA repo), and
+the tailnet domain, which the tasks read from the resolver Tailscale
+installs (`scutil --dns`). A job missing its value skips and says so in
+the heartbeat.
+
 # Desktop services (gza)
 
 `llama-swap` (port 9292) is the inference proxy. Its 

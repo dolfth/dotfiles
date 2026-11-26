@@ -66,6 +66,11 @@ agent_archive() {
 # one API call. The token goes to curl on a file descriptor, never in the
 # environment or argv.
 agent_ha_preflight() {
+  if [ -z "$ha_host" ]; then
+    echo "no HA address at ~/.config/ha/host -- write it once: echo <lan-address> > ~/.config/ha/host (nwa's HA repo .env carries it)" \
+      >"$state/skipped"
+    exit 0
+  fi
   if [ ! -r "$token" ]; then
     echo "no HA token at $token -- copy it from nwa: scp nwa:Documents/code/homeassistant/.ha_token $token" \
       >"$state/skipped"

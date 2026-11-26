@@ -31,7 +31,9 @@ repo="$HOME/.config/mise"
 
 job_name="ha-update"
 ha_repo="$HOME/Documents/code/homeassistant"
-ha_host="192.168.0.253"
+# The address lives outside the repo, like the API keys; preflight skips
+# with a hint when the file is absent. nwa's HA repo .env is its source.
+ha_host="$(cat "$HOME/.config/ha/host" 2>/dev/null || true)"
 ha_url="http://${ha_host}:8123"
 repo_label="HA repo"
 repo_dir="$ha_repo"

@@ -17,3 +17,10 @@ resolve_mise() {
 # unknown. The OS's $HOSTNAME is never consulted: the question is which
 # machine the config selected, not what the OS calls itself.
 host_id() { printf '%s' "${HOST:-}"; }
+
+# The tailnet's MagicDNS domain, read from the resolver Tailscale installs:
+# machine state, not repo content -- the name identifies the fleet. The grep
+# pins the .ts.net search domain; empty means Tailscale is not logged in yet.
+tailnet_domain() {
+  scutil --dns 2>/dev/null | awk '/search domain/ {print $NF}' | grep -m1 '\.ts\.net$'
+}
