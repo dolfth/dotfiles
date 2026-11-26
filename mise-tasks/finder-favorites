@@ -1,16 +1,13 @@
 #!/usr/bin/env bash
 #MISE tags=["macos"]
-# Finder sidebar Favorites := exactly the visible $HOME directories, sorted
-# alphabetically -- declarative like the Dock rule: hand-pinned tiles (and the stock
-# /Applications one) are removed. Not a defaults domain: Finder stores favorites as the
-# LSSharedFileList "FavoriteItems" sfl4 archive, so this writes through the
-# deprecated-but-alive LSSharedFileList API -- the same one mise uses for login_items.
-# launchservicesd notifies Finder, so the sidebar updates without a restart. Re-running
-# is a no-op: classification resolves each bookmark with the SDK's only two safe flags,
-# because a full resolve is the one call that can block on a stale or network item --
-# connecting, mounting, or prompting. An unresolvable item is stale by definition here
-# and gets removed. A 90 s watchdog kills even a wedged call so bootstrap never hangs.
-# Cosmetic: any failure (e.g. no GUI session over SSH) warns and exits 0.
+# Finder sidebar Favorites := exactly the visible $HOME directories, sorted --
+# declarative like the Dock rule; hand-pinned tiles go. Finder stores them as
+# an LSSharedFileList sfl4 archive, so the write goes through that
+# deprecated-but-alive API; launchservicesd refreshes Finder without a
+# restart. Re-runs are no-ops: bookmarks resolve with the SDK's two safe
+# flags only -- a full resolve can block on a stale network item -- and an
+# unresolvable item is stale by definition, so it is removed. A 90 s watchdog
+# bounds even a wedged call. Cosmetic: any failure warns and exits 0.
 
 set -uo pipefail   # no -e: the swift guard below reports and passes
 

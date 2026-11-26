@@ -1,49 +1,41 @@
 #!/usr/bin/env bash
 #MISE tags=["gza"]
-# gza's omp sandbox. Installs the omp entry points -- omp, local-omp, nwa-omp,
-# each a profile plus a root:wheel wrapper -- under /usr/local, and checks the
-# invariants below. The agents live on gza alone; the other hosts skip (mca
-# reaches omp over ssh/mosh).
+# gza's omp sandbox: the omp entry points -- omp, local-omp, nwa-omp, each a
+# profile plus a root:wheel wrapper under /usr/local -- and the machine-checked
+# invariants below. Other hosts skip (mca reaches omp over ssh/mosh).
 #
 #   mise run dev-agents          verify, then install (needs sudo)
 #   mise run dev-agents check    static checks only, no sudo
 #
-# 1. Deny ~/.config/herdr: `herdr pane run` executes unsandboxed, so its control
+# 1. Deny ~/.config/herdr: `herdr pane run` executes unsandboxed; its control
 #    socket is an escape.
 # 2. Strip HERDR_ENV, HERDR_SOCKET_PATH and HERDR_CLIENT_SOCKET_PATH; keep
-#    HERDR_AGENT, which herdr reads off the pane's foreground process.
-# 3. `nono wrap`, not `run`: run's supervisor takes the foreground, so panes show
-#    "unknown". local-omp wants that (#8).
-# 4. --profile by full path. A registry pack can claim a name.
-# 5. root:wheel outside $HOME, installed by copy: the agent must not edit its own
-#    sandbox.
+#    HERDR_AGENT (herdr reads it off the pane's foreground process).
+# 3. `nono wrap`, not `run`: run's supervisor takes the foreground, so panes
+#    show "unknown". local-omp wants that (#8).
+# 4. --profile by full path; a registry pack can claim a name.
+# 5. root:wheel outside $HOME, installed by copy: the agent must not edit its
+#    own sandbox.
 # 6. No grants of $HOME, ~/.ssh, or secret-manager key paths.
-# 7. Documents stay shut by default-deny. A deny outranks every allow, so a
-#    Documents deny would also forbid working there: Bun dies on getcwd.
-# 8. local-omp (offline, sensitive) has its profile generated here from omp.json
-#    plus vars.omp_base, so the two entry points cannot drift on grants. Its
-#    wrapper uses `nono run` -- only supervised mode enforces a network allow-list.
-#    That filter is per-host, not per-port: on gza the allow-domain is 127.0.0.1, so
-#    every local port is reachable, and `network.block` would cut the model too.
-# 9. The daily profile denies $HOME/.omp/profiles: local-omp keeps its sessions,
-#    logs and memory there, and they must not reach a networked session.
-# 10. The daily profile grants ~/.tsk, the tsk store. One store serves every repo,
-#     so offline work must not reach the shared board.
-# 11. The daily profile denies /usr/bin/ssh. Seatbelt cannot filter outbound
-#     connections by port on macOS (nono's connect_port is Linux-only) and the
-#     domain proxy cannot tunnel SSH (nolabs-ai/nono#756), so a file deny of the
-#     binary is the only kernel-enforced ssh guard. It kills the whole ssh
-#     transport (ssh, scp, sftp, rsync, git-over-ssh); ssh-keygen stays, so
-#     commit signing survives. It cannot stop a raw-socket client: the guard
-#     removes the tool, not the wire.
-# 12. nwa-omp is the one ssh-capable entry point: nwa maintenance and the
-#     deploy over Tailscale SSH, nothing else. Its profile is generated like
-#     local-omp's, minus the ssh deny, and carries no network policy -- such a
-#     list cannot survive `nono wrap` (no proxy) and could not carry ssh even
-#     supervised (#11), so the check rejects a .network key: the profile would
-#     promise a policy that nothing enforces. Its real isolation is state and
-#     files: a named profile tree invisible to the daily sandbox, no tsk
-#     store, workdir-bounded documents.
+# 7. Documents stay shut by default-deny -- a Documents *deny* would also
+#    forbid working there (Bun dies on getcwd).
+# 8. local-omp's profile is generated here from omp.json plus vars.omp_base,
+#    so the entry points cannot drift on grants. It uses `nono run`: only the
+#    supervised proxy filters domains, per-host, so the allow-domain is
+#    127.0.0.1 and every local port stays reachable.
+# 9. The daily profile denies $HOME/.omp/profiles: local-omp's sessions and
+#    memory must not reach a networked session.
+# 10. The daily profile grants ~/.tsk; offline profiles deny it -- one store
+#     serves every repo, so offline work must not reach the shared board.
+# 11. The daily profile denies /usr/bin/ssh: Seatbelt cannot filter by port
+#     and the domain proxy cannot tunnel SSH (nono#756), so the file deny is
+#     the only kernel-enforced guard. It removes the tool, not the wire;
+#     ssh-keygen survives, so commit signing does.
+# 12. nwa-omp is the one ssh-capable entry. Its profile is generated like
+#     local-omp's, minus the ssh deny, and carries NO network policy: nothing
+#     under wrap could enforce one, so the check rejects a .network key. Its
+#     real isolation is state and files: named profile tree, no tsk store,
+#     workdir-bounded documents.
 
 set -euo pipefail
 
@@ -85,8 +77,7 @@ local_state="$HOME/.omp/profiles/local"
 nwa_state="$HOME/.omp/profiles/nwa"
 
 # Pinned release plus checksum; the wrapper needs a path brew never touches.
-# The pins live in mise.toml [vars], beside pared's and LuxMini's;
-# pin-check probes the asset URLs weekly.
+# The pins live in mise.toml [vars]; pin-check probes the asset URLs weekly.
 mise_vars_json="$(mise vars --json)"
 omp_version=$(printf '%s' "$mise_vars_json" | jq -r '.omp_version // empty')
 omp_sha256=$(printf '%s' "$mise_vars_json" | jq -r '.omp_sha256 // empty')
@@ -116,9 +107,8 @@ gen_local_profile() {
   ' "$profile_src"
 }
 
-# nwa-omp: the ssh-capable entry (#11, #12). Same derivation story as local-omp
-# -- generated, never a repo file -- but it must undo the daily ssh deny and it
-# gets no network section: nothing under wrap could enforce one for ssh (#12).
+# nwa-omp: the ssh-capable entry (#11, #12). Generated like local-omp's, but it
+# undoes the daily ssh deny and gets no network section (#12).
 gen_nwa_profile() {
   jq '
     .meta.name = "nwa-omp"

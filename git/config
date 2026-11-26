@@ -1,9 +1,8 @@
 # Managed by mise.
 #
-# Sign with the host's SSH key. It names the private key, not the .pub: a
-# .pub only works while the key is loaded in an ssh-agent, which is not the
-# case before the first ssh after a boot. Verification uses allowed_signers
-# (all hosts' keys; see vars.ssh_keys in mise.toml).
+# Sign with the host's SSH key -- the private key, not the .pub: a .pub only
+# works while an ssh-agent holds the key. Verification uses allowed_signers
+# (vars.ssh_keys in mise.toml).
 [user]
 name = Dolf ter Hofsté
 email = 12677636+dolfth@users.noreply.github.com

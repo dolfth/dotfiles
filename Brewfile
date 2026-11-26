@@ -1,15 +1,6 @@
-# The manifest for brew-ecosystem software on the Macs. The brew-bundle task
-# concatenates this file with Brewfile.<host> (brew bundle reads one --file; the host
-# file is Brewfile.gza) and runs `brew bundle --no-upgrade`: plain `brew bundle` on
-# current Homebrew also upgrades installed entries, so this installs what is missing
-# and `up` (brew upgrade) does the upgrading. Why brew and not mise: README,
-# "Packages (the Brewfiles)". mise itself is listed so a fresh machine is complete
-# (bootstrap installs Homebrew before it runs).
+# Software both Macs share, applied by the brew-bundle task; it installs
+# what is missing, `up` does the upgrading.
 
-# omp's tap. trusted: true, because Homebrew 6+ refuses formulae from untrusted taps
-# and trust is per-machine state (~/.homebrew/trust.json), so bundle records it (why in
-# full: Brewfile.gza). The other taps carry the apps below: aerospace (window tiling;
-# config in this repo), glance (menu-bar dashboard), borders, the tsk task board CLI.
 tap "can1357/homebrew-tap", trusted: true
 tap "chamburr/tap", trusted: true
 tap "nikitabobko/tap", trusted: true
@@ -27,37 +18,31 @@ brew "jq"
 brew "mas"
 brew "mise"
 brew "mole"
-# Flaky-link ssh replacement. No daemon: the client starts mosh-server through a
-# one-off ssh (`$SHELL -c`), whose PATH comes from ~/.zshenv (mac module).
 brew "mosh"
-# Lints the repo's own task scripts; the mise-tasks/check task runs it.
+# Checks this repo's own scripts; the check task runs it.
 brew "shellcheck"
 brew "starship"
-# Runs under the dev.mise.syncthing launchd agent (mise.toml), not
-# `brew services`.
+# Runs as the dev.mise.syncthing launchd agent, not `brew services`.
 brew "syncthing"
-# Terminal task board. The herdr-plugins task registers its herdr plugin;
-# the keybindings are in herdr/config.toml.
 brew "smarzban/tap/tsk"
 brew "uv"
 
-# aerospace needs borders (above); the font carries starship's prompt glyphs.
+# aerospace paints its borders with the borders formula
 cask "nikitabobko/tap/aerospace"
 cask "balenaetcher"
 cask "brave-browser"
 cask "citrix-workspace"
+# starship's prompt glyphs
 cask "font-jetbrains-mono-nerd-font"
 cask "chamburr/tap/glance"
 cask "ghostty"
 cask "grandperspective"
-# Local dictation (push-to-talk on Option-Space); Parakeet runs on the CPU,
-# leaving the GPU for the inference servers.
 cask "handy"
 cask "iina"
 cask "imageoptim"
 cask "linearmouse"
-# Objective-See's application firewall. First run needs a terminal: the cask
-# installs a system extension that must be approved in Privacy & Security.
+# First run installs a system extension that needs a terminal and approval
+# in Privacy & Security.
 cask "lulu"
 cask "monitorcontrol"
 cask "notunes"
@@ -69,10 +54,7 @@ cask "utm"
 cask "vscodium"
 cask "whatcable"
 
-# mas installs by ID; the name is a label. The machine must be signed in to the App
-# Store and the app must be in that account's purchase history, or the entry fails. The
-# explicit `id:` form is what current homebrew-bundle accepts: a positional-ID line
-# ("mas 361285480") aborts the whole bundle.
+# The name is just a label, the id: is what brew-bundle accepts.
 mas "Discrete", id: 6746067740
 mas "Keynote", id: 361285480
 mas "Numbers", id: 361304891

@@ -1,17 +1,13 @@
-# omp's model catalog: the provider list, rendered whole on every bootstrap.
-# baseUrl renders from vars.omp_base, which the gza module sets to "127.0.0.1"
-# -- the catalog is gza-only: omp lives there alone (the base keeps the gza
-# tailnet FQDN for any host that later points at the pool).
+# omp's model catalog, rendered whole on every bootstrap: a model added or
+# changed through an omp UI is a local change, the next bootstrap resets it
+# -- edit this source. The catalog is gza-only (omp lives there alone);
+# baseUrl renders from vars.omp_base.
 #
-# A model added or changed through an omp UI is a local change: the next
-# `mise bootstrap` resets this file. Edit this source instead.
-#
-# One provider, one endpoint: llama-swap on gza:9292 fronts the GPU pool. The pool
-# stays single-tenant -- a model pick that is not loaded stops the running engine
-# and loads the picked one before the request answers, so a pick can pay the load
-# once (Flash-Next is a 111 GB image); apiKey is the pool key, read from
-# ~/.config/llama-swap/api_key by exec(). omlx is out of the pool: installed
-# on gza, no provider here.
+# One provider, one endpoint: llama-swap on gza:9292 fronts the GPU pool,
+# single-tenant. A pick that is not loaded stops the running engine and
+# loads the picked model before its request answers -- that pick pays the
+# load once. apiKey is the pool key, read by exec(). omlx is out of the
+# pool: installed, no provider here.
 ---
 providers:
   splash:

@@ -7,13 +7,10 @@ function up --description 'Upgrade macOS software: CLT, brew (the Brewfiles), Ap
 
     set -l brew_prefix (brew --prefix 2>/dev/null)
 
-    # The dev.mise.* agents run from their keg, so an upgraded keg keeps its old version
-    # loaded until restart: record each keg's target (the "/" sentinel keeps an absent
-    # keg index-aligned) and kick the one that moved -- the launchctl print guard no-ops
-    # where the agent is absent.
-    # A keg maps to the agent whose restart re-executes from it: splash has no
-    # agent of its own anymore (llama-swap starts the engines), so a moved splash
-    # keg restarts the front door, which reloads its engines on demand.
+    # The dev.mise.* agents keep their old keg loaded until restart: record
+    # each keg's target (the "/" sentinel keeps absent kegs index-aligned) and
+    # kickstart the ones that moved. splash has no agent of its own -- a moved
+    # splash keg restarts llama-swap, which reloads its engines on demand.
     set -l servers omlx splash llama-swap syncthing
     set -l agents omlx llama-swap llama-swap syncthing
     set -l kegs_before
@@ -24,9 +21,7 @@ function up --description 'Upgrade macOS software: CLT, brew (the Brewfiles), Ap
         end
     end
 
-    # brew owns the brew-ecosystem packages (README "Packages (the Brewfiles)"):
-    # one upgrade path for everything installed, including tap formulae current
-    # mise cannot evaluate.
+    # brew owns the brew ecosystem (README, "Packages (the Brewfiles)").
     brew update; and brew upgrade
 
     # App Store auto-updates are off (com.apple.commerce AutoUpdate).
@@ -46,12 +41,10 @@ function up --description 'Upgrade macOS software: CLT, brew (the Brewfiles), Ap
         end
     end
 
-    # mise owns the declared tool versions (language runtimes and friends):
-    # upgrade them; a no-op on a host whose modules declare no tools.
+    # mise owns the declared tool versions; no-op where modules declare none.
     mise upgrade
 
-    # LuxMini updates itself via Sparkle between pins; this only reinstalls
-    # when the vendored cask's pin moved ahead of the installed app. No-op
-    # off gza.
+    # Only reinstalls when the pin moved ahead of the Sparkle-updated app;
+    # no-op off gza.
     mise run luxmini
 end

@@ -1,14 +1,10 @@
 #!/usr/bin/env bash
-# The herdr plugins the keybindings rely on. Runs on every bootstrap; reinstalling
-# replaces the checkout, which is what we want.
-#   lmilojevicc/herdr-tab-rename: names each tab after its focused pane's directory,
-#   leaves manual names alone, autostarts with Herdr.
-#   tsk: `tsk setup herdr` generates the herdr-tsk plugin bundle under
-#   ~/.config/herdr/tsk-plugins/ (pointed at the installed binary) and links it. The
-#   prefix+t / prefix+a bindings live in herdr/config.toml, so setup finds them bound
-#   and rewrites nothing -- the deployed config stays identical to the repo copy,
-#   keeping `mise dot diff` empty. `tsk setup agents --yes` installs the tsk-cli skill
-#   for every agent tsk detects (omp: ~/.omp/agent/skills/).
+# The herdr plugins the keybindings rely on; a re-run replaces the checkout,
+# which is fine. herdr-tab-rename names each tab after the focused pane's
+# directory. `tsk setup herdr` generates and links the herdr-tsk bundle --
+# herdr/config.toml already binds the keys, so setup rewrites nothing and the
+# deployed config stays identical to the repo (dot diff empty).
+# `tsk setup agents --yes` installs the tsk-cli skill for detected agents.
 set -uo pipefail   # no -e: one failed plugin shouldn't abort the bootstrap
 
 if ! command -v herdr >/dev/null 2>&1; then

@@ -22,16 +22,14 @@ fi
 manifest="$(mktemp)"
 trap 'rm -f "$manifest"' EXIT
 cat "${files[@]}" > "$manifest"
-# Bound the call: brew bundle blocks with no output while a backend stalls (a wedged
-# `mas install` after a reboot, say) and the warning path below only fires on a fast
-# failure. 30 minutes still covers a slow fresh-machine install. The watchdog uses the
-# kill builtin only (pkill -P has hung indefinitely in subshells on this machine); a
+# Bound the call: brew bundle can block silently on a stalled backend (a wedged
+# `mas install`); the warning path below only fires on a fast failure. The
+# watchdog uses the kill builtin only (pkill -P hangs in subshells here); a
 # stalled mas child is orphaned but harmless.
 brew bundle --no-upgrade --file="$manifest" &
 bundle_pid=$!
-# exec, so the subshell IS sleep: a plain ( sleep … ) & forks sleep as a child, the
-# cleanup kills the subshell, and the surviving sleep holds the task's stdout open --
-# invisible in a terminal, but any consumer piping the output waits the full 30 minutes.
+# exec, so the subshell IS sleep: a surviving sleep would hold the task's
+# stdout open and make any piping consumer wait the full 30 minutes.
 ( exec sleep 1800 ) &
 watchdog=$!
 set +e

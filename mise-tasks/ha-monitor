@@ -1,37 +1,23 @@
 #!/usr/bin/env bash
 #MISE tags=["gza"]
-# The HA health check. An omp run looks for oddities in Home Assistant
-# (agent-jobs/ha-monitor.md, read-only against HA); a second leg reports the
-# outcome over ntfy.
+# The HA health check: an omp run reads Home Assistant through the read-only
+# MCP server (agent-jobs/ha-monitor.md); an unsandboxed leg reports over ntfy.
 #
 #   mise run ha-monitor            the agent run  (agent: dev.mise.ha-monitor)
 #   mise run ha-monitor report     the ntfy report (agent: dev.mise.ha-monitor-report)
 #   mise run ha-monitor profile    the generated job profile, for the eye
 #
-# The state machine, the archive, the heartbeat, the watchdog and the report
-# live in mise-tasks/_agent-job.sh. This file is the job: its parameters,
-# its preflight, its profile, its prompt.
+# Harness: mise-tasks/_agent-job.sh; clocks: the two calendar LaunchAgents
+# in mise.gza.toml (04:38 / 12:03). Work dir is the HA repo -- its AGENTS.md
+# and .omp/mcp.json are the context; the generated profile grants the repo
+# read and two files write, so a chatty model cannot touch deployables.
+# `nono run` enforces: supervised, the allow-list filters (invariant 8);
+# network is the HA host plus the model ports. Secrets are plain files: the
+# repo's .ha_token (missing: skip with a reason) and the shared ntfy topic
+# (missing: the report leg fails loudly).
 #
-# - The clocks are the two calendar LaunchAgents in mise.gza.toml (run 04:38,
-#   report 12:03). launchd coalesces a missed calendar fire into one start on
-#   wake; the report's 24 h check still calls a dead clock dead.
-# - The work dir is the HA repo ~/Documents/code/homeassistant: omp reads the
-#   repo's AGENTS.md at startup, and .omp/mcp.json connects the read-only MCP
-#   server as real tools. The generated profile grants the repo read and two
-#   files write (monitor-notes.md, report-draft.md), so a chatty model cannot
-#   touch deployables.
-# - The sandbox is a nono profile generated at run time from nono/omp.json,
-#   enforced by `nono run`: supervised, so the domain allow-list actually
-#   filters (dev-agents invariant 8). Network: the HA host only, plus the
-#   GPU-pool ports for the model. `nono why` is the static check; the proxy
-#   denies everything else.
-# - Secrets are plain files: the repo's .ha_token (the HA long-lived token,
-#   untracked) and ~/.local/state/agent-jobs/ntfy_topic (0600, shared by
-#   every agent job). A missing token skips the run with a reason; a missing
-#   topic fails the report leg loudly.
-#
-# A run that reports "did not run in the last 24 hours" right after install
-# means the clock has not reached 04:38 yet: seed it with `mise run ha-monitor`.
+# "Did not run in the last 24 hours" right after install just means the
+# clock has not reached 04:38: seed it with `mise run ha-monitor`.
 
 set -uo pipefail
 

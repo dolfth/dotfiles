@@ -1,23 +1,15 @@
 #!/usr/bin/env bash
 #MISE tags=["macos"]
-# A diffable manifest of app state on this Mac: what lives in ~/Library that the repo
-# does not own, annotated by who does. It answers "what has not transferred between
-# the Macs yet". Run it on both hosts (a terminal, not the omp sandbox -- the
-# app-support trees are denied there), then diff the comment-stripped files:
+# A diffable manifest of app state on this Mac: what lives in ~/Library that
+# the repo does not own, annotated by who does. It answers "what has not
+# transferred between the Macs yet". Run on both hosts (a terminal -- the
+# sandbox denies the app-support trees) and diff the comment-stripped files:
 #   diff <(grep -v '^#' inventory-gza.txt) <(grep -v '^#' inventory-mca.txt)
-# A '?' row on one host only is the backlog: not transferred, not in the repo, not
-# brew'd, not syncthing'd. Account rows diff separately; credentials stay in the
-# first host's keychain, the manifest only says WHICH.
-#
-# Annotation per line, first match wins: repo (a [dotfiles] target, a domain in the
-# declarative UI list _defaults.sh, or a mise-deployed plist), brew:<tok> (an
-# installed cask's bundle id or app name), sync (under a syncthing share, read from
-# the live config), ? (none of the above -- a finding).
-#
-# The saved manifest holds only stable fields (kind, origin, item) so hosts diff
-# cleanly; sizes go to stdout only, which is also why --quick skips the du pass.
-# Sections: appsupport, container, group, prefs (non-Apple domains), agent,
-# systemagent (/Library), account. Apple-owned entries are filtered out.
+# A '?' row on one host only is the backlog. Accounts diff separately;
+# credentials stay in the keychain, the manifest only says WHICH.
+# Annotation, first match wins: repo | brew:<tok> | sync | ?.
+# The saved file holds only stable fields so hosts diff cleanly; sizes go to
+# stdout only (--quick skips the du pass). Apple-owned entries are filtered.
 set -euo pipefail
 shopt -s nullglob
 

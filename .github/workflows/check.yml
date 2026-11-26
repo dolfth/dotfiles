@@ -1,8 +1,6 @@
-# The server-side backstop for the two portable legs of mise-tasks/check:
-# the config gate (leg 1) and shellcheck (leg 2). The local gate is
-# core.hooksPath, which --no-verify and a never-bootstrapped checkout skip;
-# this copy does not trust the pusher. Legs 3-5 stay local: dotfiles and
-# launchd are macOS state.
+# The server-side backstop for check's portable legs (config gate,
+# shellcheck): the local git hooks can be skipped with --no-verify; this
+# copy cannot. Legs 3-5 are macOS state and stay local.
 name: check
 
 on:
@@ -16,11 +14,9 @@ permissions:
 
 jobs:
   config:
-    # One arm per host module: CI has no miserc.local.toml (it lives only in the
-    # ~/.config/mise checkout), so MISE_ENV is what drives mise.mca/gza.toml
-    # through the parse gate. The base mise.toml -- the whole shared macOS
-    # layer -- loads in every arm.
-    # mise itself runs at the min_version floor: CI proves the floor.
+    # One arm per host module: CI has no miserc.local.toml, so MISE_ENV
+    # drives mise.mca/gza.toml through the parse gate; the base loads in
+    # every arm. mise runs at the min_version floor: CI proves the floor.
     strategy:
       fail-fast: false
       matrix:

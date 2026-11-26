@@ -1,28 +1,16 @@
-# gza's brew entries: the local-LLM servers and the agent stack (herdr, nono; the omp
-# binary itself is the dev-agents task's pinned release, not a formula). The LaunchAgents
-# that run the servers are in mise.gza.toml (run by mise, not `brew services` -- a brew
-# service would be a second, throttled copy on the same port). For the Brewfile mechanism
-# itself, see Brewfile.
+# gza only: local-LLM servers and tagent stack. Servers' LaunchAgents
+# are declared in mise.gza.toml, as `brew services` would be a second,
+# throttled copy on the same port. 
+# Omp binary is a pinned release in dev-agents.
 
-# trusted: true -- Homebrew 6+ refuses to load formulae from untrusted taps and the
-# trust state is per-machine (~/.homebrew/trust.json), never the Brewfile.
-# url: -- the tap lives in the main omlx repo, which bare `brew tap jundot/omlx`
-# does not clone by name; the formula ref stays plain.
+# url: the tap does not clone by name; it lives in the main omlx repo.
 tap "jundot/omlx", url: "https://github.com/jundot/omlx", trusted: true
-# Upstream renamed the tap to incoai/homebrew-tap (old name 404s);
-# formula and keg names unchanged.
 tap "incoai/homebrew-tap", trusted: true
+tap "mostlygeek/llama-swap", trusted: true
 
 brew "omlx"
 brew "splash"
-# The pool's front door: one endpoint, one model resident at a time (same
-# trusted-tap note as above).
-tap "mostlygeek/llama-swap", trusted: true
 brew "llama-swap"
 
-# The agent stack, gza-only: the laptop reaches it over ssh/mosh instead of installing
-# it. `omp` on PATH is the root-owned wrapper the dev-agents task installs (herdr
-# launches agents by PATH name, so every launch is sandboxed); the raw binary stays
-# omp-unsandboxed. The Brewfile carries the tools, the task the policy.
 brew "herdr"
 brew "nono"

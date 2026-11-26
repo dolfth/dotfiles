@@ -1,8 +1,7 @@
 # Managed by mise.
 
-# The Homebrew prefix's bin on PATH as a static path, not `brew shellenv`: shellenv
-# needs Homebrew to exist, and a fresh machine has none until bootstrap. An absent
-# prefix adds nothing.
+# The brew prefix on PATH as a static path, not `brew shellenv`: a fresh
+# machine has no Homebrew yet. An absent prefix adds nothing.
 for p in /opt/homebrew /usr/local
     if test -d $p/bin
         set -gx PATH $p/bin $PATH

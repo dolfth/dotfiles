@@ -1,21 +1,16 @@
 #!/usr/bin/env bash
 #MISE tags=["gza"]
-# gza's LuxMini: the front-LED menu-bar app. Homebrew 7 loads casks by name
-# only -- "Loading casks from paths, URLs or Ruby source is not supported"
-# (cask/cask_loader.rb) -- and upstream publishes no tap, so neither a
-# Brewfile entry nor `brew install --cask <file>` can carry this app. The
-# install is the task's, like dev-agents' omp binary: the pin -- vars.
-# luxmini_version + luxmini_sha256 in mise.toml, which pin-check probes
-# weekly -- and the task fetches and verifies the DMG itself. Bump from the
-# release's SHA256SUMS.txt: https://github.com/bastiencantet/luxmini-public/
-# releases. If upstream ships a tap, move this to brew.
-#
-# The app self-updates via Sparkle, so the task never downgrades: only a pin
-# ahead of the installed version reinstalls. The version's live source is the
-# app's own Info.plist, so a Sparkle update is visible with no brew metadata.
-# First launch asks for an administrator password once so the app can install
-# its privileged LED helper -- that approval is interactive and cannot live
-# in a bootstrap.
+# LuxMini, the front-LED menu-bar app. Brew cannot carry it: upstream
+# publishes no tap and brew 7 loads casks by name only, so like dev-agents'
+# omp binary the install is the task's -- pinned DMG (vars.luxmini_version +
+# luxmini_sha256 in mise.toml, probed by pin-check), fetched and verified.
+# Bump from the release's SHA256SUMS.txt
+# (https://github.com/bastiencantet/luxmini-public/releases); if upstream
+# ships a tap, move this to brew.
+# The app self-updates via Sparkle, so never downgrade: only a pin ahead of
+# the install reinstalls, and Info.plist is the version's live source. The
+# privileged LED helper's one-time admin approval is interactive and cannot
+# live in a bootstrap.
 
 set -euo pipefail
 

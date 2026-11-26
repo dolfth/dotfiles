@@ -1,27 +1,22 @@
 #!/bin/sh
-# The nwa-maintenance omp: installed as /usr/local/bin/nwa-omp (root:wheel 755)
-# by `mise run dev-agents` (__BREW_PREFIX__ substituted at install). The one omp
-# entry point where ssh lives; the daily omp denies /usr/bin/ssh. Its only job is
-# maintaining nwa (nixos-config edits, the deploy over Tailscale SSH), so start
-# it from the nixos-config checkout: --allow-cwd makes that tree the agent's whole
-# document world, like local-omp's.
+# The nwa-maintenance omp: installed by dev-agents as /usr/local/bin/nwa-omp
+# (root:wheel 755). The one omp entry point where ssh lives; its only job is
+# maintaining nwa, so start it from the nixos-config checkout -- --allow-cwd
+# makes that tree the agent's whole document world.
 #
-# Wrapped, not supervised: the network allow-list cannot carry ssh on macOS -- the
-# proxy tunnels HTTP(S) only (nolabs-ai/nono#756) and Seatbelt cannot filter
-# outbound by port -- so this profile sets no network policy at all
-# (dev-agents invariant 12). An allow-list here could not be enforced anyway.
-# Outbound is the same as the daily omp's; the isolation this profile owns is
-# filesystem and state: the named profile tree, no shared tsk store, and the
+# Wrapped, not supervised: an allow-list cannot carry ssh (the proxy tunnels
+# HTTP(S) only, nono#756; Seatbelt cannot filter by port), so this profile
+# sets no network policy at all (dev-agents invariant 12). The isolation it
+# owns is filesystem and state: named profile tree, no shared tsk store, the
 # launched workdir.
 #
-# State: OMP_PROFILE=nwa moves omp's user base to ~/.omp/profiles/nwa, invisible
-# to the daily sandbox (it denies $HOME/.omp/profiles) and to local-omp (it
-# denies .tsk; the trees never meet). herdr labels the pane nwa-omp.
+# OMP_PROFILE=nwa moves omp's user base to ~/.omp/profiles/nwa, invisible to
+# the daily sandbox and to local-omp alike.
 export HERDR_AGENT=nwa-omp
 export OMP_PROFILE=nwa
 
-# Scratch and the nono capability manifest stay under the profile tree.
-# XDG_CACHE_HOME stays shared: caches hold runtime material, never doc content.
+# Scratch and the capability manifest under the profile tree;
+# XDG_CACHE_HOME stays shared -- runtime material only.
 : "${XDG_CACHE_HOME:=$HOME/.cache}"
 TMPDIR="$HOME/.omp/profiles/nwa/tmp"
 mkdir -p "$TMPDIR"
@@ -31,17 +26,15 @@ export TMPDIR
 # are static runtime material.
 export BUN_INSTALL_CACHE_DIR="$HOME/.omp/cache/bun-install"
 
-# The sandbox denies ~/.config/fish (deny_shell_configs), so the shells this
-# agent spawns never run brew's shellenv; carry the tool paths through env.
-# Deduped: nono warns per PATH entry.
+# The sandbox denies ~/.config/fish, so spawned shells never run brew's
+# shellenv; carry the tool paths through env. Deduped: nono warns per entry.
 PATH="$(printf '%s' "$HOME/.local/bin:__BREW_PREFIX__/bin:__BREW_PREFIX__/sbin:$PATH" | awk -v RS=: -v ORS=: '!seen[$0]++' | sed 's/:$//')"
 export PATH
 
-# ~/.ssh is denied even here: auth goes through ssh-agent (public key file for
-# signing, tailnet identity for nwa), never key files. git signs from the
-# ~/.config/git copy; host keys land in the profile tree's known_hosts instead
-# of the denied ~/.ssh -- tailscale host keys rotate with the node key, so this
-# tree keeps its own, seeded at install with the git copy.
+# ~/.ssh is denied even here: signing goes through the ssh-agent with the
+# PUBLIC key, nwa auth is the tailnet identity, never a key file. Host keys
+# land in the profile tree's known_hosts -- tailscale keys rotate with the
+# node key, so this tree keeps its own, seeded at install.
 if [ -r "$HOME/.config/git/sign.pub" ]; then
   GIT_CONFIG_COUNT=$(( ${GIT_CONFIG_COUNT:-0} + 1 ))
   export GIT_CONFIG_COUNT

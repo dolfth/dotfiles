@@ -51,12 +51,11 @@ fi
 defaults write com.apple.finder NewWindowTargetPath -string "file:///$USER/"
 
 # Dock: the Downloads tile. Folder tiles live in persistent-others, which mise's
-# dock.apps never touches, and a tile needs $HOME plus binary data. It must be a
-# directory-tile with an unscoped `book` bookmark; a file-tile, or a bookmark-less
-# tile, renders "?". Those bytes come from no public creation option, so this
-# compares shape, not bytes: an existing directory-tile is left alone, a
-# file-tile or absent one is replaced. The Dock dies only if something was
-# written -- a restart rebuilds Spaces.
+# dock.apps never touches, and a tile needs $HOME plus binary data. It must be
+# a directory-tile with an unscoped `book` bookmark; anything else renders "?".
+# The exact bytes come from no public creation option, so this compares shape,
+# not bytes: an existing directory-tile is left alone. The Dock dies only if
+# something was written.
 dock_rc=0
 timeout 90 swift -suppress-warnings - <<'EOF' || dock_rc=$?
 import Foundation
@@ -129,7 +128,7 @@ chflags nohidden "${HOME}/Library" 2>/dev/null || true
 ##### UI restart (only when a domain they read changed) ######################
 #
 # Killing Dock and WindowManager rebuilds Spaces and makes AeroSpace re-tile,
-# so only restart them if the defaults bootstrap just wrote actually changed
+# so only when what the bootstrap just wrote changed what the UI reads.
 # shellcheck source=mise-tasks/_defaults.sh
 source "$(dirname "${BASH_SOURCE[0]}")/_defaults.sh"
 
@@ -148,9 +147,7 @@ fi
 #
 # "Start at Login" lives in the private login-items (BTM) store, written only by
 # the app's own toggle -- not linearmouse.json, not defaults. The item survives
-# reboots and reinstalls, so it is one step per machine, and launching the app
-# registers nothing. So this only reminds, when the app is there and the item is
-# not.
+# reboots and reinstalls, so this only reminds: app present, item missing.
 if [ "$(uname -s)" = "Darwin" ] && [ -d /Applications/LinearMouse.app ] \
   && ! sfltool dumpbtm 2>/dev/null | grep -q "com.lujjjh.LinearMouse"; then
   echo "  LinearMouse is not set to start at login: open it and tick 'Start at Login'"
@@ -196,8 +193,7 @@ sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setstealthmode on >/dev/n
 ##### MagicDNS in /etc/resolv.conf ############################################
 #
 # Programs that read the file (bun, Go without cgo) never see the Tailscale
-# supplemental resolver, so MagicDNS names return ENOTFOUND for them. Newer
-# clients rewrite the file; declaring it survives an older client or an OS rewrite.
+# supplemental resolver; declaring it survives clients that stop rewriting it.
 if ! grep -q '^nameserver 100\.100\.100\.100' /etc/resolv.conf 2>/dev/null; then
   sudo tee /etc/resolv.conf >/dev/null <<'EOF'
 search foxhound-insen.ts.net localdomain
@@ -219,9 +215,8 @@ case "${KIND:-laptop}" in
     sudo pmset -a sleep 0 disksleep 0 standby 0 hibernatemode 0 \
       powernap 0 lowpowermode 0 displaysleep 15 autorestart 1 \
       womp 1 tcpkeepalive 1
-    # "Start up when power is connected" (macOS 26.5+): Mac mini 2024+, Studio
-    # 2025+, iMac 2024+ only, not MDM-manageable, pmset the only scripted way.
-    # Unsupported hosts reject the key, so warn rather than abort.
+    # "Start up when power is connected" (macOS 26.5+, recent Macs only, pmset
+    # the only scripted way); unsupported hosts reject the key, so warn.
     if ! sudo pmset autorestartatconnect 1; then
       echo "  'Start up when power is connected' unavailable here (needs Mac mini 2024+ / Mac Studio 2025+ / iMac 2024+ on macOS 26.5+): set it in System Settings > Energy"
     fi
@@ -245,11 +240,10 @@ sudo defaults write /Library/Preferences/SystemConfiguration/com.apple.smb.serve
 
 ##### Software Update #########################################################
 #
-# Check, never download or install unasked; install by hand:
-# `softwareupdate -l` / `-i <label>`. Security stays automatic through
-# ConfigDataInstall (XProtect, Gatekeeper, no restart) and CriticalUpdateInstall
-# (Rapid Security Responses, a short restart at most) -- point releases count as
-# macOS updates, security-only ones included, so the install switch stays off.
+# Check, never download or install unasked. Security stays automatic:
+# ConfigDataInstall (XProtect, Gatekeeper) and CriticalUpdateInstall (Rapid
+# Response) need no consent; point releases count as macOS updates, so the
+# install switch stays off.
 sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticCheckEnabled -bool true
 sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticDownload -bool false
 sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticallyInstallMacOSUpdates -bool false
@@ -260,10 +254,8 @@ if [ "${KIND:-laptop}" = "desktop" ]; then
 
   ##### GPU wired memory ######################################################
   #
-  # The GPU-wired cap sets the model size omlx can load. One pool for every GPU
-  # user and nothing refused below it, so a cap near RAM freezes the machine when
-  # the pool fills. WIRED_LIMIT_MB (gza module) leaves the host room; the sysctl
-  # resets at boot, so a LaunchDaemon reapplies it.
+  # The GPU-wired cap sets the model size the pool can load; a cap near RAM
+  # freezes the machine when the pool fills. The sysctl resets at boot.
   W="${WIRED_LIMIT_MB:?WIRED_LIMIT_MB is not set; add it to the gza module}"
   WIRED="sysctl -w iogpu.wired_limit_mb=${W}"
   sudo tee /Library/LaunchDaemons/dev.mise.wired-limit.plist >/dev/null <<EOF

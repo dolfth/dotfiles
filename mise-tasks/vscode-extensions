@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
-# The vscodium extensions. Mise has no VS Code marketplace backend (no
-# `vscode:` scheme, nothing in the registry), so this list is the manifest;
-# reinstalling a present extension is a quick no-op.
+# The vscodium extensions: mise has no marketplace backend, so this list is
+# the manifest; reinstalling a present extension is a quick no-op.
 set -uo pipefail   # no -e: one failed extension shouldn't abort the bootstrap
 
 if ! command -v codium >/dev/null 2>&1; then

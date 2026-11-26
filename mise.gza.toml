@@ -1,41 +1,29 @@
-# gza: the always-on desktop. Local-LLM server (llama-swap fronting the splash
-# models; omlx installed, out of pool), omp host, reachable over SSH / screen
-# sharing / the tailnet. Select with env = ["gza"].
+# gza: the always-on desktop. Local-LLM pool, omp host. Select with
+# env = ["gza"].
 
 [vars]
 host = "gza"
 accent = "color_red"
 icon = "\U000F01C4"  # nf-md-desktop-mac
-# The servers below are local on this host; the base uses the tailnet FQDN.
+# The servers are local here; the base uses the tailnet FQDN.
 omp_base = "127.0.0.1"
 
 [env]
 HOST = "gza"
 KIND = "desktop"
-# iogpu.wired_limit_mb: the GPU wired-memory ceiling, applied by system-check's
-# LaunchDaemon. One pool for every GPU user, nothing refused below the ceiling, so
-# the ceiling is the only thing between a full pool and a frozen machine. 96 GiB
-# (75% of RAM) leaves the host room. llama-swap keeps one model resident, so its
-# two splash engines never contest the pool; omlx cannot run beside a loaded
-# engine either -- its model needs the same pool, and llama-swap cannot stop a
-# server it does not own.
+# iogpu.wired_limit_mb, applied by system-check's LaunchDaemon: the only
+# thing between a full pool and a frozen machine. 96 GiB = 75% of RAM.
 WIRED_LIMIT_MB = "98304"
-# The llama-swap API key's location, kept outside the repo: the bootstrap task
-# seeds it on gza alone. The two templates read that file by exec() themselves;
-# this entry puts the key in every task's environment.
+# Kept outside the repo, seeded by bootstrap on gza alone. The templates
+# read the file by exec(); this puts the key in every task's environment.
 LLAMA_SWAP_KEY = { file = "~/.config/llama-swap/api_key", default = "" }
 
-# The local server agents. bootstrap rewrites plists and reloads changed jobs;
-# reviving a dead one is the `bootstrap` task's job. The pool is single-tenant:
-# one always-on front door (RunAtLoad, KeepAlive, kickstart) owns the two splash
-# engines as child processes and swaps them per request by model ID. omlx stays
-# outside it, loaded by hand only, because llama-swap cannot stop a server it
-# does not own.
+# The pool front door: always-on, owns the two splash engines as child
+# processes and swaps them per request. omlx is hand-started only -- outside
+# the pool, because llama-swap cannot stop a server it does not own.
 [bootstrap.macos.launchd.agents.llama-swap]
-# The single endpoint (9292) for the pool's models; splash's own flags, keys and
-# preload live in llama-swap/config.yaml.tera, rendered to
-# ~/.config/llama-swap/config.yaml. The engine logs arrive here too
-# (logToStdout), and the UI at /ui shows who holds the pool.
+# Single endpoint (9292); flags, keys and preload live in the rendered
+# config. Engine logs arrive here too (logToStdout).
 program = "{{ system_brew_prefix }}/opt/llama-swap/bin/llama-swap"
 args = ["--config", "{{ env.HOME }}/.config/llama-swap/config.yaml", "--listen", "0.0.0.0:9292"]
 run_at_load = true
@@ -59,20 +47,13 @@ stdout_path = "{{ env.HOME }}/Library/Logs/omlx.log"
 stderr_path = "{{ env.HOME }}/Library/Logs/omlx.log"
 kickstart = false
 
-# The two splash servers are llama-swap's child processes, not LaunchAgents:
-# llama-swap starts and stops them on 127.0.0.1:8000 (27B) and 127.0.0.1:8100
-# (Flash-Next) per the rendered config. They bind loopback only; the 9292
-# front door faces the tailnet and carries the API key.
+# The splash engines are llama-swap's loopback children, not LaunchAgents;
+# the 9292 front door faces the tailnet and carries the API key.
 
-# The HA health check (mise-tasks/ha-monitor): the run agent starts the omp
-# job, the report agent sends the ntfy message. Calendar clocks only, like
-# pin-check: bootstrap loads them, never starts them -- an off-schedule start
-# would fake a heartbeat. The job's work dir is the HA repo (its AGENTS.md and
-# MCP config are the context; the run may write only its notes and draft
-# there), its sandbox reaches only this host's model ports and Home Assistant
-# at 192.168.0.253, and the report leg runs unsandboxed and is the only piece
-# that can post to ntfy. Secrets are plain files: the repo's .ha_token and the
-# ntfy topic.
+# The HA health check (mise-tasks/ha-monitor): run agent, then the unsandboxed
+# report leg. Calendar clocks only -- bootstrap loads, never starts; an
+# off-schedule start would fake a heartbeat. Work dir, sandbox and secrets:
+# the task's own header.
 [bootstrap.macos.launchd.agents.ha-monitor]
 program = "{{ system_brew_prefix }}/bin/mise"
 args = ["run", "ha-monitor"]
@@ -97,11 +78,9 @@ stderr_path = "{{ env.HOME }}/Library/Logs/ha-monitor-report.out.log"
 run_at_load = false
 kickstart = false
 
-# The HA updater (mise-tasks/ha-update, agent-jobs/ha-update.md): the
-# ha-monitor pattern with weekly clocks (run Fri 02:33, report Fri 06:03 after
-# the 90-min run plus restart margin), same secrets, same sandbox shape. This
-# job mutates HA: the network allow-list (HA + model ports only) is the write
-# guard. OS and Supervisor image updates stay the user's call; see the brief.
+# The HA updater (mise-tasks/ha-update): ha-monitor's pattern, weekly clocks
+# (run Fri 02:33, report Fri 06:03). It mutates HA; the network allow-list is
+# the write guard.
 [bootstrap.macos.launchd.agents.ha-update]
 program = "{{ system_brew_prefix }}/bin/mise"
 args = ["run", "ha-update"]
@@ -126,14 +105,9 @@ stderr_path = "{{ env.HOME }}/Library/Logs/ha-update-report.out.log"
 run_at_load = false
 kickstart = false
 
-# The external probe of nwa (mise-tasks/nwa-health,
-# agent-jobs/nwa-health.md): an omp run on gza checks nwa over Tailscale SSH,
-# read-only. Same state machine as ha-monitor; run 06:13, report 12:03.
-# The sandbox is the nwa-omp shape: `nono wrap` on a profile generated from
-# the installed nwa-omp.json -- ssh survives, and a domain allow-list could
-# not carry it anyway (dev-agents invariant 12). The work dir is the
-# nixos-config flake repo (its AGENTS.md is the context); only
-# health-notes.md and report-draft.md are writable there.
+# External probe of nwa over Tailscale SSH, read-only (mise-tasks/nwa-health):
+# ha-monitor's state machine; the nwa-omp sandbox shape, ssh surviving an
+# allow-list is impossible (dev-agents invariant 12).
 [bootstrap.macos.launchd.agents.nwa-health]
 program = "{{ system_brew_prefix }}/bin/mise"
 args = ["run", "nwa-health"]
@@ -159,34 +133,22 @@ run_at_load = false
 kickstart = false
 
 [bootstrap.macos.defaults."com.bastiencantet.luxmini"]
-# Set-and-forget mode: the icon hides, the LED control stays. Relaunching
-# LuxMini (open -a LuxMini) re-shows the icon and opens Settings. The key is
-# the app's own ui.hide_icon pref, read off the live domain.
+# The app's own pref; relaunching LuxMini re-shows the icon.
 "ui.hide_icon" = true
 
 [dotfiles]
-# The agent stack lives on gza: mca reaches omp over ssh/mosh.
-# config.yml is a symlink, so /settings edits flow back into the repo instead of
-# resetting. models.yml is a whole-file template: vars.omp_base is 127.0.0.1 here.
 "~/.omp/agent/config.yml" = "omp/agent/config.yml"
 "~/.omp/agent/models.yml" = { source = "omp/agent/models.yml.tera", mode = "template" }
-# The pool front door's config: whole-file template, the API key rendered from
-# LLAMA_SWAP_KEY. llama-swap reads it from this path (--config), never the repo.
+# llama-swap reads this path (--config), never the repo.
 "~/.config/llama-swap/config.yaml" = { source = "llama-swap/config.yaml.tera", mode = "template" }
-# omlx writes these from its UI, so each entry deep-merges over the live file:
-# objects merge, arrays and scalars replace, so its auth secrets and model list
-# survive. Rendered as Tera first.
+# Deep-merged over what omlx writes, so its auth secrets and model list survive.
 "~/.omlx/settings.json/pinned" = { source = "omlx/settings.json", merge = true, template = "tera" }
 "~/.omlx/model_settings.json/pinned" = { source = "omlx/model_settings.json", merge = true, template = "tera" }
 "~/.omlx/model_profiles.json/pinned" = { source = "omlx/model_profiles.json", merge = true, template = "tera" }
-# omlx keeps settings.json 0600 (auth keys); hold that even if it is recreated.
+# omlx holds its auth-key file 0600; keep that even if it is recreated.
 "~/.omlx/settings.json" = { permissions = "0600" }
 
-# pi owns its settings file; the merge re-asserts the two pinned keys and
-# keeps whatever pi wrote for itself.
 "~/.pi/agent/settings.json/pinned" = { source = "pi/agent/settings.json", merge = true }
-# herdr rewrites its config itself (reset-keys, the first-run wizard), so
-# this is a copy, not a symlink. The agent-pane keybindings live here because
-# gza hosts the dev agents.
+# A copy: herdr rewrites its own config (reset-keys, first-run wizard).
 "~/.config/herdr/config.toml" = { source = "herdr/config.toml", mode = "copy" }
 

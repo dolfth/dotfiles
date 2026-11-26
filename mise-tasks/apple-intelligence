@@ -1,11 +1,9 @@
 #!/usr/bin/env bash
 #MISE tags=["macos"]
-# Apple Intelligence removal via pared (https://github.com/4evy/pared). The policy
-# (every feature off) writes local prefs and generates a managed profile that installs
-# into /Library/Managed Preferences -- the only place mobileassetd reads from (its
-# sandbox rejects ordinary defaults writes). The cleanup asks Apple's asset service to
-# remove downloaded models; SIP stays on. Forced prefs plus download blocks is the
-# ceiling without supervised MDM. No-op off Apple silicon macOS 27+.
+# Apple Intelligence removal via pared (https://github.com/4evy/pared): every
+# feature off, the managed profile that blocks re-downloads (the ceiling
+# without supervised MDM), the downloaded models removed. SIP stays on.
+# No-op off Apple silicon macOS 27+.
 
 set -uo pipefail   # no -e: one step failing must not abort the rest
 
@@ -24,11 +22,10 @@ fi
 
 ##### 1. The pinned release binary ###########################################
 #
-# No mainline brew formula (the tap's is a source build wanting full Xcode) and no
-# mise backend, so the release goes under ~/.local/share/pared, called by absolute
-# path, never on PATH. Bump vars.pared_version (mise.toml); a mismatch
-# replaces the install. A missing var stops the task -- there is no default to
-# fall back to.
+# No brew formula (the tap's is a source build wanting full Xcode) and no
+# mise backend: the release lives under ~/.local/share/pared, called by
+# absolute path, never on PATH. Bump vars.pared_version (mise.toml); a
+# missing var stops the task.
 
 ver=$(mise vars --json | jq -r '.pared_version // empty')
 [ -n "$ver" ] || { echo "apple-intelligence: vars.pared_version not set (mise.toml)" >&2; exit 1; }
@@ -69,10 +66,9 @@ fi
 
 ##### 2. The policy: every feature off #######################################
 #
-# The supported local preferences (Siri keys included) plus the policy the
-# profile is generated from. A sandboxed domain that cannot
-# be written without FDA fails the command, not the run: profile and cleanup do not
-# depend on those writes, and the next FDA-carrying bootstrap re-applies them.
+# A sandboxed domain that cannot be written without FDA fails the command,
+# not the run: later steps do not depend on those writes, and the next
+# FDA-carrying bootstrap re-applies them.
 
 if "$pared" disable all; then
   echo "  policy: every feature disabled (Siri included)"
@@ -82,10 +78,10 @@ fi
 
 ##### 3. The profile (the one manual step) ###################################
 #
-# `pared profile open` stages the .mobileconfig and opens System Settings; the click
-# is the human's. The download blocks land in
-# /Library/Managed Preferences/com.apple.MobileAsset.plist, which is the check: absent
-# means no profile, so it opens again. An installed profile is never replaced here.
+# `pared profile open` stages the .mobileconfig and opens System Settings; the
+# click is the human's. /Library/Managed
+# Preferences/com.apple.MobileAsset.plist is the marker: absent means no
+# profile, so it opens again. An installed profile is never replaced here.
 
 if [ -f "/Library/Managed Preferences/com.apple.MobileAsset.plist" ]; then
   echo "  profile installed (the download blocks are in place)"
@@ -104,10 +100,9 @@ fi
 
 ##### 4. Model cleanup #######################################################
 #
-# Asks Apple's asset service to remove the models the disabled features would have
-# downloaded, then checks the folders. Removal is daemon-driven and always runs (the
-# profile blocks re-downloads); the folder check needs FDA, so without it the result is
-# reported unverified. Warnings only: never fails the bootstrap.
+# Removal is daemon-driven and always runs (the profile blocks re-downloads);
+# the folder check needs FDA, so without it the result is reported
+# unverified. Warnings only: never fails the bootstrap.
 
 fda=1
 if ! head -c1 "/Library/Application Support/com.apple.TCC/TCC.db" >/dev/null 2>&1; then

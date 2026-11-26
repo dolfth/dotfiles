@@ -61,10 +61,9 @@ if [ -f "${HOME}/Library/LaunchAgents/dev.mise.nwa-health.plist" ]; then
   mkdir -p "${HOME}/.local/state/agent-jobs/nwa-health"
   echo "  nwa-health: state tree at ~/.local/state/agent-jobs/nwa-health"
 fi
-# The llama-swap API key, outside the repo. Seeded before any template can use
-# it (notes/services.md); on a fresh gza that ordering misses the first
-# apply, so a second bootstrap renders the key into llama-swap's config and
-# omp's catalog -- same re-run story as the miserc seed.
+# The llama-swap API key, outside the repo, seeded before any template uses
+# it (README, Desktop services). On a fresh gza the ordering can miss the first
+# apply; a second bootstrap renders it, same re-run story as the miserc seed.
 if [ -f "${HOME}/Library/LaunchAgents/dev.mise.llama-swap.plist" ]; then
   if [ ! -s "${HOME}/.config/llama-swap/api_key" ]; then
     mkdir -p "${HOME}/.config/llama-swap"

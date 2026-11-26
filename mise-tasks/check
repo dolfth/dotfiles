@@ -1,29 +1,18 @@
 #!/usr/bin/env bash
 #MISE tags=["macos"]
 # The repo's own self-test, wired in automatically: the pre-commit/pre-push
-# hooks (mise-tasks/hooks, gated by core.hooksPath, which the pre-packages hook
-# sets) refuse unchecked trees, and the final hook ends every bootstrap with
-# this task. Five legs:
-#
-#   1. config gate   -- the pre-packages assertion (mise.toml) at commit time:
-#                      `mise env` is the config load, and a typo'd key only
-#                      warns, so the gate fails on unknown fields instead of
-#                      passing them through.
-#   2. shellcheck    -- every task script and helper in the repo.
-#   3. idempotence   -- `mise dot diff` must be empty: a diff is drift between
-#                      declared state and this machine.
-#   4. heartbeat     -- the weekly pin-check agent is loaded and its log
-#                      written within 8 days (the pin-check result is in the
-#                      log; this leg checks the agent itself fires).
-#   5. agent jobs    -- gza only (gated on HOST): the run and report agents of
-#                      ha-monitor, ha-update and nwa-health are loaded and
-#                      their heartbeats are fresh -- daily jobs at most 2
-#                      days, ha-update weekly (at most 8 days). The ntfy
-#                      reports are the alarms; this leg catches a dead
-#                      schedule that cannot report its own death.
-#
-# The omp sandbox denies the dotfiles' target paths, so leg 3 self-skips there with a
-# note -- run this task from a normal shell for it to mean anything.
+# hooks refuse unchecked trees, the final hook ends every bootstrap with it.
+# Five legs:
+#   1. config gate   -- `mise env` must parse clean; a typo'd key only warns
+#                      normally, the gate turns that into a failure.
+#   2. shellcheck    -- every task script, helper and hook.
+#   3. idempotence   -- `mise dot diff` empty: a diff is drift.
+#   4. heartbeat     -- the pin-check agent loaded, its log within 8 days.
+#   5. agent jobs    -- gza: ha-monitor, ha-update and nwa-health run/report
+#                      agents loaded, heartbeats fresh (daily 2 d, weekly
+#                      8 d) -- a dead schedule cannot report its own death.
+# The omp sandbox denies the dotfile targets: leg 3 self-skips there -- run
+# this from a normal shell for it to mean anything.
 
 set -uo pipefail   # no -e: every leg runs and reports; the exit code sums up
 

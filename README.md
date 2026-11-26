@@ -5,213 +5,297 @@ Two Macs, configured by [mise](https://mise.jdx.dev) from this repo:
 | Host | OS | What it is |
 |---|---|---|
 | `mca` | macOS | laptop |
-| `gza` | macOS | desktop: always-on llama-swap front for the two splash pool models (omlx installed, out of pool), omp host |
+| `gza` | macOS | desktop: for dev and local ai |
 
-nwa, the NixOS server, is not configured from this repo: its flake owns
-the whole machine. gza monitors and maintains it: the `nwa-health` job
-probes it over Tailscale SSH, and its flake gets edits over ssh through
-the `nwa-omp` entry point.
-
-The checkout *is* the global mise config: `~/.config/mise` is this repo.
-Packages, dotfiles, and the tasks bootstrap runs all live here, so the git
-history is the dotfile history.
+This repo is checked out as `~/.config/mise`, which is where mise reads
+its global config.
 
 - Update one machine: edit, commit, push, run `mise bootstrap` there.
 - Update every machine: `mise bootstrap remote` from any one of them.
 - Add a machine: follow the bootstrap below.
 
-Remote: `git@github.com:dolfth/dotfiles.git`, branch `main`.
-
-Reference: [files](notes/dotfiles.md) · [tasks](notes/tasks.md) ·
-[sandbox](notes/sandbox.md) · [services](notes/services.md) ·
-[pitfalls](notes/pitfalls.md)
-
 ## Bootstrap a Mac
 
 **Sign in to the App Store first.** The Brewfile's App Store entries
-(`mas`) cannot download until the machine is signed in, and an app must
-already be in its purchase history; a bootstrap without a sign-in warns
-with the missing app IDs instead of installing them.
+(`mas`) cannot download until the machine is signed in. An App Store app
+must also already be in the purchase history.
 
 ```bash
-xcode-select --install                                        # 1. Command Line Tools (git and Homebrew need them)
-ssh-keygen -t ed25519 -a 100 -N "" -C gza -f ~/.ssh/id_ed25519   # 2. GitHub key; -C names the machine
-pbcopy < ~/.ssh/id_ed25519.pub                                #    add under GitHub → Settings → SSH and GPG keys
-ssh -T git@github.com                                         #    must answer "Hi dolfth!"
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"   # 3. Homebrew (official installer; needs sudo)
-# 3b. run the installer's own "Next steps" -- on Apple silicon they put
-#     brew on PATH via ~/.zprofile; do them before continuing.
-brew install mise                                             # 4. mise
-mise bootstrap --adopt 'git@github.com:dolfth/dotfiles.git?ref=main' -E mac,gza   # 5. everything else; laptop: -E mac,mca
+# 1. Install Command Line Tools for git and Homebrew
+xcode-select --install
+
+# 2. Create GitHub key with -C for the machine name
+ssh-keygen -t ed25519 -a 100 -N "" -C gza -f ~/.ssh/id_ed25519
+
+# 3. Paste the key under GitHub → Settings → SSH and GPG keys
+pbcopy < ~/.ssh/id_ed25519.pub
+
+# 4. Check if the key is working
+ssh -T git@github.com
+
+# 5. Install Homebrew from the official installer and run the
+#    installer's "Next steps"
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# 6. Install mise
+brew install mise
+
+# 7. Bootstrap the machine; -E names the environment, the machine
+#    name, so mise loads mise.<ENV>.toml; --save-env records the
+#    selection in miserc.local.toml
+mise bootstrap --adopt 'git@github.com:dolfth/dotfiles.git?ref=main' -E gza --save-env
 ```
 
-Step 5 clones the repo into `~/.config/mise` and runs the bootstrap:
-packages (`brew bundle` over the Brewfiles), dotfiles, the launchd
-agents, the system settings, the vscodium extensions, and, on gza, the
-herdr extensions and the omp sandbox. Then the Apple Intelligence
-removal.
+The last step clones the repo into `~/.config/mise` and runs the
+bootstrap: packages (`brew bundle` over the Brewfiles), dotfiles, the
+system settings, the launchd agents, the vscodium extensions, and, on
+gza, the herdr extensions and the omp sandbox. Finally the Apple
+Intelligence removal on both.
 
-Three things need a terminal at the machine afterwards (ssh is skipped
-for the first):
+Three things need a user present at the Mac:
 
-- `mise run dev-agents && mise run system-check` -- their sudo parts need a TTY. `dev-agents` skips off gza.
-- The Apple Intelligence task opens a profile in System Settings; click
-  Install. One manual click per machine.
+- `mise run dev-agents && mise run system-check`; the sudo parts need a
+  TTY. `dev-agents` skips off gza.
+- The Apple Intelligence task opens a profile in System Settings; needs
+  a manual click on "Install".
 - Tick "Start at Login" in LinearMouse -- a UI-only toggle; the system
   check reminds while it is unticked.
 
 The traps worth knowing before you debug a half-configured box (env
-selection, cwd sensitivity, the version floor, machine replacement):
-[notes/pitfalls.md](notes/pitfalls.md).
+selection, the version floor, machine replacement):
+the Pitfalls section at the end.
 
 ## SSH between hosts
 
-The mac module renders the `sshKeys` var to `~/.ssh/authorized_keys` on
-both Macs, so any fleet machine can `ssh <host>.<tailnet>` without a
-password. The var is the list at <https://github.com/dolfth.keys>; to
-retire a machine, drop its key from both and bootstrap. Keys added by
-hand on a host do not survive the next bootstrap.
+The main module renders the `ssh_keys` var to `~/.ssh/authorized_keys`
+on both Macs, so any fleet machine can `ssh <host>.<tailnet>` without a
+password. The var is the list at <https://github.com/dolfth.keys>. To
+retire a machine, drop its key from both GitHub and the var. Keys added
+by hand on a host do not survive the next bootstrap.
 
-nwa is not bootstrapped from here, but connecting to it has a quirk:
-it runs Tailscale SSH, whose first connection from a new key prints an
-approval URL -- approve the key persistently in the Tailscale admin
-console, or every unattended probe (the `nwa-health` agent) waits on a
-browser. Its flake owns authorized_keys. The Macs stay on the Tailscale
-app variant: it cannot serve Tailscale SSH (variant matrix), and keys
-cover the paths where that would matter, LAN included. gza keeps
-password auth for one
-case only: the pre-unlock FileVault login window
-(`man apple_ssh_and_filevault`) takes a password, no keys -- after a
-power cut that is the way back in. Keep the Tailscale app current: the
-TS-2026-014..017 fixes are in 1.104.4.
+The NixOS server nwa is not bootstrapped from this repo. Its flake owns
+authorized_keys. It runs Tailscale SSH, whose first connection from a
+new key prints an approval URL. This key can be approved persistently in
+the Tailscale admin console, or every unattended probe (the `nwa-health`
+agent) waits on approval.
+
+After a power cut gza will restart automatically. For unlocking FileVault
+remotely gza keeps password auth (`man apple_ssh_and_filevault`) as keys
+are inside the FileVault volume.
 
 ## Day to day
 
 ```bash
-cd ~/.config/mise          # the repo; the mise config reads from here
-mise bootstrap             # apply everything (hooks + packages + dotfiles)
-mise dot status            # the file list; `mise dot diff` previews changes
+# To apply everything (hooks + packages + dotfiles):
+cd ~/.config/mise && mise bootstrap
+
+# To see the file list; `mise dot diff` previews changes
+mise dot status
+
+# To commit and push
 git commit -am "…"; git push
 ```
 
 Edit a template: preview with `mise dot diff`, re-render with
-`mise dot apply`. To audit coverage, `mise dot files <path>` (mise >=
-2026.11.5) shows per-file state -- `tracked`/`excluded`/`omitted`/
-`untracked`/`partial` -- and names the rule behind each.
+`mise dot apply`. To audit coverage, `mise dot files <path>` shows
+per-file state `tracked`/`excluded`/`omitted`/`untracked`/`partial` and
+why.
 
-`mise bootstrap --update` (mise >= 2026.11.0) fast-forwards
-`~/.config/mise` with `git pull --ff-only` and re-runs the whole
-bootstrap from the new commit. A diverged checkout stops the run: pull
-by hand, then re-run.
+`mise bootstrap --update` fast-forwards `~/.config/mise` with
+`git pull --ff-only` and re-runs the whole bootstrap from the new
+commit. If a diverged checkout stops the run: pull by hand, then re-run.
 
-`mise bootstrap unapply` removes the dotfiles, packages, and services
-the config declares. Use it when a machine leaves the fleet or a module
-is retired.
+When a machine leaves the fleet or a module is retired:
+`mise bootstrap unapply` removes the dotfiles, packages, and services.
 
-## Fleet sync (`mise bootstrap remote`)
+## Fleet sync
 
-One command takes the whole fleet from this repo:
+Any machine can orchestrate a sync by:
 
 ```bash
-cd ~/.config/mise   # the repo; run it here
-mise bootstrap remote --adopt 'git@github.com:dolfth/dotfiles.git?ref=main' --tag mac --update
+cd ~/.config/mise
+mise bootstrap remote --adopt 'git@github.com:dolfth/dotfiles.git?ref=main' --update
 ```
 
-It connects over SSH to every machine in the `[bootstrap.remote.hosts]`
+This connects over SSH to every machine in the `[bootstrap.remote.hosts]`
 inventory (`mise.toml`) and, on each one, adopts this checkout as its
-`~/.config/mise` (`--update` fast-forwards an existing checkout so a
-host behind `main` does not re-apply its stale commit), then runs the
-full `mise bootstrap` there: hooks, packages, dotfiles, services. A host
-that fails is reported at the end while the others proceed.
-
-Any machine can orchestrate. gza is the default because it is always on
-and reachable; mca only while awake on the tailnet. `--tag mac` targets
-both Macs.
-
-- The remote run loads each host's own `miserc.local.toml` -- the same
-  file local runs use, so there is one selection per machine. A
-  brand-new host has none: pass `--remote-env mac` on the one-time
-  onboarding command; on a Mac the bootstrap then writes `["mac"]`
-  plus a nudge to add the host module, for the box's later local runs.
-- The Macs need no `--force-dotfiles`: their rewriting configs are
-  symlinked or merged, and the omp config that would drift lives on
-  gza alone.
-
-A brand-new machine lays its OS floor first -- the Mac steps above.
-Then, from anywhere, with no session on
-the box:
-
-```bash
-mise bootstrap remote --adopt '…' --host newbox.ts.net --remote-env mac
-```
+`~/.config/mise`. The `--update` option fast-forwards an existing
+checkout so a host behind `main` does not re-apply its stale commit. It
+then runs the full `mise bootstrap` there.
 
 ## Config layout
 
 | File | Loads when | Holds |
 |---|---|---|
-| `mise.toml` | always | per-host fallback vars (accent/icon/tailnet/sshKeys), the shared dotfiles (incl. the aerospace merge), the syncthing LaunchAgent for both Macs, the bootstrap hooks, the fleet inventory (`[bootstrap.remote]`) |
-| `mise.mac.toml` | `mac` selected | both Macs: the declarative macOS defaults, the pin table (`[vars]`: omp, pared, LuxMini -- version + sha256, consumed by the fetching tasks and pin-check), `$EDITOR`/`$VISUAL` (helix), `~/.zshenv`, `~/.zshrc`, `~/.ssh/config`, the fish functions, linearmouse |
-| `mise.mca.toml` | `mca` selected | the laptop: host identity vars (host/accent/icon, HOST/KIND) |
-| `mise.gza.toml` | `gza` selected | the desktop: the llama-swap and omlx LaunchAgents, the omp, omlx, pi and herdr configs, the llama-swap front door's config; its brew entries, the agent stack included, are in `Brewfile.gza` |
-| `miserc.local.toml` | never committed | this machine's selection: `env = ["mac", "<host>"]` |
-| `Brewfile`, `Brewfile.gza` | the brew-bundle task | the brew manifest: the shared entries, plus the desktop's servers and agent stack |
-| `notes/` | never loaded | the reference: files and their merge/copy rationale, the task table, the sandbox installs, the GPU-pool services, the pitfalls |
+| `mise.toml` | always | the config both Macs share: fallback identity vars (host/accent/icon), `omp_base`, tailnet and `ssh_keys`, the pinned release versions the fetching tasks and pin-check read, macOS defaults, `$EDITOR`/`$VISUAL` (helix), shared dotfiles, the syncthing and pin-check LaunchAgents, the bootstrap hooks, the fleet inventory for sync |
+| `mise.mca.toml` | `mca` selected | the laptop: host identity vars |
+| `mise.gza.toml` | `gza` selected | the desktop: the llama-swap and omlx LaunchAgents plus the six agent-job clocks, the herdr, llama-swap, omp, omlx and pi configs, `WIRED_LIMIT_MB`, `LLAMA_SWAP_KEY`, the LuxMini pref |
+| `miserc.local.toml` | never committed | this machine's selection: `env = ["<host>"]`; the pre-packages hook writes it on a fresh checkout |
+| `Brewfile` | brew-bundle task | the brew formulae, casks, and App Store apps both Macs share |
+| `Brewfile.gza` | brew-bundle task, gza | the additional desktop packages: omlx + splash + llama-swap + herdr + nono |
 
-The selection in `miserc.local.toml` decides which `mise.<env>.toml`
-modules load. Everything else is environment-neutral.
+The selection in `miserc.local.toml` names this machine's module, 
+everything else is shared by both Macs.
 
-## Packages (the Brewfiles)
+`brew bundle` (the brew-bundle task) just installs what is missing. 
+Upgrades are done by the function `up`.
 
-| What | Where |
-|---|---|
-| the formulae, casks, and App Store apps both Macs share | `Brewfile` |
-| omlx + splash + llama-swap, desktop only | `Brewfile.gza` |
-
-`brew bundle` (the brew-bundle task) installs what is missing and never
-upgrades what is present; daily upgrades go through `up`. App Store
-entries (`mas`) require the machine to be signed in to the App Store,
-and the app in the account's purchase history -- otherwise they fail and
-the task reports the missing IDs.
-
-Why brew owns the brew ecosystem: mise cannot install omlx, splash,
-llama-swap and omp (its formula shim lacks their taps' brew DSL, and resolution is
-all-or-nothing per batch), while brew evaluates its own formulas
-natively. Everything else is mise's: dotfiles, tasks and hooks, launchd
-agents, the declarative macOS defaults, declared tool versions -- and
-mise itself, as a brew formula. One exception fits neither ecosystem:
-pared, the Apple Intelligence removal, has no formula and no mise
-backend, so its task installs the pinned, checksum-verified GitHub
-release itself.
+Homebrew installs the tapped servers mise cannot reach: omlx, splash
+and llama-swap (mise's formula shim lacks their taps' brew DSL, and
+resolution is all-or-nothing per batch). The dotfiles, tasks and hooks,
+launchd agents and macOS defaults are mise's. omp, LuxMini and pared
+(the Apple Intelligence removal) fit neither ecosystem: no formula, no
+mise backend, so their respective tasks installs their pinned,
+checksum-verified GitHub release: dev-agents the omp binary, luxmini
+the DMG, apple-intelligence the tarball.
 
 ## Files (`[dotfiles]`)
 
-Every declared file, its target, and the per-file reasoning (why a copy
-where a symlink would leak the repo's permissions, why a merge where an
-app rewrites its own config): [notes/dotfiles.md](notes/dotfiles.md).
-The gza omp sandbox installs -- profiles, wrappers, agent notes -- are in
-[notes/sandbox.md](notes/sandbox.md).
+| Source | Target | Mode | Notes |
+|---|---|---|---|
+| `zshenv` | `~/.zshenv` | copy | the brew PATH and `$EDITOR` for `$SHELL -c` child shells where mosh's ssh finds `mosh-server` |
+| `zshrc` | `~/.zshrc` | copy | starts fish |
+| `ssh_config` | `~/.ssh/config` | copy 0600 | a symlink would expose the repo file's permissions to ssh |
+| `ssh/authorized_keys.tera` | `~/.ssh/authorized_keys` | render 0600 | the `ssh_keys` var; hand-added keys need to go into the var |
+| `fish/config.fish` | `~/.config/fish/config.fish` | symlink | the mise activation block |
+| `fish/functions/*.fish` | `~/.config/fish/functions/` | symlink | `up` for upgrades, `mkd` for new directory, `tstat` for tailnet peers, `port` for holder of a port |
+| `starship.toml.tera` | `~/.config/starship.toml` | render | per-host accent and icon from the vars |
+| `git/config` | `~/.config/git/config` | symlink | signs commits and tags with `~/.ssh/id_ed25519` |
+| `git/allowed_signers.tera` | `~/.config/git/allowed_signers` | render | every host's public key (the `ssh_keys` var) |
+| `ghostty/config` | `~/.config/ghostty/config` | symlink | Nerd Font, so starship's glyphs render |
+| `aerospace/aerospace.toml` | `~/.config/aerospace/aerospace.toml` | merge | AeroSpace rewrites the file itself when the layout changes in-app |
+| `herdr/config.toml` | `~/.config/herdr/config.toml` | copy | gza; herdr rewrites the file itself (reset-keys, first-run wizard) |
+| `linearmouse.json` | `~/.config/linearmouse/linearmouse.json` | merge | fills only the missing keys; LinearMouse owns the file afterwards |
+| `handy/settings_store.json` | `~/Library/Application Support/com.pais.handy/settings_store.json` | symlink | Handy saves the store with a plain write, so in-app edits land in the repo: commit them. Where Handy already ran, `mise dot add` adopts the live file first |
+| `pi/agent/settings.json` | `~/.pi/agent/settings.json` | merge | gza; the two pinned keys, deep-merged into the file pi writes |
+| `omlx/*.json` | `~/.omlx/` | render + merge | gza; the repo's keys deep-merged into omlx's files, so its own auth keys and model list survive; `settings.json` held 0600 even if recreated |
+| `omp/agent/config.yml` | `~/.omp/agent/config.yml` | symlink | gza; `/settings` changes flow back into the repo: commit them |
+| `omp/agent/models.yml.tera` | `~/.omp/agent/models.yml` | render | gza; the pool's catalog, one endpoint behind llama-swap (see Desktop services) |
+| `llama-swap/config.yaml.tera` | `~/.config/llama-swap/config.yaml` | render | gza; the pool's front door (see Desktop services) |
+
+Modes: symlink is the mise default; copy writes the file; render expands
+the `.tera` template first; merge rewrites only the repo's keys, at the
+target file's top level, and leaves the app's own keys alone -- the id
+after the target path (`pinned`, `initial`) names the merge, it is not
+a key in the file. `zshenv`/`zshrc` copy where the default would
+symlink: the omp sandbox denies `~/.zshrc`, and a deny follows a symlink
+into the repo, denying the agent the repo's own copy.
+
+Rows without a host apply to every machine. Files on disk that no module
+declares are left alone. To delete a deployed file, declare it
+`mode = "absent"`. `mise dot unapply` removes what the config still
+declares, so run it before deleting a declaration, not after.
+
+### The omp agent sandbox (gza)
+
+There are three ways to run omp in a nono sandbox: `omp`, `local-omp`,
+ `nwa-omp`. Each is a root:wheel wrapper plus a nono profile under
+`/usr/local` installed by `dev-agents`.
+
+| Source | Target | Notes |
+|---|---|---|
+| `nono/omp.json` | `/usr/local/etc/nono/omp.json` | the daily Seatbelt profile, installed by copy since the agent must not edit its own sandbox. Denies `~/.omp/profiles` (the offline profiles' state) and `/usr/bin/ssh` |
+| generated from `omp.json` + `vars.omp_base` | `/usr/local/etc/nono/local-omp.json` | the offline profile: allow-list of the model host only, so the two profiles cannot drift |
+| generated from `omp.json` | `/usr/local/etc/nono/nwa-omp.json` | the ssh-capable nwa profile: undoes the ssh deny, denies `~/.tsk`, carries no network policy (invariant 12) |
+| `nono/omp-wrapper.sh` | `/usr/local/bin/omp` | the name on PATH is the wrapper, so `omp` launches are sandboxed; the unsandboxed one is an explicit `omp-unsandboxed` |
+| `nono/local-omp-wrapper.sh` | `/usr/local/bin/local-omp` | offline work: `OMP_PROFILE=local` relocates sessions, logs and memory into `~/.omp/profiles/local`, which the daily profile denies. Runs `nono run` -- the allow-list filter needs the supervisor's proxy |
+| `nono/nwa-omp-wrapper.sh` | `/usr/local/bin/nwa-omp` | the one entry with ssh, exclusively for nwa: start it from the nixos-config checkout; `OMP_PROFILE=nwa`, host keys in the profile tree's own `known_hosts` |
+| `nono/AGENTS-sandbox*.md` | `~/.omp/agent/AGENTS.md` and the two profile trees | the note each agent loads |
 
 ## Tasks and hooks (`mise-tasks/`)
 
-The full task table -- hook slots, what each task does, the heartbeat and
-sandbox contracts: [notes/tasks.md](notes/tasks.md).
+| Task | Hook | Does |
+|---|---|---|
+| `defaults-snapshot` | pre-packages | hashes the defaults domains the UI reads, before bootstrap writes them |
+| `brew-bundle` | pre-packages | `brew bundle` over `Brewfile` + `Brewfile.<host>`; a failed entry warns and continues -- re-run in a terminal. No-op off macOS |
+| `luxmini` | pre-packages (gza) | installs the pinned, checksum-verified LuxMini DMG; never downgrades. First app launch shows helper's admin approval |
+| `bootstrap` | the `bootstrap` slot | self-heals the `dev.mise.*` agents: loads what is not loaded, kickstarts dead ones, reports the port holders; seeds the agent state trees and the llama-swap API key. No-op off macOS; on mca it heals pin-check |
+| `herdr-plugins` | final | installs tab-rename, registers the tsk board plugin, installs the tsk agent skill; no-op where herdr is absent |
+| `vscode-extensions` | final | the vscodium extensions; no-op where codium is absent |
+| `dev-agents` | final (gza) | installs the omp sandbox and machine-checks its invariants (the 1--12 list in the script's header): pinned raw binary, root:wheel profiles and wrappers under `/usr/local`, the shadowing brew omp removed, `sign.pub`/`known_hosts` and the `local`/`nwa` state trees seeded. `dev-agents check` is the sudo-free half; the install needs a TTY |
+| `system-check` | final | the non-declarative macOS settings: FDA-gated app defaults, the Downloads Dock tile, the Bluetooth menu item, hostname, firewall, the tailnet resolvers in resolv.conf, Touch ID, power, the update policy, the FileVault check; the desktop adds the GPU wired-limit daemon, Screen Sharing and Remote Login. The sudo part needs a TTY; Dock/Finder restart only when a domain they read changed |
+| `apple-intelligence` | final | pared: every feature off (Siri included), the managed profile kept installed (one System Settings click), downloaded models removed. Apple-silicon macOS 27+ only |
+| `finder-favorites` | final | sidebar Favorites := exactly the visible `$HOME` directories; Finder stores them as an LSSharedFileList archive, so the task writes through that API -- no-interaction flags, 90 s watchdog, a converged list is a no-op |
+| `inventory` | manual (Macs) | the diffable manifest of this Mac's app state, each line annotated with its owner (`repo`, `brew:<token>`, `sync`, `?`); the diff of the two Macs is the transfer backlog. Refuses inside the omp sandbox -- run it in a terminal |
+| `check` | git hooks + final | the repo self-test, five legs (its header); the pre-commit/pre-push hooks refuse unchecked trees via a tree-hash marker, the dot-diff leg asserts this run converged, the heartbeat legs catch dead schedules. A GitHub Actions workflow re-runs the portable legs on every push, mise at the `min_version` floor |
+| `pin-check` | weekly agent (Macs) | HEADs every pinned release asset; one heartbeat line per run in `~/Library/Logs/pin-check.log`, whose age `check` reads as the agent's liveness |
+| `ha-monitor` | daily agents (gza) | the read-only Home Assistant check: the HA repo is the work dir (its AGENTS.md and read-only MCP are the context), only the notes and the report draft writable (brief: `agent-jobs/ha-monitor.md`). State and the shared harness (`report`, `profile`, dry-run) live in `~/.local/state/agent-jobs/` and `mise-tasks/_agent-job.sh` |
+| `ha-update` | weekly agents (gza) | installs pending HA updates over the API -- ordered, backup-first, stop at the first failure (brief: `agent-jobs/ha-update.md`). It mutates HA: the network allow-list is the write guard |
+| `nwa-health` | daily agents (gza) | probes nwa from gza over Tailscale SSH, read-only (brief: `agent-jobs/nwa-health.md`); the nwa-omp sandbox, where the filesystem grants are the whole sandbox (invariant 12). `mise run nwa-health seed` copies the notes from nwa |
 
-They run on every `mise bootstrap` (plain, or with `--update` to refresh
-metadata and repositories first — `mise upgrade`, the `up` function, is tool
-upgrades, not an apply) and do nothing when
-there is nothing to do. The macOS-only tasks carry the `macos` tag and
-the gza agent jobs carry `gza` (mise >= 2026.11.2), so a group can be selected
-explicitly -- `mise run --tag macos`, `mise tasks ls --tag gza` -- instead
-of relying on the uname guards. `--output summary` collapses a multi-task
-run to one line per pass; with `task.logs = true` (mise >= 2026.11.3) a
-failed task's full output is kept for `mise tasks log NAME`. The
-pre-packages hook opens with a config gate:
+Tasks run on every `mise bootstrap`. The macOS-only tasks carry the
+`macos` tag and the gza agent jobs carry `gza` (mise >= 2026.11.2), 
+so a group can be selected explicitly -- `mise run --tag macos`, 
+`mise tasks ls --tag gza`. `--output summary` collapses a
+multi-task run to one line per pass; with `task.logs = true`
+(mise >= 2026.11.3) a failed task's full output is kept for
+`mise tasks log NAME`. 
+
+The pre-packages hook opens with a config gate:
 `mise env` over the loaded config, failing the run when the config does
-not parse or contains unknown fields -- normally a typo'd key only warns,
-and the slow phases would then run on a half-wrong config.
+not parse or contains unknown fields -- normally a typo'd key only
+warns, and then brew, downloads and system check would run.
 
-## Desktop services (gza)
+# Desktop services (gza)
 
-The GPU pool and its llama-swap front door -- the single-tenant rule,
-the key, the logs -- and the scheduled omp agent jobs:
-[notes/services.md](notes/services.md).
+`llama-swap` (port 9292) is the inference proxy. Its 
+LaunchAgent keeps one of the two splash servers for the two Qwen3.8
+models resident. The 27B is on 127.0.0.1:8000, the Flash-Next on 
+127.0.0.1:8100. A request naming the other model ID stops the
+running engine, loads the requested one, then answers. The engines
+bind loopback; only llama-swap faces the tailnet.
+
+The GPU wired-memory limit (the 96 GiB fuse system-check installs)
+makes the pool single-tenant. Loading two OOM-crash each
+other's Metal clients. 
+
+omlx (port 8080) is installed and declared with RunAtLoad off, but it
+is out of the pool. There is no omlx provider in 
+`omp/agent/models.yml.tera` but manually starting omlx beside a loaded
+engine breaks the single-tenant rule. 
+
+Bootstrap task restarts a dead llama-swap on every run and seeds the 
+API key in `~/.config/llama-swap/api_key`, outside this repo. Upgrading
+with `up` restarts llama-swap when the llama-swap or splash keg moves.
+Logs: `~/Library/Logs/omlx.log` and `~/Library/Logs/llama-swap.log`;
+
+The same box hosts the scheduled omp agent jobs: `ha-monitor` (04:38,
+reported 12:03 via ntfy), `ha-update` (Fri 02:33, reported 06:03), and
+`nwa-health` (06:13, reported 12:03, probing nwa over Tailscale SSH).
+
+## Pitfalls
+
+Known traps. Each is cheap to hit and expensive to diagnose.
+
+- `-E <name>` reaches that one command; `--save-env` is what writes it
+  to `miserc.local.toml` for every later mise command. Without `-E`
+  the hook, on a fresh checkout, selects the module matching the
+  machine's hostname, or leaves the selection empty and prints the
+  available names; a re-run of the bootstrap loads whatever the file
+  now says.
+- mise reads `miserc.local.toml` only from `~/.config/mise/`. A copy one
+  level up is silently ignored: the vars fall back to the base values and
+  the host module's dotfiles never deploy.
+- The cwd trap is gone on mise 2026.11.8: from the home directory the
+  vars come from the host module (checked with `mise vars`). mise once
+  honored the selection only inside `~/.config/mise` and fell back to
+  the base values outside it -- the fallback host icon, the FQDN
+  `omp_base` -- which a plain `ssh host mise ...` (cwd = home) hit.
+- A mise below the `min_version` floor in `mise.toml` refuses every
+  command with an upgrade hint. `brew upgrade mise` and re-run.
+- Do not `chsh` to fish. `~/.zshrc` starts fish for interactive sessions,
+  so `$SHELL` stays POSIX for software that runs `$SHELL -c '...'`.
+
+Replacing a machine under the same hostname: take the old box off the
+tailnet first -- power it off or have it leave -- *before* step 5. The
+system-check task sets the hostname and the agents register under it, so
+two live `gza`s split MagicDNS. Then swap the host key: the new
+`~/.ssh/id_ed25519.pub` goes into `vars.ssh_keys` (`mise.toml`) and onto
+<https://github.com/dolfth.keys>, and the old key comes out of both.
+Commits signed by an unlisted key fail verification on the other hosts.
+
+If `mise bootstrap` refuses to run the `bootstrap` task as "not
+trusted": the checkout predates the `trusted_config_paths` entry in
+`mise.toml`. `git pull` and re-run, or record the checkout locally with
+`mise trust mise-tasks/bootstrap` (plain `mise trust ~/.config/mise`
+normalizes to the already-trusted home and records nothing).

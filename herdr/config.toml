@@ -1,8 +1,7 @@
-# Managed by mise as a copy, not a symlink: herdr writes this file itself -- `herdr
-# config reset-keys` rewrites it and drops a backup beside it, and the first-run wizard
-# persists its answer here. A symlink would put both writes (and the backup) into the
-# repo checkout. Saved SSH machines (nwa is added on gza) are NOT here: `herdr machine
-# add` keeps them as app state in the same directory (`herdr machine list`).
+# Managed by mise as a copy, not a symlink: herdr writes this file itself
+# (reset-keys, the first-run wizard) -- a symlink would put those writes and
+# their backups into the repo checkout. Saved SSH machines are app state in
+# this directory, not here.
 
 # The first-run notification wizard persists its answer into this file, so
 # opt out up front.
@@ -28,10 +27,8 @@ type = "pane"
 command = "omp"
 description = "sandboxed oh-my-pi"
 
-# tsk task board (brew smarzban/tap/tsk). The herdr-plugins task registers the plugin
-# with `tsk setup herdr`, which leaves these bindings alone once present. prefix+t opens
-# or focuses this workspace's board, prefix+a quick-captures a task. Where tsk is absent
-# the keys do nothing.
+# tsk board (herdr-plugins registers it via `tsk setup herdr`, which leaves
+# these bindings alone once present). Where tsk is absent the keys do nothing.
 [[keys.command]]
 key = "prefix+t"
 type = "plugin_action"
@@ -43,15 +40,14 @@ key = "prefix+a"
 type = "plugin_action"
 command = "herdr-tsk.quick-capture"
 description = "tsk quick capture"
-# Pinned default: herdr's UI writes the value to disk on first use, so pinning keeps
-# the file matching the source and `mise dot status` clean.
+# Pinned: herdr's UI rewrites the value on first use; pinning keeps the file
+# matching the source and `mise dot status` clean.
 [ui]
 agent_panel_sort = "spaces"
 
-# Parallel-agent work: "New worktree" on a Git workspace row (or `herdr worktree create
-# --branch <name>`) checks out <directory>/<repo>/<branch-slug> as a workspace grouped
-# with its repo -- one checkout and one agent per branch, listed together. Pinned to
-# herdr's documented default, same reasoning as agent_panel_sort above.
+# "New worktree" checks out <directory>/<repo>/<branch-slug> as a workspace
+# grouped with its repo -- one checkout and one agent per branch. Pinned to
+# herdr's documented default, same reasoning as above.
 [worktrees]
 directory = "~/.herdr/worktrees"
 

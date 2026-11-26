@@ -1,19 +1,13 @@
-# gza's GPU-pool front door: rendered whole by `mise bootstrap` from
-# llama-swap/config.yaml.tera to ~/.config/llama-swap/config.yaml. A model added
-# through the llama-swap UI is a local change; the next bootstrap resets it --
-# edit this source instead.
+# gza's GPU-pool front door, rendered whole by every bootstrap to
+# ~/.config/llama-swap/config.yaml -- UI-side additions are transient, edit
+# this source. One model at a time (llama-swap's router); the 96 GiB wired
+# fuse refuses nothing below it, so two resident servers would OOM-crash
+# each other's Metal clients.
 #
-# One model runs at a time (llama-swap's default router): a request for the other
-# ID stops the running splash, waits for the load, then answers. Single tenant:
-# the 96 GiB wired fuse refuses nothing below it, so two resident servers would
-# OOM-crash each other's Metal clients.
-#
-# The splash servers are internal: loopback only, no --allowed-host; this
-# listener is what faces the tailnet, and the API key is its guard. The key is
-# read straight from ~/.config/llama-swap/api_key (0600, outside the repo) by
-# exec() at render time; a missing key renders empty and llama-swap then
-# refuses to load, loudly. omp's catalog (omp/agent/models.yml.tera) reads the
-# same file the same way.
+# This listener is what faces the tailnet, guarded by the API key that exec()
+# reads from ~/.config/llama-swap/api_key at render time; a missing key
+# renders empty and llama-swap refuses to load, loudly. The engines bind
+# loopback only.
 healthCheckTimeout: 600 # the 111 GB flash-next load outlives the 120 s default
 logLevel: info
 logTimeFormat: rfc3339
@@ -26,24 +20,21 @@ models:
   # picker ID, splash's --model and v1/models all agree.
 
   "unsloth/Qwen3.8-27B-GGUF:UD-Q4_K_XL":
-    # unsloth's Dynamic 3.0 quant: 5.25 bits/param (17.9 GB), and the repo ships
-    # the mmproj projector so vision stays. --max-memory 30G caps the Metal plan
-    # (weights plus ~128K KV in RAM, the rest on the SSD cache).
+    # Dynamic 3.0 quant (17.9 GB) with the mmproj projector for vision;
+    # --max-memory 30G caps the Metal plan (weights + ~128K KV).
     name: "Qwen3.8 27B (Splash)"
     cmd: {{ system_brew_prefix }}/opt/splash/bin/splash serve --model unsloth/Qwen3.8-27B-GGUF:UD-Q4_K_XL --port 8000 --host 127.0.0.1 --max-memory 30G --idle-release 3m
     proxy: http://127.0.0.1:8000
 
   "unsloth/Qwen3.8-Flash-Next-GGUF:UD-Q4_K_XL":
-    # Qwen3.8-Flash-Next: 125B MoE (6B active) plus a 51B PLE table, Dynamic 3.0
-    # quant, a 111 GB image. splash plans from the whole Mac, so the flags are the
-    # contract:
-    #   --max-memory 86G  expert store plus KV inside the 96 GiB fuse, ~6 GiB left
-    #     for the GUI's Metal clients. 90G only doubles the KV pool; 50G starved
-    #     23% of the expert slots to ~25 tok/s at 40% GPU.
-    #   --idle-release 15m  3m released and restored 19x in a day of agent work.
-    #   --max-cache-disk 64G  auto's 32 GiB quota hit 100% with 357 GB free.
-    #   --thinking-token-budget 8192  one request wrote 26,856 thinking tokens.
-    # The serve plan stays ~/Library/Application Support/Splash/runtime/serve-8100.json.
+    # Flash-Next: 125B MoE (6B active) plus a 51B PLE table, 111 GB image.
+    # The flags are the contract, each measured:
+    #   --max-memory 86G  expert store plus KV inside the fuse, ~6 GiB left
+    #     for the GUI's Metal clients (90G only doubles the KV pool; 50G
+    #     starved 23% of the expert slots to ~25 tok/s)
+    #   --idle-release 15m  3m released and restored 19x in a day of agent work
+    #   --max-cache-disk 64G  auto's 32 GiB quota hit 100% with 357 GB free
+    #   --thinking-token-budget 8192  one request wrote 26,856 thinking tokens
     name: "Qwen3.8 Flash-Next (Splash)"
     cmd: {{ system_brew_prefix }}/opt/splash/bin/splash serve --model unsloth/Qwen3.8-Flash-Next-GGUF:UD-Q4_K_XL --port 8100 --host 127.0.0.1 --max-memory 86G --idle-release 15m --max-cache-disk 64G --thinking-token-budget 8192
     proxy: http://127.0.0.1:8100

@@ -15,7 +15,7 @@
   upgrades. Order: upgrade mise on every host (`up`, brew), then commit
   the bump. CI installs mise at the floor, so the bump also moves what
   CI proves.
-- Docs layout: README is the manual (bootstrap, day to day, fleet);
-  notes/ is the reference (files, tasks, sandbox, services, pitfalls).
-  A new fact goes into its notes file, the README only gains a line
-  when using the repo needs it.
+- Docs layout: README is the whole doc -- manual up front (bootstrap,
+  day to day, fleet, services), then the reference tables (files,
+  sandbox, tasks), pitfalls last. A new fact goes into the section that
+  owns its subject.

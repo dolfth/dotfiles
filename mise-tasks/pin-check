@@ -1,23 +1,14 @@
 #!/usr/bin/env bash
 #MISE tags=["macos"]
-# The pinned release URLs, probed. The three places that fetch a pinned GitHub
-# release (dev-agents: the omp binary; apple-intelligence: the pared tarball +
-# checksum sidecar; the luxmini task: the pinned DMG) fail the
-# moment upstream removes or renames an asset, and the only way to discover
-# that is to fetch it for real -- possibly during a bootstrap on the one box
-# that matters. This task HEADs every pinned asset so the breakage is announced
-# first.
-#
-# Nothing needs to watch this: the dev.mise.pin-check agent
-# runs it weekly (mise.toml); every run appends one line to
-# ~/Library/Logs/pin-check.log, so the log's age shows whether the agent is alive and
-# `mise run check` calls a log older than 8 days dead; a failing run raises a macOS
-# notification in unsandboxed agent sessions, else the exit code is the signal.
-#
-# Versions are read from the pin table in mise.toml [vars], the same
-# table dev-agents, apple-intelligence and the luxmini task consume, so a bump
-# needs no change here. A missing var fails the check: the pin moved out from
-# under a consumer.
+# HEAD every pinned release asset -- the omp binary, the pared tarball +
+# checksum sidecar, the LuxMini DMG -- so upstream removing or renaming one
+# is announced before it breaks a bootstrap on the one box that matters.
+# Nothing needs to watch this: the dev.mise.pin-check agent (mise.toml) runs
+# it weekly, each run appends a heartbeat line to
+# ~/Library/Logs/pin-check.log, and check leg 4 calls a stale log dead.
+# Versions come from the pin table in mise.toml [vars], the same table the
+# fetching tasks consume; a missing var fails the check -- the pin moved out
+# from under a consumer.
 
 set -uo pipefail   # no -e: check every pin, report all of them
 

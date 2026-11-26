@@ -1,39 +1,26 @@
 #!/usr/bin/env bash
 #MISE tags=["gza"]
-# The external probe of nwa (brief: agent-jobs/nwa-health.md). An omp run on
-# gza probes nwa over Tailscale SSH (read-only, change nothing); a second leg
-# reports over ntfy.
+# The external probe of nwa (brief: agent-jobs/nwa-health.md): an omp run on
+# gza probes nwa over Tailscale SSH, read-only; an unsandboxed leg reports
+# over ntfy.
 #
 #   mise run nwa-health            the agent run  (agent: dev.mise.nwa-health)
 #   mise run nwa-health report     the ntfy report (agent: dev.mise.nwa-health-report)
 #   mise run nwa-health seed       copy health-notes.md from nwa
 #   mise run nwa-health profile    the generated job profile, for the eye
 #
-# The state machine, the archive, the heartbeat, the watchdog and the report
-# live in mise-tasks/_agent-job.sh. What is specific to monitoring another
-# machine:
+# Harness: mise-tasks/_agent-job.sh. The probes are ssh, which the daily
+# sandbox denies (dev-agents invariant 11), so this job takes the nwa-omp
+# shape: `nono wrap` on a profile generated from the installed
+# /usr/local/etc/nono/nwa-omp.json. No network allow-list -- a domain proxy
+# cannot carry ssh (nono#756) -- so the filesystem grants are the whole
+# sandbox: workdir READ, two files WRITE (invariant 12). Work dir is nwa's
+# flake repo; notes and draft sit at its root and must stay gitignored
+# there. Preflight requires nwa:22 to answer -- a down box is a skip with a
+# reason, not a run full of timeouts. Run 06:13, report 12:03, timeout 60.
 #
-# - The probes run over ssh. The daily sandbox denies /usr/bin/ssh
-#   (dev-agents invariant 11), so this job is the nwa-omp shape: `nono wrap`
-#   on a profile generated from the installed
-#   /usr/local/etc/nono/nwa-omp.json, where ssh lives. No network allow-list:
-#   a domain proxy cannot carry ssh (nolabs-ai/nono#756), so under wrap the
-#   filesystem grants are the whole sandbox: workdir READ, exactly two files
-#   WRITE (invariant 12).
-# - The work dir is ~/Documents/code/nixos-config, nwa's own flake repo; the
-#   agent loads its AGENTS.md as context. The notes and the draft sit at the
-#   repo root; both must stay gitignored in that repo.
-# - Preflight: the harness repo probe separates missing from TCC-unreadable,
-#   and nwa:22 must answer -- a down box is a skip with a reason, not a
-#   failed run full of timeouts.
-# - Run 06:13, report 12:03; timeout 60 min. The model is the pool's
-#   flash-next behind llama-swap; an eviction by another client's pick costs
-#   the job one swapped-back load, like ha-monitor.
-# - The report leg is unsandboxed plain bash, the only piece that posts to
-#   ntfy; the shared topic file is ~/.local/state/agent-jobs/ntfy_topic.
-#
-# The first real run needs the notes: seed them with `mise run nwa-health
-# seed`; a run without notes treats every open problem as new.
+# The first real run needs the notes: `mise run nwa-health seed`, or every
+# open problem reads as new.
 
 set -uo pipefail
 

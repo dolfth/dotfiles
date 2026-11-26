@@ -1,9 +1,8 @@
-# Managed by mise. macOS only (mac module).
+# Managed by mise. macOS only.
 #
-# Keep key passphrases in the macOS Keychain: the first time a passphrase is
-# typed, ssh stores it there; after that it is unlocked with your login and
-# the key is loaded into the agent on first use -- no more prompts, also after
-# a restart.
+# Key passphrases live in the macOS Keychain: typed once, then unlocked with
+# the login and loaded into the agent on first use -- including after a
+# restart.
 Host *
   UseKeychain yes
   AddKeysToAgent yes
