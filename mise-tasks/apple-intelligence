@@ -26,12 +26,12 @@ fi
 #
 # No mainline brew formula (the tap's is a source build wanting full Xcode) and no
 # mise backend, so the release goes under ~/.local/share/pared, called by absolute
-# path, never on PATH. Bump vars.pared_version (mise.mac.toml); a mismatch
+# path, never on PATH. Bump vars.pared_version (mise.toml); a mismatch
 # replaces the install. A missing var stops the task -- there is no default to
 # fall back to.
 
 ver=$(mise vars --json | jq -r '.pared_version // empty')
-[ -n "$ver" ] || { echo "apple-intelligence: vars.pared_version not set (mise.mac.toml)" >&2; exit 1; }
+[ -n "$ver" ] || { echo "apple-intelligence: vars.pared_version not set (mise.toml)" >&2; exit 1; }
 dir="${HOME}/.local/share/pared"
 pared="$dir/pared"
 if [ -x "$pared" ] && [ "$(cat "$dir/.version" 2>/dev/null)" = "$ver" ]; then

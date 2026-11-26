@@ -1,6 +1,6 @@
 # gza: the always-on desktop. Local-LLM server (llama-swap fronting the splash
 # models; omlx installed, out of pool), omp host, reachable over SSH / screen
-# sharing / the tailnet. Select with env = ["mac", "gza"].
+# sharing / the tailnet. Select with env = ["gza"].
 
 [vars]
 host = "gza"

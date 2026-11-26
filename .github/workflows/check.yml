@@ -16,14 +16,15 @@ permissions:
 
 jobs:
   config:
-    # One arm per module: CI has no miserc.local.toml (it lives only in the
-    # ~/.config/mise checkout), so MISE_ENV is what drives mise.mac/mca/
-    # gza.toml through the parse gate. The base mise.toml loads in every arm.
+    # One arm per host module: CI has no miserc.local.toml (it lives only in the
+    # ~/.config/mise checkout), so MISE_ENV is what drives mise.mca/gza.toml
+    # through the parse gate. The base mise.toml -- the whole shared macOS
+    # layer -- loads in every arm.
     # mise itself runs at the min_version floor: CI proves the floor.
     strategy:
       fail-fast: false
       matrix:
-        mise_env: [mac, mca, gza]
+        mise_env: [mca, gza]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

@@ -2,10 +2,11 @@
 
 Known traps. Each is cheap to hit and expensive to diagnose.
 
-- `-E mac,gza` is written to `miserc.local.toml` and every later mise
-  command on the machine uses it. Without `-E` the hook writes
-  `["mac"]` (the laptop defaults) and tells you to re-run with the host
-  name added.
+- The `-E <name>` you give `mise bootstrap` is written to
+  `miserc.local.toml` and every later mise command on the machine uses
+  it. Without `-E` the hook selects the module matching the machine's
+  hostname, or leaves the selection empty and prints the available
+  names; a re-run of the bootstrap loads whatever the file now says.
 - mise reads `miserc.local.toml` only from `~/.config/mise/`. A copy one
   level up is silently ignored: the vars fall back to the base values and
   the host module's dotfiles never deploy.

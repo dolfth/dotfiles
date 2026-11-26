@@ -5,7 +5,7 @@
 # (cask/cask_loader.rb) -- and upstream publishes no tap, so neither a
 # Brewfile entry nor `brew install --cask <file>` can carry this app. The
 # install is the task's, like dev-agents' omp binary: the pin -- vars.
-# luxmini_version + luxmini_sha256 in mise.mac.toml, which pin-check probes
+# luxmini_version + luxmini_sha256 in mise.toml, which pin-check probes
 # weekly -- and the task fetches and verifies the DMG itself. Bump from the
 # release's SHA256SUMS.txt: https://github.com/bastiencantet/luxmini-public/
 # releases. If upstream ships a tap, move this to brew.
@@ -38,9 +38,9 @@ warn() { echo "WARNING: luxmini: $*" >&2; exit 0; }
 
 mise_vars_json=$(mise vars --json)
 pinned=$(printf '%s' "$mise_vars_json" | jq -r '.luxmini_version // empty')
-[ -n "$pinned" ] || warn "vars.luxmini_version not set (mise.mac.toml)"
+[ -n "$pinned" ] || warn "vars.luxmini_version not set (mise.toml)"
 pin_sha=$(printf '%s' "$mise_vars_json" | jq -r '.luxmini_sha256 // empty')
-[ -n "$pin_sha" ] || warn "vars.luxmini_sha256 not set (mise.mac.toml)"
+[ -n "$pin_sha" ] || warn "vars.luxmini_sha256 not set (mise.toml)"
 
 app_dir="/Applications/LuxMini.app"
 

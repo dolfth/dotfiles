@@ -9,12 +9,12 @@
 # first.
 #
 # Nothing needs to watch this: the dev.mise.pin-check agent
-# runs it weekly (mise.mac.toml); every run appends one line to
+# runs it weekly (mise.toml); every run appends one line to
 # ~/Library/Logs/pin-check.log, so the log's age shows whether the agent is alive and
 # `mise run check` calls a log older than 8 days dead; a failing run raises a macOS
 # notification in unsandboxed agent sessions, else the exit code is the signal.
 #
-# Versions are read from the pin table in mise.mac.toml [vars], the same
+# Versions are read from the pin table in mise.toml [vars], the same
 # table dev-agents, apple-intelligence and the luxmini task consume, so a bump
 # needs no change here. A missing var fails the check: the pin moved out from
 # under a consumer.
@@ -34,11 +34,11 @@ checked=0
 # would fail too -- fail loudly, the pin went unchecked.
 mise_vars_json=$(mise vars --json)
 omp_version=$(printf '%s' "$mise_vars_json" | jq -r '.omp_version // empty')
-[ -n "$omp_version" ] || failures+=("omp: no omp_version var (mise.mac.toml)")
+[ -n "$omp_version" ] || failures+=("omp: no omp_version var (mise.toml)")
 pared_version=$(printf '%s' "$mise_vars_json" | jq -r '.pared_version // empty')
-[ -n "$pared_version" ] || failures+=("pared: no pared_version var (mise.mac.toml)")
+[ -n "$pared_version" ] || failures+=("pared: no pared_version var (mise.toml)")
 luxmini_version=$(printf '%s' "$mise_vars_json" | jq -r '.luxmini_version // empty')
-[ -n "$luxmini_version" ] || failures+=("luxmini: no luxmini_version var (mise.mac.toml)")
+[ -n "$luxmini_version" ] || failures+=("luxmini: no luxmini_version var (mise.toml)")
 
 # HEAD a pinned asset; GitHub answers 404 (redirect-followed) for removed
 # releases and assets alike.

@@ -85,13 +85,13 @@ local_state="$HOME/.omp/profiles/local"
 nwa_state="$HOME/.omp/profiles/nwa"
 
 # Pinned release plus checksum; the wrapper needs a path brew never touches.
-# The pins live in mise.mac.toml [vars], beside pared's and LuxMini's;
+# The pins live in mise.toml [vars], beside pared's and LuxMini's;
 # pin-check probes the asset URLs weekly.
 mise_vars_json="$(mise vars --json)"
 omp_version=$(printf '%s' "$mise_vars_json" | jq -r '.omp_version // empty')
 omp_sha256=$(printf '%s' "$mise_vars_json" | jq -r '.omp_sha256 // empty')
 if [ -z "$omp_version" ] || [ -z "$omp_sha256" ]; then
-  echo "dev-agents: vars.omp_version/omp_sha256 not set (mise.mac.toml)" >&2
+  echo "dev-agents: vars.omp_version/omp_sha256 not set (mise.toml)" >&2
   exit 1
 fi
 

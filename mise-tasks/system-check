@@ -41,7 +41,7 @@ if [ -n "$fda" ]; then
   # Displays: show the display list in Displays settings
   defaults write com.apple.Displays-Settings.extension showListByDefault -int 2
   # Safari: its engine id is container-scoped, so it cannot be declared like
-  # the system preference in mise.mac.toml. A failing defaults domain aborts
+  # the system preference in mise.toml. A failing defaults domain aborts
   # the whole bootstrap, which is why it sits behind the FDA guard.
   defaults write com.apple.Safari DefaultBrowserSearchProviderIdentifier -string com.duckduckgo
 fi
@@ -119,7 +119,7 @@ fi
 defaults -currentHost write com.apple.controlcenter Bluetooth -int 2
 
 # Manual light or dark mode conflicts with the automatic switch (declarative
-# in mise.mac.toml); `defaults delete` exits 1 when the key is already gone.
+# in mise.toml); `defaults delete` exits 1 when the key is already gone.
 if defaults read NSGlobalDomain AppleInterfaceStyle >/dev/null 2>&1; then
   defaults delete NSGlobalDomain AppleInterfaceStyle
 fi

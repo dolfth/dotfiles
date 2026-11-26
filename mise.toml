@@ -1,16 +1,23 @@
-# Base config, always loaded: fallback vars and the dotfiles every machine
-# gets. Host modules (mise.<env>.toml) are selected in the machine-local,
-# uncommitted miserc.local.toml -- the pre-packages hook writes the mac
-# fallback on a fresh checkout. See README.md.
+# The whole shared config, always loaded: the macOS layer (defaults, dock,
+# LaunchAgents, dotfiles, pins) plus the fallback vars. Per-host modules
+# (mise.<env>.toml) are selected in the machine-local, uncommitted
+# miserc.local.toml -- the pre-packages hook writes it on a fresh checkout.
+# See README.md.
 
 # mise below this refuses every command with an upgrade hint, in a global config as
 # well as a project one. Bumping it breaks every host below the new floor:
 # upgrade mise on every host first (see AGENTS.md).
 min_version = "2026.11.3"
 
+[env]
+# mise exports [env] to every activated shell, so this reaches every fish; zshenv
+# covers the plain zsh that skips both the fish hand-off and mise activation.
+EDITOR = "hx"
+VISUAL = "hx"
+
 [vars]
-# Fallback for a host with no module yet: a new Mac selected with only
-# env = ["mac"] gets the laptop defaults.
+# Fallbacks for a machine whose host module did not load (missing or wrong
+# miserc selection): the laptop defaults.
 host = "localhost"
 accent = "color_blue"
 icon = "\U000F033D"   # nf-md-linux
@@ -38,6 +45,24 @@ ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKORTGA2F28t4VWxuvjVPnX9sfZOnNjmR5LoB8uvcwFU
 # task-running agents invoke; inert for the servers), then the system dirs.
 launchd_path = "{{ system_brew_prefix }}/bin:{{ env.HOME }}/.local/bin:{{ system_brew_prefix }}/sbin:/usr/bin:/bin:/usr/sbin:/sbin"
 
+# The pinned GitHub releases the tasks fetch. The tasks read them with
+# `mise vars --json`, and pin-check (below) HEADs the asset URLs weekly.
+# A bump is one edit here; a missing var fails the consumer instead of
+# falling back to a stale default.
+# - omp: dev-agents installs the binary
+#   (https://github.com/can1357/oh-my-pi/releases, omp-darwin-arm64)
+# - pared: the apple-intelligence task installs the tarball; no brew formula,
+#   no mise backend (https://github.com/4evy/pared/releases, .sha256 sidecar)
+# - luxmini: the luxmini task installs the DMG -- upstream publishes no tap
+#   and brew 7 loads casks by name only, so no brew entry is possible; the
+#   sha256 comes from the release's SHA256SUMS.txt
+#   (https://github.com/bastiencantet/luxmini-public/releases)
+pared_version = "2.2.0"
+omp_version = "18.18.6"
+omp_sha256 = "ed2e63eb43888eb76cb1409b245b1db4557c94dfad52dc545c9aaca01ebce82d"  # omp-darwin-arm64
+luxmini_version = "0.5.4"
+luxmini_sha256 = "a293408a2ce21101e2526a19515e40f8323d7d0d2e5046a984558362929d3532"
+
 [dotfiles]
 "~/.config/git/config" = "git/config"
 "~/.config/git/allowed_signers" = { source = "git/allowed_signers.tera", mode = "template" }
@@ -52,6 +77,34 @@ launchd_path = "{{ system_brew_prefix }}/bin:{{ env.HOME }}/.local/bin:{{ system
 # AeroSpace rewrites this file when the layout changes in-app, so it is a
 # merge: our keys win, whatever AeroSpace or the user wrote elsewhere stays.
 "~/.config/aerospace/aerospace.toml/pinned" = { source = "aerospace/aerospace.toml", merge = true }
+
+# A copy, not a symlink: the sandbox denies ~/.zshrc and nono canonicalizes a deny
+# through a symlink, which would deny the repo's own copy to the agent managing it.
+# zshenv carries the same sandbox reason; it is the file `$SHELL -c` reads, so
+# mosh's `mosh-server` lookup -- and every `$SHELL -c` tool -- gets the brew PATH from it.
+"~/.zshenv" = { source = "zshenv", mode = "copy" }
+"~/.zshrc" = { source = "zshrc", mode = "copy" }
+# A real file at 0600: a symlink would expose the repo file's permissions to
+# ssh's checks.
+"~/.ssh/config" = { source = "ssh_config", mode = "copy", permissions = "0600" }
+# The login keys from the ssh_keys var; mise owns the file, so hand-added
+# keys are overwritten.
+"~/.ssh/authorized_keys" = { source = "ssh/authorized_keys.tera", mode = "template", permissions = "0600" }
+# The fish helpers.
+"~/.config/fish/functions/up.fish" = "fish/functions/up.fish"
+"~/.config/fish/functions/mkd.fish" = "fish/functions/mkd.fish"
+"~/.config/fish/functions/tstat.fish" = "fish/functions/tstat.fish"
+"~/.config/fish/functions/port.fish" = "fish/functions/port.fish"
+
+# LinearMouse creates the file on first run and owns it afterwards, so the
+# edit entry only seeds it: written when missing, then only missing keys are
+# ever filled in.
+"~/.config/linearmouse/linearmouse.json/initial" = { source = "linearmouse.json", merge = "missing" }
+# Handy saves this store with a plain fs::write (no temp-and-rename), so the symlink
+# survives in-app saves and settings edits land in the repo -- commit them. Where
+# Handy already ran, `mise dot add` first, so the live file is captured, not linked
+# over.
+"~/Library/Application Support/com.pais.handy/settings_store.json" = { source = "handy/settings_store.json" }
 
 [settings]
 # mise >= 2026.10.19 refuses tasks from an untrusted config, and trust is
@@ -77,12 +130,12 @@ task.logs = true
 # Each hook gets its own subtable: the subtable holds `description` (mise >=
 # 2026.10.22), which `mise bootstrap` prints instead of the script's first line.
 [bootstrap.hooks.pre-packages]
-description = "Write the missing miserc (fresh Mac), gate the config parse, take the defaults snapshot, bundle the Brewfiles, and install LuxMini (gza)"
+description = "Write or heal the miserc (fresh Mac), gate the config parse, take the defaults snapshot, bundle the Brewfiles, and install LuxMini (gza)"
 # Seeds and gates, in order: writes a missing miserc.local.toml (uncommitted, so a
-# fresh checkout has none; the module loads on the *next* invocation), then runs
-# `mise env` and fails the bootstrap if the config does not parse or has unknown
-# fields. A typo'd key only warns, so without this gate the slow phases run on a
-# half-wrong config.
+# fresh checkout has none; the module loads on the *next* invocation) and drops a
+# stale "mac" entry from an existing one, then runs `mise env` and fails the
+# bootstrap if the config does not parse or has unknown fields. A typo'd key only
+# warns, so without this gate the slow phases run on a half-wrong config.
 run = """
 repo=$(git rev-parse --show-toplevel 2>/dev/null) || repo=$PWD
 . "$repo/mise-tasks/_path.sh"
@@ -91,17 +144,32 @@ resolve_mise
 # core.hooksPath lives in .git/config -- per-checkout, not in the repo --
 # so the bootstrap sets it on every machine that adopts this one.
 git -C "$repo" config core.hooksPath mise-tasks/hooks 2>/dev/null || true
-# Fresh checkout: write the missing miserc (README, "Config layout").
+# Fresh checkout: write the missing miserc (README, "Config layout"). The
+# selection names the host module only; the shared macOS layer lives in
+# mise.toml. Pick the module matching this machine's hostname when one exists.
 if [ "$(uname -s)" = "Darwin" ]; then
   if [ ! -f "$repo/miserc.local.toml" ]; then
+    h=$(scutil --get LocalHostName 2>/dev/null | tr '[:upper:]' '[:lower:]')
+    sel=""
+    [ -f "$repo/mise.$h.toml" ] && sel="$h"
     {
       echo '# Per-machine environment selection: which mise.<env>.toml modules to load.'
-      echo '# mac: the shared macOS module; then the host module (mise.<host>.toml).'
-      echo 'env = ["mac"]'
+      echo '# One host module (mise.<host>.toml); the shared macOS layer is in mise.toml.'
+      if [ -n "$sel" ]; then printf 'env = ["%s"]\n' "$sel"; else echo 'env = []'; fi
     } > "$repo/miserc.local.toml"
     mods=""
     for f in "$repo"/mise.*.toml; do [ -e "$f" ] || continue; n=${f##*/mise.}; mods="$mods ${n%.toml}"; done
-    echo "Wrote $repo/miserc.local.toml with the mac fallback -- re-run 'mise bootstrap' to load it. If this box is a named machine, add its env name to the file -- available: ${mods# }"
+    echo "Wrote $repo/miserc.local.toml with env = [$sel] -- re-run 'mise bootstrap' to load it. If this box is a named machine, pick its module -- available: ${mods# }"
+  elif grep -q '"mac"' "$repo/miserc.local.toml"; then
+    # The mac platform module merged into mise.toml (2026-11): rewrite the
+    # stale selection to the host module(s) it still names.
+    hosts=$(sed -nE '/^env = /s/^env = .//p' "$repo/miserc.local.toml" | sed -E 's/].*//; s/"mac", ?//g; s/, ?"mac"//g; s/"mac"//g')
+    {
+      echo '# Per-machine environment selection: which mise.<env>.toml modules to load.'
+      echo '# One host module (mise.<host>.toml); the shared macOS layer is in mise.toml.'
+      echo "env = [$hosts]"
+    } > "$repo/miserc.local.toml"
+    echo "Updated $repo/miserc.local.toml: the mac module now lives in mise.toml -- re-run 'mise bootstrap' to load the selection."
   fi
 fi
 # Config gate: the warning above is otherwise ignored by mise.
@@ -145,6 +213,189 @@ working_directory = "{{ env.HOME }}"
 stdout_path = "{{ env.HOME }}/Library/Logs/syncthing.log"
 stderr_path = "{{ env.HOME }}/Library/Logs/syncthing.log"
 kickstart = true
+
+# The weekly pin heartbeat (see the pin-check task). Calendar schedule, not
+# KeepAlive, and no RunAtLoad or kickstart: a login or bootstrap must not start it
+# off-schedule. `mise run check` calls a log older than 8 days a dead heartbeat.
+# The cwd is the config root or mise finds no tasks; stdout goes to its own file so
+# run chatter cannot pollute the one-line summary check parses.
+[bootstrap.macos.launchd.agents.pin-check]
+program = "{{ system_brew_prefix }}/bin/mise"
+args = ["run", "pin-check"]
+working_directory = "{{ env.HOME }}/.config/mise"
+start_calendar_interval = [{ weekday = 3, hour = 9, minute = 30 }]
+process_type = "Background"
+environment = { "PATH" = "{{ vars.launchd_path }}" }
+stdout_path = "{{ env.HOME }}/Library/Logs/pin-check.out.log"
+stderr_path = "{{ env.HOME }}/Library/Logs/pin-check.out.log"
+run_at_load = false
+kickstart = false
+
+##### macOS defaults #####
+#
+# Mise rewrites these every bootstrap: a hand-flipped setting goes back, and
+# deleting a line stops setting it without restoring the old value.
+# Mail/TextEdit/Displays/Safari live in FDA-gated containers, so system-check
+# writes those.
+
+# No pinned Dock tiles: the empty list removes every app tile mise recognises.
+# Folder tiles in persistent-others are outside mise's reach (system-check keeps
+# the Downloads one). The named section, not a raw persistent-apps value, so mise
+# keeps each tile's bookmark and reports the layout rather than the archive.
+[bootstrap.macos.dock]
+apps = []
+
+[bootstrap.macos.defaults."com.apple.dock"]
+"autohide" = true
+"autohide-delay" = 0.0
+"autohide-time-modifier" = 0.4
+"tilesize" = 64
+"showhidden" = true
+"enable-spring-load-actions-on-all-items" = true
+"launchanim" = false
+"minimize-to-application" = true
+"mineffect" = "scale"
+"expose-animation-duration" = 0.1
+"mru-spaces" = false
+"show-recents" = false
+"expose-group-apps" = true
+# Hot corner: bottom-left shows Desktop.
+"wvous-bl-corner" = 4
+
+[bootstrap.macos.defaults."com.apple.spaces"]
+# true = one Space spans all displays ("Displays have separate Spaces" off);
+# works better with AeroSpace
+"spans-displays" = true
+
+[bootstrap.macos.defaults."com.apple.WindowManager"]
+# Click wallpaper to show Desktop: 0 = only in Stage Manager, 1 = always
+"EnableStandardClickToShowDesktop" = 0
+# No built-in tiling; AeroSpace manages windows.
+"EnableTilingByEdgeDrag" = false
+"EnableTopTilingByEdgeDrag" = false
+"EnableTilingOptionAccelerator" = false
+"EnableTiledWindowMargins" = false
+
+[bootstrap.macos.defaults."com.apple.finder"]
+# New window view: Nlsv = list, icnv = icon, clmv = column, Flwv = gallery
+"FXPreferredViewStyle" = "clmv"
+"ShowPathbar" = true
+"ShowStatusBar" = true
+"_FXShowPosixPathInTitle" = true
+"_FXSortFoldersFirst" = true
+"_FXSortFoldersFirstOnDesktop" = true
+"FXEnableExtensionChangeWarning" = false
+# Search: SCcf = current folder, SCsp = previous, SCev = this Mac
+"FXDefaultSearchScope" = "SCcf"
+# New windows: PfHm = Home, PfDe = Desktop, PfDo = Documents. The path is
+# set in system-check with $USER so it works on any username.
+"NewWindowTarget" = "PfHm"
+"QuitMenuItem" = true
+"FXRemoveOldTrashItems" = true
+"ShowMountedServersOnDesktop" = true
+"FXInfoPanesExpanded" = { "General" = true, "OpenWith" = true, "Privileges" = true }
+
+[bootstrap.macos.defaults."com.apple.NetworkBrowser"]
+# AirDrop over Ethernet and other non-WiFi interfaces
+"BrowseAllInterfaces" = true
+
+[bootstrap.macos.defaults."NSGlobalDomain"]
+"AppleShowAllExtensions" = true
+"InitialKeyRepeat" = 15
+"KeyRepeat" = 2
+"NSAutomaticCapitalizationEnabled" = false
+"NSAutomaticSpellingCorrectionEnabled" = false
+"NSContinuousSpellCheckingEnabled" = false
+"NSAutomaticQuoteSubstitutionEnabled" = false
+"NSAutomaticDashSubstitutionEnabled" = false
+"AppleEnableWindowTinting" = false
+"com.apple.swipescrolldirection" = false
+"NSAppSleepDisabled" = true
+"PMPrintingExpandedStateForPrint" = true
+"PMPrintingExpandedStateForPrint2" = true
+"NSNavPanelExpandedStateForSaveMode" = true
+"NSNavPanelExpandedStateForSaveMode2" = true
+"AppleActionOnDoubleClick" = "Minimize"
+"AppleShowScrollBars" = "Always"
+"NSDocumentSaveNewDocumentsToCloud" = false
+"AppleHighlightColor" = "0.764700 0.976500 0.568600"
+"NSUseAnimatedFocusRing" = false
+"NSWindowResizeTime" = 0.001
+"NSTextShowsControlCharacters" = true
+"NSDisableAutomaticTermination" = true
+"NSWindowShouldDragOnGesture" = true
+"AppleKeyboardUIMode" = 2
+"com.apple.trackpad.scaling" = 2.0
+"com.apple.mouse.scaling" = 1.5
+"com.apple.mouse.linear" = true
+"AppleICUForce24HourTime" = true
+"WebKitDeveloperExtras" = true
+# AppleInterfaceStyle (manual light/dark) conflicts with the automatic
+# switch; a delete has no declarative form, so the system-check task does it.
+
+[bootstrap.macos.defaults."com.apple.LaunchServices"]
+# No "downloaded from the internet" dialog; Gatekeeper still blocks unsigned
+# apps
+"LSQuarantine" = false
+
+[bootstrap.macos.defaults."com.apple.print.PrintingPrefs"]
+"Quit When Finished" = true
+
+# com.apple.universalaccess is not declared: macOS TCC-protects it, so an
+# unprivileged write commits nothing and mise aborts the bootstrap on that domain.
+# Its three toggles are cosmetic; set them once in System Settings > Accessibility.
+
+[bootstrap.macos.defaults."com.apple.HIToolbox"]
+# Fn/Globe alone: 0 = nothing, 1 = input source, 2 = emoji, 3 = dictation
+"AppleFnUsageType" = 2
+
+[bootstrap.macos.defaults."com.apple.driver.AppleBluetoothMultitouch.trackpad"]
+# Corner: 0 = off, 1 = bottom-left, 2 = bottom-right
+"TrackpadCornerSecondaryClick" = 2
+
+[bootstrap.macos.defaults."com.apple.desktopservices"]
+"DSDontWriteNetworkStores" = true
+"DSDontWriteUSBStores" = true
+
+[bootstrap.macos.defaults."com.apple.screencapture"]
+"disable-shadow" = true
+"include-date" = false
+"show-thumbnail" = false
+
+[bootstrap.macos.defaults."com.apple.menuextra.clock"]
+"Show24Hour" = true
+"ShowAMPM" = false
+"ShowDate" = 1
+
+[bootstrap.macos.defaults."com.apple.ActivityMonitor"]
+# Sort by the Memory column (real memory); the stock default is CPU.
+"SortColumn" = "ResidentSize"
+
+[bootstrap.macos.defaults."com.apple.ImageCapture"]
+"disableHotPlug" = true
+
+[bootstrap.macos.defaults."com.apple.TimeMachine"]
+"DoNotOfferNewDisksForBackup" = true
+
+[bootstrap.macos.defaults."com.apple.commerce"]
+"AutoUpdate" = false
+
+# Third-party menu-bar player, hidden. The key is what noTunes itself writes
+# when its Settings toggle is flipped, read off the live domain; the app keeps
+# controlling Apple Music without the status item. The LuxMini counterpart
+# lives in mise.gza.toml, gza being the only machine that runs it.
+
+[bootstrap.macos.defaults."digital.twisted.noTunes"]
+"hideIcon" = true
+
+# Safari's search engine is per device -- iCloud syncs bookmarks and tabs, never
+# this -- and macOS 14+ resolves it from this system-scoped key. The path entry
+# keeps other provider dictionaries; Safari reads it at launch.
+[[bootstrap.macos.defaults_entries]]
+domain = "NSGlobalDomain"
+key = "NSPreferredWebServices"
+path = ["NSWebServicesProviderWebSearch"]
+value = { "NSDefaultDisplayName" = "DuckDuckGo", "NSProviderIdentifier" = "com.duckduckgo" }
 
 [bootstrap.remote]
 # The fleet inventory for `mise bootstrap remote` (README, "Fleet sync"). Any machine

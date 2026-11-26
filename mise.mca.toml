@@ -1,4 +1,4 @@
-# mca: the laptop. Select with env = ["mac", "mca"].
+# mca: the laptop. Select with env = ["mca"].
 
 [vars]
 host = "mca"
