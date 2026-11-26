@@ -27,8 +27,10 @@ export PATH
 
 # ssh is dead in this sandbox (dev-agents invariant 11): push goes over https
 # only. git must still sign locally: ssh-keygen (not denied) signs through the
-# ssh-agent with the PUBLIC key file dev-agents seeds. "no agent" means no key
-# loaded -- one unsandboxed ssh-add per boot.
+# ssh-agent with the PUBLIC key file dev-agents seeds -- the Secure Enclave
+# handle's .pub, the private half never leaves the chip. "no agent" means no
+# key loaded: one unsandboxed `ssh-add -K -S /usr/lib/ssh-keychain.dylib` per
+# boot.
 if [ -r "$HOME/.config/git/sign.pub" ]; then
   GIT_CONFIG_COUNT=$(( ${GIT_CONFIG_COUNT:-0} + 1 ))
   export GIT_CONFIG_COUNT

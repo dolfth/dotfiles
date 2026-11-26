@@ -32,9 +32,11 @@ PATH="$(printf '%s' "$HOME/.local/bin:__BREW_PREFIX__/bin:__BREW_PREFIX__/sbin:$
 export PATH
 
 # ~/.ssh is denied even here: signing goes through the ssh-agent with the
-# PUBLIC key, nwa auth is the tailnet identity, never a key file. Host keys
-# land in the profile tree's known_hosts -- tailscale keys rotate with the
-# node key, so this tree keeps its own, seeded at install.
+# PUBLIC key (Secure Enclave handle's .pub; the agent holds the key after
+# `ssh-add -K -S /usr/lib/ssh-keychain.dylib`, so the sandbox needs no
+# provider env), nwa auth is the tailnet identity, never a key file. Host
+# keys land in the profile tree's known_hosts -- tailscale keys rotate with
+# the node key, so this tree keeps its own, seeded at install.
 if [ -r "$HOME/.config/git/sign.pub" ]; then
   GIT_CONFIG_COUNT=$(( ${GIT_CONFIG_COUNT:-0} + 1 ))
   export GIT_CONFIG_COUNT

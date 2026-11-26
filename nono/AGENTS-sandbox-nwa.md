@@ -19,9 +19,11 @@
   the review point: read `git log`/`git diff` before rebuilding. nwa
   builds its own system; gza never compiles it. Roll back with the
   previous generation or the boot entry, never by editing nwa live.
-- Auth runs through ssh-agent (keys are Secure Enclave stubs; ~/.ssh is
-  denied). "no agent" means the agent has no key loaded: one `ssh-add` in an
-  unsandboxed terminal per boot.
+- Auth runs through ssh-agent: the key is the Mac's Secure Enclave identity,
+  resident and non-exportable; the agent gets it per boot with one
+  unsandboxed `ssh-add -K -S /usr/lib/ssh-keychain.dylib`. ~/.ssh is denied,
+  so the handle file is no fallback here. "no agent" means the agent has no
+  key loaded.
 - Network outbound is otherwise unrestricted, like the daily omp -- ssh
   cannot pass a domain allow-list on macOS (nolabs-ai/nono#756), so no list
   is configured and none is enforced. Do not route around a failure by

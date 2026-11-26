@@ -24,11 +24,18 @@ must also already be in the purchase history.
 # 1. Install Command Line Tools for git and Homebrew
 xcode-select --install
 
-# 2. Create GitHub key with -C for the machine name
-ssh-keygen -t ed25519 -a 100 -N "" -C gza -f ~/.ssh/id_ed25519
+# 2. Secure Enclave identity for this machine, then its ssh handle in
+#    ~/.ssh. The provider makes ssh and ssh-keygen talk to the chip, not a
+#    USB reader. -t bio asks Touch ID per signature: fine on a laptop, wrong
+#    for unattended jobs. The PIN prompt: press Enter (empty).
+sc_auth create-ctk-identity -l gza -k p-256-ne -t none
+export SSH_SK_PROVIDER=/usr/lib/ssh-keychain.dylib
+cd ~/.ssh && ssh-keygen -w /usr/lib/ssh-keychain.dylib -K -N ''
+mv id_ecdsa_sk_rk_gza id_ecdsa_sk && mv id_ecdsa_sk_rk_gza.pub id_ecdsa_sk.pub
+ssh-keygen -q -c -C gza -f id_ecdsa_sk
 
 # 3. Paste the key under GitHub → Settings → SSH and GPG keys
-pbcopy < ~/.ssh/id_ed25519.pub
+pbcopy < ~/.ssh/id_ecdsa_sk.pub
 
 # 4. Check if the key is working
 ssh -T git@github.com
@@ -67,7 +74,12 @@ the Pitfalls section at the end.
 
 ## SSH between hosts
 
-The main module renders the `login_keys` var to `~/.ssh/authorized_keys`
+The Mac keys are Secure Enclave identities: the private half never leaves
+the chip, `~/.ssh/id_ecdsa_sk` is a handle and `SSH_SK_PROVIDER` (zshenv,
+config.fish, the ssh-carrying plist) points ssh at it. The key has no
+backup by design; losing the handle costs nothing, a dead Mac means a new
+identity and a key rotation (see Pitfalls). The main module renders the
+`login_keys` var to `~/.ssh/authorized_keys`
 on both Macs: the two Mac keys. Any Mac can `ssh <host>.<tailnet>`
 passwordless, from anywhere in the fleet. nwa is a leaf: it accepts the
 Mac keys, but its own key is in no Mac's list, so owning nwa owns only
@@ -159,14 +171,14 @@ the DMG, apple-intelligence the tarball.
 
 | Source | Target | Mode | Notes |
 |---|---|---|---|
-| `zshenv` | `~/.zshenv` | copy | the brew PATH and `$EDITOR` for `$SHELL -c` child shells where mosh's ssh finds `mosh-server` |
+| `zshenv` | `~/.zshenv` | copy | the brew PATH, `$EDITOR` and the `SSH_SK_PROVIDER` export for `$SHELL -c` child shells where mosh's ssh finds `mosh-server` |
 | `zshrc` | `~/.zshrc` | copy | starts fish |
 | `ssh_config` | `~/.ssh/config` | copy 0600 | a symlink would expose the repo file's permissions to ssh |
 | `ssh/authorized_keys.tera` | `~/.ssh/authorized_keys` | render 0600 | the `ssh_keys` var; hand-added keys need to go into the var |
-| `fish/config.fish` | `~/.config/fish/config.fish` | symlink | the mise activation block |
+| `fish/config.fish` | `~/.config/fish/config.fish` | symlink | the mise activation block and the interactive shell's `SSH_SK_PROVIDER` |
 | `fish/functions/*.fish` | `~/.config/fish/functions/` | symlink | `up` for upgrades, `mkd` for new directory, `tstat` for tailnet peers, `port` for holder of a port |
 | `starship.toml.tera` | `~/.config/starship.toml` | render | per-host accent and icon from the vars |
-| `git/config` | `~/.config/git/config` | symlink | signs commits and tags with `~/.ssh/id_ed25519` |
+| `git/config` | `~/.config/git/config` | symlink | signs commits and tags with the Secure Enclave handle `~/.ssh/id_ecdsa_sk` |
 | `git/allowed_signers.tera` | `~/.config/git/allowed_signers` | render | every host's public key (the `ssh_keys` var) |
 | `ghostty/config` | `~/.config/ghostty/config` | symlink | Nerd Font, so starship's glyphs render |
 | `aerospace/aerospace.toml` | `~/.config/aerospace/aerospace.toml` | merge | AeroSpace rewrites the file itself when the layout changes in-app |
@@ -297,17 +309,34 @@ Known traps. Each is cheap to hit and expensive to diagnose.
   command with an upgrade hint. `brew upgrade mise` and re-run.
 - Do not `chsh` to fish. `~/.zshrc` starts fish for interactive sessions,
   so `$SHELL` stays POSIX for software that runs `$SHELL -c '...'`.
+- `No FIDO SecurityKeyProvider specified` (or a signature that will not
+  verify as ECDSA-SK): the context lacks `SSH_SK_PROVIDER`. zsh and fish set
+  it; bare launchd jobs and GUI processes get neither. Only nwa-health sshes
+  from launchd and carries the var in its plist; add it to any future job
+  that signs or sshes.
+- Re-downloading the handle: `ssh-keygen -w /usr/lib/ssh-keychain.dylib -K
+  -N ''` -- the `-K` is the download. Without it ssh-keygen enrolls a new
+  identity (fails: feature not supported), and without `-K` *and* `-t` it
+  silently writes a software ed25519 key pair. A real handle's `.pub` starts
+  with `sk-ecdsa-sha2-nistp256@openssh.com`.
+- The CTK identity's certificate shows a `Valid To` one year out
+  (`sc_auth list-ctk-identities -t ssh`), and ssh-keychain serves the *valid*
+  identities. Behavior past expiry is untested; renew the certificate in
+  place with `sc_auth create-ctk-csr` + sign + `import-ctk-certificate`, or
+  create a fresh identity and rotate it like a replaced machine.
 
 Replacing a machine under the same hostname: take the old box off the
 tailnet first -- power it off or have it leave -- *before* step 5. The
 system-check task sets the hostname and the agents register under it, so
-two live `gza`s split MagicDNS. Then swap the host key: the new
-`~/.ssh/id_ed25519.pub` goes into `vars.ssh_keys` and `vars.login_keys`
-(`mise.toml`) and onto <https://github.com/dolfth.keys>, and the old key
-comes out of both. nwa's key belongs in `ssh_keys` only: never in
-`login_keys`, never on the account, only on its repos as a read-only
-deploy key. Commits signed by an unlisted key fail verification on the
-other hosts.
+two live `gza`s split MagicDNS. Then swap the key: a fresh identity and
+handle per bootstrap steps 2 and 3 (the old key dies with the old chip, it
+has no backup), the new `~/.ssh/id_ecdsa_sk.pub` goes into `vars.ssh_keys`
+and `vars.login_keys` (`mise.toml`) and onto <https://github.com/dolfth.keys>,
+and the old key comes out of both. Tailscale SSH asks approval for the new
+key once -- approve it persistently or the probes hang. nwa's key belongs in
+`ssh_keys` only: never in `login_keys`, never on the account, only on its
+repos as a read-only deploy key. Commits signed by an unlisted key fail
+verification on the other hosts.
 
 If `mise bootstrap` refuses to run the `bootstrap` task as "not
 trusted": the checkout predates the `trusted_config_paths` entry in

@@ -115,7 +115,9 @@ args = ["run", "nwa-health"]
 working_directory = "{{ env.HOME }}/.config/mise"
 start_calendar_interval = [{ hour = 6, minute = 13 }]
 process_type = "Background"
-environment = { "PATH" = "{{ vars.launchd_path }}" }
+# The probes ssh with the Secure Enclave handle; without the provider the
+# sk key does not resolve and every probe dies before reaching nwa.
+environment = { "PATH" = "{{ vars.launchd_path }}", "SSH_SK_PROVIDER" = "/usr/lib/ssh-keychain.dylib" }
 stdout_path = "{{ env.HOME }}/Library/Logs/nwa-health.out.log"
 stderr_path = "{{ env.HOME }}/Library/Logs/nwa-health.out.log"
 run_at_load = false

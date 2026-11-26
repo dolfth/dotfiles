@@ -1,8 +1,10 @@
 # Managed by mise. macOS only.
 #
-# Key passphrases live in the macOS Keychain: typed once, then unlocked with
-# the login and loaded into the agent on first use -- including after a
-# restart.
+# The signing and login key is the Secure Enclave handle at
+# ~/.ssh/id_ecdsa_sk: ssh finds it under that default name on its own, and
+# SSH_SK_PROVIDER (zshenv, config.fish, the ssh-carrying plists) points it at
+# /usr/lib/ssh-keychain.dylib instead of a USB reader. No secret lives in the
+# handle; the key is the machine's CTK identity (sc_auth list-ctk-identities).
 Host *
   UseKeychain yes
   AddKeysToAgent yes

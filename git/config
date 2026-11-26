@@ -1,12 +1,15 @@
 # Managed by mise.
 #
-# Sign with the host's SSH key -- the private key, not the .pub: a .pub only
-# works while an ssh-agent holds the key. Verification uses allowed_signers
-# (vars.ssh_keys in mise.toml).
+# Sign with the machine's Secure Enclave handle (~/.ssh/id_ecdsa_sk: a key
+# reference, no secret). Signing needs SSH_SK_PROVIDER set -- zshenv and
+# config.fish do that; launchd jobs carry it in the plist. The sandboxed omp
+# entries override this key with the public copy ~/.config/git/sign.pub and
+# sign through the ssh-agent instead (dev-agents seeds it). Verification uses
+# allowed_signers (vars.ssh_keys in mise.toml).
 [user]
 name = Dolf ter Hofsté
 email = 12677636+dolfth@users.noreply.github.com
-signingkey = ~/.ssh/id_ed25519
+signingkey = ~/.ssh/id_ecdsa_sk
 [init]
 defaultBranch = main
 [Pull]

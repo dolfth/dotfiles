@@ -32,8 +32,9 @@ PATH="$(printf '%s' "$HOME/.local/bin:__BREW_PREFIX__/bin:__BREW_PREFIX__/sbin:$
 export PATH
 
 # ~/.ssh is denied, but git must still sign: ssh-keygen signs through the
-# ssh-agent with the PUBLIC key file; push reaches no remote (the allow-list
-# stops it), signed local commits work.
+# ssh-agent with the PUBLIC key file (Secure Enclave handle's .pub, loaded
+# into the agent by `ssh-add -K -S /usr/lib/ssh-keychain.dylib`); push reaches
+# no remote (the allow-list stops it), signed local commits work.
 if [ -r "$HOME/.config/git/sign.pub" ]; then
   GIT_CONFIG_COUNT=$(( ${GIT_CONFIG_COUNT:-0} + 1 ))
   export GIT_CONFIG_COUNT

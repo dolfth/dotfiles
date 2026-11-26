@@ -14,6 +14,10 @@ if test -d $HOME/.local/bin
     set -gx PATH $PATH $HOME/.local/bin
 end
 
+# The Secure Enclave as ssh's security-key provider; the same export zshenv
+# carries, needed for the sk keys (~/.ssh/id_ecdsa_sk) fish shells sign with.
+set -gx SSH_SK_PROVIDER /usr/lib/ssh-keychain.dylib
+
 # mise: activation. It is on PATH by here (the brew prefix or
 # ~/.local/bin); the guard keeps the block a no-op where mise is absent.
 if type -q mise

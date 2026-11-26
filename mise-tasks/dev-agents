@@ -209,7 +209,7 @@ check() {
   case "$nwa_ssh_why" in ALLOWED*) ;; *) fail "nwa-omp cannot exec ssh (${nwa_ssh_why:-no output})" ;; esac
   # Even here the key files stay shut: auth is the ssh-agent and the tailnet
   # identity, never a readable private key (R6 holds for nwa-omp too).
-  nwa_key_why=$(nono why --profile "$gen_nwa" --workdir "$root" --path "$HOME/.ssh/id_ed25519" 2>&1 || true)
+  nwa_key_why=$(nono why --profile "$gen_nwa" --workdir "$root" --path "$HOME/.ssh/id_ecdsa_sk" 2>&1 || true)
   case "$nwa_key_why" in DENIED*) ;; *) fail "nwa-omp can read the private key (${nwa_key_why:-no output})" ;; esac
   # R9/R10 hold for the nwa tree as they do for local's: daily is blind to it,
   # it reads its own, and the shared board is out of reach.
@@ -223,8 +223,8 @@ check() {
 
   # R6 as the engine sees it: extends and groups can grant more than these lists.
   local key_why
-  key_why=$(nono why --profile "$profile_src" --path "$HOME/.ssh/id_ed25519" 2>&1 || true)
-  case "$key_why" in DENIED*) ;; *) fail "nono why: \$HOME/.ssh/id_ed25519 not denied (${key_why:-no output})" ;; esac
+  key_why=$(nono why --profile "$profile_src" --path "$HOME/.ssh/id_ecdsa_sk" 2>&1 || true)
+  case "$key_why" in DENIED*) ;; *) fail "nono why: \$HOME/.ssh/id_ecdsa_sk not denied (${key_why:-no output})" ;; esac
 
   # R4 + R3 + R2-keep: profile by path, wrap not run, HERDR_AGENT exported.
   grep -q -- "--profile $profile_dst" "$wrapper_src" \
@@ -419,11 +419,12 @@ install_stack() {
   mkdir -p "$HOME/.config/herdr" "$HOME/.omp/agent" "$HOME/.cache/nono-tmp/omp" \
            "$HOME/.local/share/uv" "$HOME/.local/bin" "$HOME/.config/git" "$HOME/.tsk"
 
-  # git's pieces with ~/.ssh denied: the public signing key ssh-keygen uses,
+  # git's pieces with ~/.ssh denied: the Secure Enclave handle's PUBLIC key
+  # (the agent signs with it; the handle file itself stays unreadable here),
   # and the known_hosts copy that seeds nwa-omp's profile-tree file.
-  if [ -f "$HOME/.ssh/id_ed25519.pub" ]; then
-    cmp -s "$HOME/.ssh/id_ed25519.pub" "$HOME/.config/git/sign.pub" \
-      || command install -m 644 "$HOME/.ssh/id_ed25519.pub" "$HOME/.config/git/sign.pub"
+  if [ -f "$HOME/.ssh/id_ecdsa_sk.pub" ]; then
+    cmp -s "$HOME/.ssh/id_ecdsa_sk.pub" "$HOME/.config/git/sign.pub" \
+      || command install -m 644 "$HOME/.ssh/id_ecdsa_sk.pub" "$HOME/.config/git/sign.pub"
   fi
   if [ -f "$HOME/.ssh/known_hosts" ]; then
     cmp -s "$HOME/.ssh/known_hosts" "$HOME/.config/git/known_hosts" \

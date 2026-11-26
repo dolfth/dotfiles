@@ -12,10 +12,12 @@
   other tools or paths, and do not guess at causes.
 - `~/.ssh` is unreadable and `/usr/bin/ssh` is denied: every ssh transport
   (push over `git@`, `scp`, `rsync`) dies here. `git commit -S` still works --
-  `ssh-keygen` signs through the ssh-agent with `~/.config/git/sign.pub`. A
-  signing failure with "no agent" means the agent has no key loaded; report
-  it, loading is a one-time step in an unsandboxed shell. Push from an
-  unsandboxed terminal; for nwa maintenance there is a dedicated `nwa-omp`
-  entry point with ssh, started by you, never from here.
+  `ssh-keygen` signs through the ssh-agent with `~/.config/git/sign.pub`, the
+  public key of the machine's Secure Enclave identity. A signing failure with
+  "no agent" means the agent has no key loaded; report it, loading is a
+  one-time step in an unsandboxed shell:
+  `ssh-add -K -S /usr/lib/ssh-keychain.dylib`. Push from an unsandboxed
+  terminal; for nwa maintenance there is a dedicated `nwa-omp` entry point
+  with ssh, started by you, never from here.
 - Prefer `$TMPDIR` for scratch files.
 - You can read images yourself. Do not use OCR tools.
