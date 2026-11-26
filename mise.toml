@@ -25,24 +25,26 @@ tailnet = "foxhound-insen.ts.net"
 omp_base = "gza.foxhound-insen.ts.net"
 
 # Git signature verification keys, rendered into allowed_signers: every
-# host verifies every other's commits, nwa's key included. This is NOT
+# host verifies every other's commits, nwa's key included. The Mac entries
+# are Secure Enclave sk-ecdsa keys since the 2026-11 rotation. This is NOT
 # the dolfth.keys account list anymore: nwa's key was demoted to a
 # read-only deploy key on the repos it pulls and left the account.
 # Login is the narrower login_keys, not this list.
 ssh_keys = """
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBA2RcuVWjT5vlSHUdcNi8hWcG5xiRI1BJcHjlWq1dqY
-ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEburPU7lpE3tnJac9R5jAbMTDqb0FA02Jqt0qVsVeUh
-ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKORTGA2F28t4VWxuvjVPnX9sfZOnNjmR5LoB8uvcwFU
+sk-ecdsa-sha2-nistp256@openssh.com AAAAInNrLWVjZHNhLXNoYTItbmlzdHAyNTZAb3BlbnNzaC5jb20AAAAIbmlzdHAyNTYAAABBBCbdjfDCSx5E5Anyo4DTXvwIYokuEZF86w/AEErOZ27DLKdxJ84eSmpRraJWNhqjXD9BcxrVAZI0nG1+5R85WXIAAAAEc3NoOg== mca
+sk-ecdsa-sha2-nistp256@openssh.com AAAAInNrLWVjZHNhLXNoYTItbmlzdHAyNTZAb3BlbnNzaC5jb20AAAAIbmlzdHAyNTYAAABBBErO+HMs3aTBWQjsDg604+pgf6cKiH8D87Aiza8hZpceY4GoTw1VZeM5HoJHtUW5E8yocGxdWYQVkkU9c+QpDBYAAAAEc3NoOg== gza
 """
 
 # Which keys may log in on the Macs: the two Mac keys only, rendered to
-# ~/.ssh/authorized_keys by ssh/authorized_keys.tera. nwa's key stays
+# ~/.ssh/authorized_keys by ssh/authorized_keys.tera -- both Secure Enclave
+# sk-ecdsa keys since the 2026-11 rotation. nwa's key stays
 # out: nwa is a leaf. It accepts the Mac keys, its own key opens nothing
 # that trusts it, so owning nwa owns only nwa. A rotated Mac key goes
 # into both vars.
 login_keys = """
-ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEburPU7lpE3tnJac9R5jAbMTDqb0FA02Jqt0qVsVeUh
-ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKORTGA2F28t4VWxuvjVPnX9sfZOnNjmR5LoB8uvcwFU
+sk-ecdsa-sha2-nistp256@openssh.com AAAAInNrLWVjZHNhLXNoYTItbmlzdHAyNTZAb3BlbnNzaC5jb20AAAAIbmlzdHAyNTYAAABBBCbdjfDCSx5E5Anyo4DTXvwIYokuEZF86w/AEErOZ27DLKdxJ84eSmpRraJWNhqjXD9BcxrVAZI0nG1+5R85WXIAAAAEc3NoOg== mca
+sk-ecdsa-sha2-nistp256@openssh.com AAAAInNrLWVjZHNhLXNoYTItbmlzdHAyNTZAb3BlbnNzaC5jb20AAAAIbmlzdHAyNTYAAABBBErO+HMs3aTBWQjsDg604+pgf6cKiH8D87Aiza8hZpceY4GoTw1VZeM5HoJHtUW5E8yocGxdWYQVkkU9c+QpDBYAAAAEc3NoOg== gza
 """
 
 # A launchd job inherits exactly this PATH and nothing else.
