@@ -39,7 +39,7 @@ repo="$HOME/.config/mise"
 . "$(dirname "$0")/_agent-job.sh"
 
 job_name="nwa-health"
-nix_repo="$HOME/Documents/code/nixos-config"
+nix_repo="$HOME/code/nixos-config"
 repo_label="nixos-config repo"
 repo_dir="$nix_repo"
 state="$HOME/.local/state/agent-jobs/nwa-health"
